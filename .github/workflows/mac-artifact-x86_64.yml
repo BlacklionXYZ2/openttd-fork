@@ -1,0 +1,59 @@
+name: Mac Intel x86_64 build artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    name: Build Intel x86_64 app
+    runs-on: macos-15-intel
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 12.0
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Setup vcpkg
+      id: vcpkg
+      uses: OpenTTD/actions/setup-vcpkg@v7
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+          -DVCPKG_TARGET_TRIPLET=x64-osx \
+          -DCMAKE_TOOLCHAIN_FILE=${{ steps.vcpkg.outputs.vcpkg-cmake }}
+        cmake --build . -j $(sysctl -n hw.logicalcpu)
+
+    - name: Package
+      run: |
+        (cd build && cpack)
+        mkdir -p pkg/baseset
+        cp -R build/_CPack_Packages/*/Bundle/openttd-*/OpenTTD.app pkg/
+        B=pkg/OpenTTD.app/Contents/MacOS/openttd
+        file $B
+        lipo -info $B
+        otool -l $B | grep -A4 -E 'LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX'
+        cp -R mods pkg/mods
+        curl -L https://cdn.openttd.org/opengfx-releases/0.6.0/opengfx-0.6.0-all.zip -o og.zip
+        (cd pkg/baseset && unzip -q ../../og.zip)
+        cat > pkg/README.txt <<'EOT'
+        Unsigned build. First launch: right-click OpenTTD.app > Open, or run:
+          xattr -dr com.apple.quarantine OpenTTD.app
+        Copy baseset/* to ~/Documents/OpenTTD/baseset/
+        Copy mods/ai/CorporateAI to ~/Documents/OpenTTD/ai/
+        EOT
+        ditto -c -k --sequesterRsrc --keepParent pkg openttd-mac-x86_64.zip
+
+    - name: Upload
+      uses: actions/upload-artifact@v7
+      with:
+        name: openttd-mac-x86_64
+        path: openttd-mac-x86_64.zip
+        retention-days: 30

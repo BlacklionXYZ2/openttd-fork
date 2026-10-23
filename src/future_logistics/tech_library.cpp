@@ -65,6 +65,7 @@ TechRecord Describe(const Engine *engine)
 			const RailVehicleInfo &info = engine->VehInfo<RailVehicleInfo>();
 			record.wagon = info.railveh_type == RailVehicleType::Wagon;
 			record.traction = !record.wagon && record.capacity == 0;
+			record.railtypes = info.railtypes;
 			for (RailType rt : info.railtypes) {
 				record.track = GetRailTypeInfo(rt)->label.AsString();
 				break;
@@ -169,7 +170,17 @@ double ScoreTech(uint capacity, uint speed, uint16_t reliability_max, Money cost
  */
 bool TechLibrary::IsUsable(const TechRecord &record, const TechQuery &query) const
 {
-	if (record.ai_avoid || record.wagon || record.mode != query.mode || !record.roles.Test(query.role)) return false;
+	if (record.ai_avoid || record.mode != query.mode || !record.roles.Test(query.role)) return false;
+	switch (query.part) {
+		case TechPart::Vehicle: if (record.wagon) return false; break;
+		case TechPart::Locomotive: if (!record.traction) return false; break;
+		case TechPart::Wagon: if (!record.wagon) return false; break;
+	}
+	if (query.railtype != INVALID_RAILTYPE) {
+		/* Locomotives need power on the track; wagons only need to fit on it. */
+		if (record.mode != TechMode::Rail) return false;
+		if (record.wagon ? !IsCompatibleRail(record.railtypes, query.railtype) : !HasPowerOnRail(record.railtypes, query.railtype)) return false;
+	}
 	/* Special infrastructure is matched in phase 5; until then never offer such vehicles. */
 	if (!record.needs.empty()) return false;
 	if (query.roadtype != INVALID_ROADTYPE && record.roadtype != query.roadtype) return false;
@@ -192,7 +203,12 @@ const TechRecord *TechLibrary::FindBest(const TechQuery &query) const
 	for (const TechRecord &record : this->vehicles) {
 		if (!this->IsUsable(record, query)) continue;
 		const Engine *engine = Engine::Get(record.engine);
-		const double score = ScoreTech(record.capacity, record.speed, record.reliability_max, engine->GetCost(), engine->GetRunningCost(), record.life_years);
+		/* A locomotive carries nothing, so its pulling power stands in for capacity.
+		 * Wagons never break down, and a wagon speed of 0 means no limit. */
+		const uint capacity = record.traction ? engine->GetPower() : record.capacity;
+		const uint speed = record.wagon && record.speed == 0 ? UINT16_MAX : record.speed;
+		const uint16_t reliability = record.wagon ? UINT16_MAX : record.reliability_max;
+		const double score = ScoreTech(capacity, speed, reliability, engine->GetCost(), engine->GetRunningCost(), record.life_years);
 		if (score > best_score) {
 			best = &record;
 			best_score = score;

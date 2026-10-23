@@ -36,7 +36,7 @@ def main():
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
             towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
-            climate="temperate", commands=""):
+            climate="temperate", commands="", industries=4):
         folder = output / name
         folder.mkdir(exist_ok=True)
         for src, dst in [(baseset, folder / "baseset"),
@@ -60,12 +60,13 @@ competitors_interval = 0
 number_towns = 4
 terrain_type = 0
 quantity_sea_lakes = 4
-industry_density = 0
+industry_density = {industries}
 vehicle_breakdowns = 0
 [construction]
 clear_frame_burst = {clear_limit}
 [vehicle]
 max_roadveh = {vehicle_limit}
+max_trains = {vehicle_limit}
 [economy]
 town_layout = 1
 [gui]
@@ -118,13 +119,23 @@ DayZeroMonopolies =
         return text, folder / "snapshot.sav"
 
     first, snapshot = run("new-game", commands="future_logistics_tech best road passenger_feeder PASS\n")
+    vehicle_count = lambda text: [int(n) for n in re.findall(r"FL check result=true companies=5 vehicles=(\d+) human=0", text)]
+    profiles = re.findall(r"FL profile company=([1-4]) profile=(\w+)", first)
+    require(profiles == [("1", "national_rail"), ("2", "aerolink"), ("3", "metro_regional"), ("4", "integrated_logistics")],
+            "each rival should get its own profile, in order")
+    built = set(re.findall(r"FL service company=\d+ type=(\w+) fallback=\w+ result=success", first))
+    require({"rail_passenger", "rail_freight", "bus"} <= built,
+            "the starting market should contain passenger rail, freight rail and buses")
+    freight = re.findall(r"FL rail company=\d+ kind=freight cargo=(\w+) vehicle=\d+ wagons=([1-9])", first)
+    require(freight, "no freight train with wagons was built")
     chosen = re.findall(r"FL tech company=([1-4]) role=passenger_feeder vehicle=(\S+)", first)
-    require(len(chosen) == 4 and len({vehicle for _, vehicle in chosen}) == 1,
-            "every rival should get its bus from the Tech Library")
+    require(chosen and len({vehicle for _, vehicle in chosen}) == 1,
+            "every bus should come from the Tech Library")
     best = re.search(r"FL tech best id=(\S+) mode=road", first)
     require(best and best.group(1) == chosen[0][1], "console best-vehicle query disagrees with the planner")
     require("FL complete companies=5 operational=4" in first, "expected four operational rivals; see new-game/process.log")
-    require("FL check result=true companies=5 vehicles=4 human=0" in first, "initial ownership/connectivity failed")
+    services = int(re.search(r"FL complete companies=5 operational=4 services=(\d+)", first).group(1))
+    require(services >= 4 and vehicle_count(first) == [services], "initial ownership/connectivity failed")
     grants = re.findall(r"FL funded company=(\d+) grant=(\d+) balance=(\d+) loan=(\d+)", first)
     require(len(grants) == 4, "expected exactly four funding entries")
     require(all(int(grant) == 25000000 and int(balance) == int(loan) + int(grant)
@@ -133,25 +144,26 @@ DayZeroMonopolies =
     require(len(ledger) == 4, "grant ledger or AI company type is incorrect")
     require(snapshot.exists(), "new-game snapshot missing")
     second, _ = run("repeat-seed")
-    fingerprint = lambda text: re.findall(r"FL (?:funded|route|complete)[^\n]*", text)
+    fingerprint = lambda text: re.findall(r"FL (?:funded|profile|route|rail|service|complete)[^\n]*", text)
     require(fingerprint(first) == fingerprint(second), "fixed-seed setup differs")
 
     restored, served_save = run("service-and-reload", load=snapshot, service=True)
     require("FL begin" not in restored and "FL funded" not in restored, "bootstrap ran on load")
     require(restored.count("CorporateAI operating the engine-built starter network") == 4,
             "not every AI resumed its controller")
+    require(sorted(re.findall(r"CorporateAI profile ([1-4])", restored)) == ["1", "2", "3", "4"],
+            "CorporateAI did not see its saved profile")
     require("Companies visible after startup: 5" in restored, "Game Script did not inspect the initialized companies")
-    checks = re.findall(r"FL check result=true companies=5 vehicles=4 human=0", restored)
-    require(len(checks) == 2, "initial or three-month saved-game connectivity check failed")
-    visits = re.findall(r"FL check company=(\d+).*connected=true served=true", restored)
-    require(len(set(visits)) == 4, "not every rival bus visited an ordered station")
+    require(vehicle_count(restored) == [services, services], "initial or three-month saved-game connectivity check failed")
+    served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", restored)
+    require(len(set(served)) == services, "not every rival vehicle visited an ordered station")
     deliveries = re.findall(r"FL check company=(\d+).*delivered=([1-9]\d*)", restored)
-    require(len({company for company, count in deliveries}) == 4, "not every rival delivered passengers")
+    require(len({company for company, count in deliveries}) == 4, "not every rival delivered cargo")
     funds = lambda text: re.findall(r"FL check funds company=(\d+) balance=(-?\d+) loan=(\d+)", text)[:5]
     require(funds(first) == funds(restored), "funds changed across initial save/reload")
     require(served_save.exists(), "service snapshot missing")
     again, _ = run("served-save-reload", load=served_save)
-    require("FL begin" not in again and "FL check result=true companies=5 vehicles=4 human=0" in again,
+    require("FL begin" not in again and vehicle_count(again) == [services],
             "served network failed save/reload")
 
     default_world, _ = run("default-world", default_world=True)
@@ -169,13 +181,13 @@ DayZeroMonopolies =
     require("FL complete companies=3" in limited and limited.count("FL funded company=") == 2,
             "competitor limit not respected")
     require("grant=1000000" in limited, "configured grant ignored")
-    failed, _ = run("one-town-fallback", towns=1)
-    require("FL complete companies=5 operational=0" in failed and failed.count("FL no usable bus route") == 4,
+    failed, _ = run("one-town-fallback", towns=1, industries=0)
+    require("FL complete companies=5 operational=0" in failed and failed.count("FL no usable starter network") == 4,
             "unfavourable map did not fail cleanly")
     rolled_back, _ = run("vehicle-command-failure", vehicle_limit=0)
     require("FL complete companies=5 operational=0" in rolled_back, "vehicle cap failure was not bounded")
     require("phase=vehicle" in rolled_back, "vehicle construction failure path was not exercised")
-    clean = re.findall(r"FL check funds company=([1-4]).*road_bits=0 station_tiles=0", rolled_back)
+    clean = re.findall(r"FL check funds company=([1-4]).*road_bits=0 station_tiles=0 rail_bits=0", rolled_back)
     require(len(clean) == 4, "failed vehicle purchase left orphaned infrastructure")
     early, _ = run("no-available-bus", year=1800)
     require("FL complete companies=5 operational=0" in early, "vehicle availability not respected")
@@ -208,7 +220,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected started bus networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: four distinct company profiles with passenger rail, freight rail and buses; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

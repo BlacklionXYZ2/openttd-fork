@@ -12,6 +12,7 @@
 #include "../core/enum_type.hpp"
 #include "../economy_type.h"
 #include "../engine_type.h"
+#include "../rail_type.h"
 #include "../road_type.h"
 #include "../timer/timer_game_calendar.h"
 
@@ -60,6 +61,7 @@ struct TechRecord {
 	uint16_t reliability_max = 0; ///< Best reliability, 0..65535.
 	int life_years = 0; ///< Expected vehicle life.
 	RoadType roadtype = INVALID_ROADTYPE; ///< Road type for road vehicles.
+	RailTypes railtypes{}; ///< Rail types for rail vehicles.
 	std::string track; ///< Rail or road type label for ground vehicles.
 
 	/* Fields below come from fl_ badges once phase 5 lands; until then they hold the defaults. */
@@ -83,6 +85,13 @@ struct InfraRecord {
 	std::vector<std::string> provides; ///< Special sites supplied (fl_provides).
 };
 
+/** Which part of a consist a query wants. */
+enum class TechPart : uint8_t {
+	Vehicle, ///< Anything that runs on its own, i.e. not a wagon.
+	Locomotive, ///< Rail locomotive without its own cargo space.
+	Wagon, ///< Rail wagon.
+};
+
 /** What a planner is looking for. */
 struct TechQuery {
 	TechMode mode = TechMode::Road;
@@ -91,6 +100,8 @@ struct TechQuery {
 	CompanyID company = CompanyID::Invalid(); ///< Company that would buy it.
 	RoadType roadtype = INVALID_ROADTYPE; ///< Required road type, or INVALID_ROADTYPE for any.
 	Money budget = INT64_MAX; ///< Maximum purchase price.
+	TechPart part = TechPart::Vehicle; ///< Which part of a consist.
+	RailType railtype = INVALID_RAILTYPE; ///< Track the vehicle must run on, or INVALID_RAILTYPE for any.
 };
 
 /** Snapshot of all loaded transport technology. Derived data: build it when needed, never save it. */

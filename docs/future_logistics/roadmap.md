@@ -5,9 +5,9 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phases 0 and 1 are complete. Each rival runs one bus
-line, chosen through the Tech Library. See `validation.md` for the recorded
-test results.
+**Status (October 2026):** phases 0–2 are complete. The four rivals have
+distinct profiles, and the starting market has passenger trains, freight
+trains and buses. See `validation.md` for the recorded test results.
 
 The key design rule for everything below: **rivals ask the Tech Library for
 "the best tech for this job", never for a specific vehicle.** The library and
@@ -44,20 +44,45 @@ Goal: the existing bus planner chooses its bus through the library.
   planner and console agree, and a library snapshot per climate in
   `tests/future_logistics/tech_snapshots/`.
 
-## Phase 2: company profiles and rail (A1)
+## Phase 2: company profiles and rail (A1) (done)
 
 Goal: the four rivals differ, and trains run on day one.
 
-- Data-driven profiles: each lists modes, roles, budget share and adoption
-  style. Start with the four from the handoff (National Rail & Freight,
-  AeroLink, Metro & Regional, Integrated Logistics).
-- Store each company's profile with the game, for example as a `CorporateAI`
-  script setting chosen during bootstrap (check that per-company AI settings
-  persist through save/load).
-- Rail planner: station orientation, track, depot, signals for two-way or
-  passing loops, then library-chosen engine and wagons.
-- One passenger rail service and one freight rail service, with cargo checked at
-  both ends.
+- Profiles (`src/future_logistics/profiles.cpp`) list the services each rival
+  tries, in order. A rival that builds nothing gets a bus as a fallback.
+
+  | Rival | Services |
+  |---|---|
+  | National Rail & Freight | freight railway, passenger railway |
+  | AeroLink | bus until phase 3 adds airlines |
+  | Metro & Regional | passenger railway, bus |
+  | Integrated Logistics | freight railway, trucks from phase 4 |
+
+- Each rival is renamed after its profile, and its CorporateAI gets a
+  `profile` setting. Both are saved with the game, and the AI logs its profile
+  after a reload.
+- Rail planner (`src/future_logistics/rail_planner.cpp`): two 3-tile terminus
+  stations, a single line between them over flat land at one height, a depot
+  behind the first station, and one train. The pathfinder never puts two
+  same-direction turns next to each other, so lines have no forbidden 90
+  degree bends.
+- The locomotive (by pulling power) and the wagons come from the Tech Library;
+  wagons are added until the train fills the platform.
+- Passenger railways link two unused towns 24–120 tiles apart. Freight railways
+  link an unused producing industry to one 20–100 tiles away that accepts its
+  cargo; the train full-loads at the source.
+- `future_logistics_check` now checks trains too, following the track from the
+  train to both of its stations.
+
+Known limits, for later phases:
+
+- Lines step around obstacles in short zig-zags, which slow trains down.
+  Smoother routing would help.
+- Single track with one train, so no signals yet. Busier lines need passing
+  loops and signals.
+- Flat land at one height only, as for buses: no slopes, bridges or tunnels.
+- Freight trains make large profits in the first months (tested with a 25
+  million starting grant). Balance is a phase 8 task.
 
 ## Phase 3: air (A2)
 

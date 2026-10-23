@@ -1,5 +1,8 @@
 # Future Logistics: day-zero bootstrap
 
+New to the project? Start with [`HANDOFF.md`](HANDOFF.md): goals, decisions,
+status and next steps.
+
 Upstream: official [OpenTTD/OpenTTD](https://github.com/OpenTTD/OpenTTD), master
 `51cb6dcf5e0d304396bf7c5cb3d724adde243fa8`. The destination's initial README commit
 is retained as a parent of the import merge. GPL-2.0 and upstream third-party

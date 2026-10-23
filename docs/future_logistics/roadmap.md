@@ -5,12 +5,15 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phases 0–5 are complete. The four rivals have
+**Status (October 2026):** phases 0–6 are complete; see
+[`HANDOFF.md`](HANDOFF.md) for the goals, decisions and next steps. The four rivals have
 distinct profiles, and the starting market has an airline, passenger and
 freight trains, feeder buses into railway stations, and trucks that continue
 rail cargo chains, all scaled to the size of the world. NewGRFs can add whole
 tech families, rivals and cargo meanings through badges, with no code change.
-See `validation.md` for the recorded test results.
+After day zero, CorporateAI keeps each rival growing and adopting new tech with
+the same planners (single-player). See `validation.md` for the recorded test
+results.
 
 The key design rules for everything below: **rivals ask the Tech Library for
 "the best tech for this job", never for a specific vehicle**, and **what rivals

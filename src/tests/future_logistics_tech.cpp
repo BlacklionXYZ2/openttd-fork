@@ -151,7 +151,6 @@ TEST_CASE("FutureLogisticsFormat - built-in rivals use the declaration format")
 	CHECK(catalogue.Profiles()[0].id == 1);
 	CHECK(catalogue.Profiles()[3].id == 4);
 	CHECK(catalogue.Profiles()[1].rules.size() == 3);
-	CHECK(std::ranges::any_of(catalogue.Profiles()[3].rules, [](const AdoptRule &rule) { return rule.mechanic == "dock_pair+rail_line"; }));
 	REQUIRE(catalogue.Families().size() == 1);
 	CHECK(catalogue.Families()[0].key == "conventional");
 	/* Every market of every registered mechanic. */
@@ -222,10 +221,12 @@ TEST_CASE("FutureLogisticsFormat - mechanics and ids")
 	CHECK(FindMechanic("dock_pair") != nullptr);
 	CHECK(FindMechanic("launch_site") == nullptr);
 	CHECK(DefaultMechanic(TechMode::Water)->name == "dock_pair");
-	/* Transfers are a mechanic of their own; the plain dock pair stays the water default. */
-	CHECK(IsSupported("dock_pair+rail_line", Market::Industry));
-	CHECK_FALSE(IsSupported("dock_pair+rail_line", Market::TownPair));
 	CHECK(DefaultMechanic(TechMode::Rail)->name == "rail_line");
+	/* Every mechanic that carries freight can be one leg of a route, so routes can hand cargo between any two of them. */
+	for (const MechanicInfo &mechanic : GetMechanics()) {
+		CHECK((mechanic.leg != nullptr) == IsSupported(mechanic.name, Market::Industry));
+		if (mechanic.leg != nullptr) CHECK(mechanic.min_distance < mechanic.max_distance);
+	}
 	CHECK(IsSupported("airport_pair", Market::Industry));
 	CHECK(IsSupported("road_route", Market::Mail));
 	CHECK_FALSE(IsSupported("airport_pair", Market::Feeder));

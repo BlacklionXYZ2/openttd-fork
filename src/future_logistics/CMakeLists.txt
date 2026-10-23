@@ -5,6 +5,8 @@ add_files(
     bootstrap.h
     catalogue.cpp
     catalogue.h
+    freight_planner.cpp
+    freight_planner.h
     mechanics.cpp
     mechanics.h
     planner_common.h

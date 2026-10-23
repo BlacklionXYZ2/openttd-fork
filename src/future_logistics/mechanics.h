@@ -39,6 +39,9 @@ struct MechanicInfo {
 	TechMode mode; ///< Vehicles it uses; a family of this mode defaults to the first mechanic listed for it.
 	std::vector<Market> markets; ///< Markets it can serve.
 	MechanicBuild build; ///< The code that builds it.
+	LegBuild leg = nullptr; ///< Builds one freight leg, so freight routes can use it alone or transfer to and from it; nullptr if it carries no freight.
+	uint min_distance = 0; ///< Shortest freight route it runs alone, in Manhattan tiles.
+	uint max_distance = 0; ///< Longest freight route it runs alone, in Manhattan tiles.
 };
 
 std::span<const MechanicInfo> GetMechanics();

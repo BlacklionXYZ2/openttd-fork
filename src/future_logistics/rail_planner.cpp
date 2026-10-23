@@ -6,6 +6,7 @@
 #include "../stdafx.h"
 #include "rail_planner.h"
 #include "catalogue.h"
+#include "freight_planner.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../cargotype.h"
@@ -127,9 +128,10 @@ uint8_t TurnBetween(DiagDirection from, DiagDirection to)
  * @param radius Search radius in tiles.
  * @param length Platform length in tiles.
  * @param accept Extra check on a site, such as cargo acceptance.
- * @return Up to MAX_ENDPOINTS sites, nearest first.
+ * @param limit Most sites to return.
+ * @return Up to \a limit sites, nearest first.
  */
-std::vector<Terminus> FindTermini(TileIndex centre, int radius, int length, const std::function<bool(const Terminus &)> &accept)
+std::vector<Terminus> FindTermini(TileIndex centre, int radius, int length, const std::function<bool(const Terminus &)> &accept, size_t limit = MAX_ENDPOINTS)
 {
 	std::vector<Terminus> result;
 	for (int y = std::max(1, (int)TileY(centre) - radius); y <= std::min((int)Map::SizeY() - 2, (int)TileY(centre) + radius); y++) {
@@ -145,7 +147,7 @@ std::vector<Terminus> FindTermini(TileIndex centre, int radius, int length, cons
 		}
 	}
 	std::ranges::stable_sort(result, {}, [centre](const Terminus &t) { return DistanceManhattan(t.front, centre); });
-	if (result.size() > MAX_ENDPOINTS) result.resize(MAX_ENDPOINTS);
+	if (result.size() > limit) result.resize(limit);
 	return result;
 }
 
@@ -267,9 +269,12 @@ struct Consist {
  * @param path Line tiles.
  * @param consist Train to buy.
  * @param execute Whether to build after a successful preflight; false only checks.
+ * @param transfer Whether a freight train transfers and leaves empty at \a b instead of delivering.
+ * @param[out] result_built If given, receives what was built on success, so a caller can join onto it or remove it again.
  * @return Whether preflight rejected, execution failed, or the service was built (or would be, when not executing).
  */
-ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std::vector<TileIndex> &path, const Consist &consist, bool execute = true)
+ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std::vector<TileIndex> &path, const Consist &consist, bool execute = true,
+	bool transfer = false, BuiltLeg *result_built = nullptr)
 {
 	const std::vector<Track> tracks = LineTracks(a, b, path);
 	Money cost = 0;
@@ -348,6 +353,8 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 		Order order;
 		order.MakeGoToStation(GetStationIndex(i == 0 ? a.front : b.front));
 		if (consist.freight) order.SetLoadType(i == 0 ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);
+		/* Transfer and leave empty: the cargo waits at the station for the next leg's vehicles. */
+		if (transfer && i == 1) order.SetUnloadType(OrderUnloadType::Transfer);
 		if (ExecFailed(Command<Commands::InsertOrder>::Do(EXEC, head, i, order))) return fail("orders");
 	}
 	if (ExecFailed(Command<Commands::StartStopVehicle>::Do(EXEC, head, true))) return fail("start");
@@ -357,6 +364,14 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={}",
 		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
 		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature);
+	if (result_built != nullptr) {
+		result_built->from = GetStationIndex(a.front);
+		result_built->to = GetStationIndex(b.front);
+		result_built->from_tile = a.front;
+		result_built->to_tile = b.front;
+		result_built->tiles = std::move(built);
+		result_built->vehicles = {head};
+	}
 	return ConstructionResult::Success;
 }
 
@@ -506,106 +521,53 @@ ConstructionResult BuildTownRail(const TechLibrary &library, const ServiceSpec &
 }
 
 /**
- * Build a freight railway from an unused producing industry to one that accepts its cargo.
- * @param library Loaded transport technology.
- * @param[in,out] reserved Markets already taken; the chosen industries are added on success, and the destination is marked as supplied.
- * @return Outcome.
- */
-ConstructionResult BuildFreightRail(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved)
-{
-	std::set<IndustryID> &used_industries = reserved.industries;
-	/* Industries in the rival's preferred markets come first, then shorter routes. */
-	struct Pair { size_t preference; uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
-	std::vector<const Industry *> industries;
-	for (const Industry *industry : Industry::Iterate()) {
-		if (industries.size() == 256) break;
-		if (!used_industries.contains(industry->index)) industries.push_back(industry);
-	}
-	std::vector<Pair> pairs;
-	for (const Industry *source : industries) {
-		for (const auto &produced : source->produced) {
-			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
-			for (const Industry *destination : industries) {
-				if (destination == source || !destination->IsCargoAccepted(produced.cargo)) continue;
-				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
-				if (distance < 20 || distance > 100 || TierForIndustry(source, produced.cargo) < spec.min_tier) continue;
-				const size_t preference = std::min(IndustryPreference(source, spec.industry_markets), IndustryPreference(destination, spec.industry_markets));
-				pairs.push_back({preference, distance, source, destination, produced.cargo});
-			}
-		}
-	}
-	std::ranges::stable_sort(pairs, [](const Pair &a, const Pair &b) { return a.preference != b.preference ? a.preference < b.preference : a.distance < b.distance; });
-
-	auto centre = [](const Industry *industry) { return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2); };
-	const int radius = _settings_game.station.modified_catchment ? CA_TRAIN : CA_UNMODIFIED;
-	for (size_t i = 0; i < std::min(MAX_RAIL_PAIRS, pairs.size()); i++) {
-		const Pair &pair = pairs[i];
-		const TechRole role = FreightRole(library, pair.cargo);
-		const MarketTier tier = TierForIndustry(pair.source, pair.cargo);
-		const TierLimits &limits = GetTierLimits(tier);
-		const Consist consist = ChooseConsist(library, spec, role, pair.cargo, true, limits.track_rank);
-		if (consist.locomotive == nullptr) continue;
-		const int length = limits.platform_length;
-		const int search = std::max<int>(pair.source->location.w, pair.source->location.h) / 2 + radius + length;
-		const auto from = FindTermini(centre(pair.source), search, length, [&](const Terminus &site) {
-			return Catchment(site).Intersects(pair.source->location);
-		});
-		const int dest_search = std::max<int>(pair.destination->location.w, pair.destination->location.h) / 2 + radius + length;
-		const auto to = FindTermini(centre(pair.destination), dest_search, length, [&](const Terminus &site) {
-			if (!Catchment(site).Intersects(pair.destination->location)) return false;
-			const TileArea area = site.Area();
-			return GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[pair.cargo] >= 8;
-		});
-		const auto result = TrySites(from, to, consist);
-		if (result == ConstructionResult::Rejected) continue;
-		if (result == ConstructionResult::Success) {
-			used_industries.insert(pair.source->index);
-			used_industries.insert(pair.destination->index);
-			reserved.supplied.insert(pair.destination->index);
-			Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} destination={} cargo={} tier={}", _current_company,
-				pair.source->index, pair.destination->index, CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
-		}
-		return result;
-	}
-	return ConstructionResult::Rejected;
-}
-
-/**
- * Build a freight railway that starts at an existing station, such as a port where ships transfer their
- * cargo, and delivers to an industry that accepts it. The platforms join that station, so the train
- * loads the cargo other vehicles left there.
- * @param library Loaded transport technology.
- * @param spec Family, limits and preferences of the service.
- * @param hub_tile A tile of the station to start from; platforms are sought near it.
- * @param hub The station to join, or NEW_STATION to check a layout before that station exists.
- * @param destination Industry that accepts the cargo.
+ * Find terminus sites for one end of a freight leg.
+ * @param place Industry or transfer station; railways do not deliver into towns.
  * @param cargo Cargo carried.
- * @param execute Whether to build; false only checks that a railway could be built.
- * @return Outcome.
+ * @param length Platform length.
+ * @param destination Whether the cargo is delivered here, so the station must accept it.
+ * @return Sites, nearest first.
  */
-ConstructionResult BuildFreightRailFrom(const TechLibrary &library, const ServiceSpec &spec, TileIndex hub_tile, StationID hub,
-	const Industry *destination, CargoType cargo, bool execute)
+static std::vector<Terminus> FreightTermini(const Place &place, CargoType cargo, int length, bool destination)
 {
-	const TierLimits &limits = GetTierLimits(std::max(MarketTier::Town, spec.min_tier));
-	const Consist consist = ChooseConsist(library, spec, FreightRole(library, cargo), cargo, true, limits.track_rank);
-	if (consist.locomotive == nullptr) return ConstructionResult::Rejected;
-	const int length = limits.platform_length;
 	const int radius = _settings_game.station.modified_catchment ? CA_TRAIN : CA_UNMODIFIED;
-	/* Close enough to the hub for the platforms to join it. */
-	auto from = FindTermini(hub_tile, 6, length, [](const Terminus &) { return true; });
-	for (Terminus &site : from) site.join = hub;
-	auto centre = TileAddXY(destination->location.tile, destination->location.w / 2, destination->location.h / 2);
-	const int search = std::max<int>(destination->location.w, destination->location.h) / 2 + radius + length;
-	const auto to = FindTermini(centre, search, length, [&](const Terminus &site) {
-		if (!Catchment(site).Intersects(destination->location)) return false;
+	if (place.town != nullptr) return {};
+	if (place.IsHub()) {
+		auto sites = FindTermini(place.hub, place.radius, length, [](const Terminus &) { return true; }, SIZE_MAX);
+		for (Terminus &site : sites) site.join = place.join;
+		KeepUsable(sites, place, [](const Terminus &site) { return site.front; }, MAX_ENDPOINTS);
+		return sites;
+	}
+	const Industry *industry = place.industry;
+	const int search = std::max<int>(industry->location.w, industry->location.h) / 2 + radius + length;
+	return FindTermini(Centre(industry), search, length, [&](const Terminus &site) {
+		if (!Catchment(site).Intersects(industry->location)) return false;
+		if (!destination) return true;
 		const TileArea area = site.Area();
 		return GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[cargo] >= 8;
 	});
-	for (const Terminus &a : from) {
-		for (const Terminus &b : to) {
+}
+
+/**
+ * Build, or check, a freight railway leg: a train that full-loads at one terminus and delivers or
+ * transfers at the other. The track type and platform length follow the market size.
+ * @copydoc LegBuild
+ */
+ConstructionResult RailLeg(const TechLibrary &library, const ServiceSpec &spec, const Place &from, const Place &to, const LegJob &job, bool execute, BuiltLeg &built)
+{
+	const TierLimits &limits = GetTierLimits(job.tier);
+	const Consist consist = ChooseConsist(library, spec, FreightRole(library, job.cargo), job.cargo, true, limits.track_rank);
+	if (consist.locomotive == nullptr) return ConstructionResult::Rejected;
+	const auto origins = FreightTermini(from, job.cargo, limits.platform_length, false);
+	if (origins.empty()) return ConstructionResult::Rejected;
+	const auto destinations = FreightTermini(to, job.cargo, limits.platform_length, true);
+	if (destinations.empty()) return ConstructionResult::Rejected;
+	built.sited = true;
+	for (const Terminus &a : origins) {
+		for (const Terminus &b : destinations) {
 			const auto path = FindRailPath(a, b);
 			if (path.empty()) continue;
-			const auto result = BuildRailway(a, b, path, consist, execute);
+			const auto result = BuildRailway(a, b, path, consist, execute, job.transfer, &built);
 			if (result != ConstructionResult::Rejected) return result;
 		}
 	}

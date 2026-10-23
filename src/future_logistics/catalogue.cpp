@@ -59,7 +59,6 @@ const std::vector<BadgeInfo> BUILTIN_DECLARATIONS{
 	{"fl_profile/integrated_logistics/adopt/any/rail_line/industry/5", ""},
 	{"fl_profile/integrated_logistics/adopt/conventional/dock_pair/industry/0", ""},
 	{"fl_profile/integrated_logistics/adopt/conventional/airport_pair/industry/0", ""},
-	{"fl_profile/integrated_logistics/adopt/conventional/dock_pair+rail_line/industry/0", ""},
 };
 
 /**
@@ -168,6 +167,7 @@ Family &Catalogue::FamilyFor(std::string_view key)
 				family.declared = true;
 				if (!badge.name.empty()) family.name = badge.name;
 			} else if (parts.size() == 4 && parts[2] == "mechanic") {
+				if (!IsValidName(parts[3])) { bad("invalid mechanic name"); continue; }
 				if (FindMechanic(parts[3]) == nullptr) { bad("this build of the game has no such mechanic"); continue; }
 				if (family.mechanic.has_value() && *family.mechanic != parts[3]) { bad("a family has one mechanic; this one is ignored"); continue; }
 				family.mechanic = std::string{parts[3]};

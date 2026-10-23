@@ -6,6 +6,7 @@
 #include "../stdafx.h"
 #include "mechanics.h"
 #include "air_planner.h"
+#include "freight_planner.h"
 #include "rail_planner.h"
 #include "road_planner.h"
 #include "water_planner.h"
@@ -31,14 +32,14 @@ CargoType TownCargo(Market market)
 
 ConstructionResult BuildRailLine(const TechLibrary &library, const ServiceSpec &spec, Market market, Reservations &reserved)
 {
-	if (market == Market::Industry) return BuildFreightRail(library, spec, reserved);
+	if (market == Market::Industry) return BuildFreight(library, spec, "rail_line", reserved);
 	return BuildTownRail(library, spec, TownCargo(market), market == Market::Mail ? reserved.mail_towns : reserved.towns);
 }
 
 ConstructionResult BuildRoadRoute(const TechLibrary &library, const ServiceSpec &spec, Market market, Reservations &reserved)
 {
 	switch (market) {
-		case Market::Industry: return BuildTruckFreight(library, spec, reserved);
+		case Market::Industry: return BuildFreight(library, spec, "road_route", reserved);
 		case Market::Feeder: return BuildFeederBus(library, spec, reserved.towns);
 		default: return BuildTownRoad(library, spec, TownCargo(market), market == Market::Mail ? reserved.mail_towns : reserved.towns);
 	}
@@ -46,29 +47,25 @@ ConstructionResult BuildRoadRoute(const TechLibrary &library, const ServiceSpec 
 
 ConstructionResult BuildAirportPair(const TechLibrary &library, const ServiceSpec &spec, Market market, Reservations &reserved)
 {
-	if (market == Market::Industry) return BuildAirFreight(library, spec, reserved);
+	if (market == Market::Industry) return BuildFreight(library, spec, "airport_pair", reserved);
 	return BuildTownAirline(library, spec, TownCargo(market), market == Market::Mail ? reserved.mail_towns : reserved.towns);
 }
 
 ConstructionResult BuildDockPair(const TechLibrary &library, const ServiceSpec &spec, Market market, Reservations &reserved)
 {
-	if (market == Market::Industry) return BuildShipFreight(library, spec, reserved);
+	if (market == Market::Industry) return BuildFreight(library, spec, "dock_pair", reserved);
 	return BuildTownFerry(library, spec, TownCargo(market), market == Market::Mail ? reserved.mail_towns : reserved.towns);
 }
 
-ConstructionResult BuildShipThenRail(const TechLibrary &library, const ServiceSpec &spec, Market, Reservations &reserved)
-{
-	return BuildShipToRail(library, spec, reserved);
-}
-
-/** Every mechanic this build of the game knows. The first one listed for a mode is that mode's default. */
+/**
+ * Every mechanic this build of the game knows. The first one listed for a mode is that mode's default.
+ * A mechanic with a leg builder carries freight: alone, or handing cargo over to another such mechanic.
+ */
 const std::vector<MechanicInfo> MECHANICS{
-	{"rail_line", TechMode::Rail, {Market::TownPair, Market::Mail, Market::Industry}, &BuildRailLine},
-	{"road_route", TechMode::Road, {Market::TownPair, Market::Mail, Market::Industry, Market::Feeder}, &BuildRoadRoute},
-	{"airport_pair", TechMode::Air, {Market::TownPair, Market::Mail, Market::Industry}, &BuildAirportPair},
-	{"dock_pair", TechMode::Water, {Market::TownPair, Market::Mail, Market::Industry}, &BuildDockPair},
-	/* Transfers: ships carry freight to a port, where trains take it on to an inland industry. */
-	{"dock_pair+rail_line", TechMode::Water, {Market::Industry}, &BuildShipThenRail},
+	{"rail_line", TechMode::Rail, {Market::TownPair, Market::Mail, Market::Industry}, &BuildRailLine, &RailLeg, 20, 100},
+	{"road_route", TechMode::Road, {Market::TownPair, Market::Mail, Market::Industry, Market::Feeder}, &BuildRoadRoute, &RoadLeg, 12, 96},
+	{"airport_pair", TechMode::Air, {Market::TownPair, Market::Mail, Market::Industry}, &BuildAirportPair, &AirLeg, 48, 256},
+	{"dock_pair", TechMode::Water, {Market::TownPair, Market::Mail, Market::Industry}, &BuildDockPair, &ShipLeg, 16, 160},
 };
 } // namespace
 

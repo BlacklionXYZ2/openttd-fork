@@ -14,14 +14,10 @@
 #include "../vehicle_type.h"
 
 class TechLibrary;
-struct Industry;
 
 namespace FutureLogistics {
 
 ConstructionResult BuildTownRail(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns);
-ConstructionResult BuildFreightRail(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved);
-ConstructionResult BuildFreightRailFrom(const TechLibrary &library, const ServiceSpec &spec, TileIndex hub_tile, StationID hub,
-	const Industry *destination, CargoType cargo, bool execute);
 std::set<StationID> RailStationsReachable(const Vehicle *train);
 
 } // namespace FutureLogistics

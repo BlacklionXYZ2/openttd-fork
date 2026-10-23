@@ -55,14 +55,22 @@ namespace {
  * Build one starter service for the current company with the mechanic its recipe names.
  * @param recipe Family, mechanic and market.
  * @param profile The rival, for its preferences.
+ * @param plan All of the rival's recipes; its other freight recipes are the ways a freight route may hand cargo over to.
  * @param library Loaded transport technology.
  * @param[in,out] reserved Markets already taken.
  * @return Outcome; Rejected for a mechanic or market this build does not support.
  */
-ConstructionResult BuildService(const Recipe &recipe, const Profile &profile, const TechLibrary &library, Reservations &reserved)
+ConstructionResult BuildService(const Recipe &recipe, const Profile &profile, std::span<const Recipe> plan, const TechLibrary &library, Reservations &reserved)
 {
 	if (!IsSupported(recipe.mechanic, recipe.market)) return ConstructionResult::Rejected;
-	const ServiceSpec spec{recipe.family, recipe.min_tier, recipe.early_adopters, profile.industry_markets};
+	ServiceSpec spec{recipe.family, recipe.min_tier, recipe.early_adopters, profile.industry_markets, {}};
+	if (recipe.market == Market::Industry) {
+		for (const Recipe &other : plan) {
+			if (other.market != Market::Industry || other.mechanic == recipe.mechanic) continue;
+			if (std::ranges::find(spec.partners, other.mechanic, &Partner::mechanic) != spec.partners.end()) continue;
+			spec.partners.push_back({other.mechanic, other.family, other.min_tier, other.early_adopters});
+		}
+	}
 	return FindMechanic(recipe.mechanic)->build(library, spec, recipe.market, reserved);
 }
 
@@ -136,7 +144,7 @@ void BootstrapFutureLogistics()
 			uint built = 0;
 			bool stopped = false;
 			auto attempt = [&](const Recipe &recipe, bool fallback) {
-				const ConstructionResult result = BuildService(recipe, profile, library, reserved);
+				const ConstructionResult result = BuildService(recipe, profile, plan, library, reserved);
 				/* Commands run here bypass the normal command loop, so flush track signal updates before another company builds. */
 				UpdateSignalsInBuffer();
 				Debug(Facility::Misc, Severity::Notice, "FL service company={} recipe={} fallback={} result={}", company->index, recipe.Key(), fallback,

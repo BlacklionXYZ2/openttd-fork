@@ -218,12 +218,14 @@ DayZeroMonopolies =
     require(vehicle_count(coast_run)[-1:] == [coast_vehicles] and len(set(coast_served)) == coast_vehicles,
             "not every vehicle in the coastal world visited an ordered station")
 
-    # Ship to a port, then train inland: the ships transfer and leave empty, the train loads at the joined port.
+    # Freight that no single mode reaches goes in two legs: here ships to a port, where they transfer and
+    # leave empty, then a train from a station joined to the port. The planner picks the legs itself.
     transfer, transfer_save = run("transfer-world", coastal=True, map_bits=9, seed=3)
-    leg = re.search(r"FL rail company=(\d+) kind=freight cargo=(\w+) track=\w+ vehicle=(\d+).*\n.*FL transfer company=\1 source=\d+ port=\d+ destination=\d+ cargo=\2 ", transfer)
-    require(leg, "no ship-to-rail transfer was built in a large coastal world")
-    require(re.search(r"FL service company=\d+ recipe=conventional/dock_pair\+rail_line/industry fallback=false result=success", transfer),
-            "the transfer recipe did not succeed")
+    leg = re.search(r"FL rail company=(\d+) kind=freight cargo=(\w+) track=\w+ vehicle=(\d+)[^\n]*\n(?:[^\n]*\n){0,2}?[^\n]*"
+                    r"FL industries company=\1 source=\d+ chain=\w+ destination=industry:\d+ cargo=\2 tier=\w+ legs=dock_pair>rail_line hub=\d+", transfer)
+    require(leg, "no ship-then-train route was built in a large coastal world")
+    require(re.search(r"FL service company=\d+ recipe=conventional/dock_pair/industry fallback=false result=success", transfer),
+            "the dock pair freight recipe did not succeed")
     transfer_run, _ = run("transfer-service", load=transfer_save, service=True, months=12)
     train = re.findall(rf"FL check company={leg.group(1)} vehicle={leg.group(3)} type=rail connected=true served=true tile=\d+ profit=(-?\d+)", transfer_run)
     require(train and int(train[-1]) > 0, "the transfer train did not earn by delivering what the ships left at the port")
@@ -313,7 +315,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; ferries in a coastal world; ship-to-rail transfers through a port; NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

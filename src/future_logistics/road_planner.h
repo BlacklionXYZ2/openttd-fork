@@ -19,7 +19,6 @@ namespace FutureLogistics {
 
 ConstructionResult BuildTownRoad(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns);
 ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
-ConstructionResult BuildTruckFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved);
 std::set<StationID> RoadStationsReachable(const Vehicle *vehicle);
 
 } // namespace FutureLogistics

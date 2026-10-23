@@ -51,12 +51,33 @@ content" below).
 | `road_route` | two drive-through stops, an owned road, a depot, a small fleet | road |
 | `airport_pair` | two airports and a small fleet | air |
 | `dock_pair` | two docks on the same water, a ship depot and a small fleet; an industry with its own dock, such as an oil rig, is used as it is | water |
-| `dock_pair+rail_line` | a transfer: ships carry freight from an industry to a port that does not accept it and leave it there ("transfer and leave empty"), and a freight railway joined to the port takes it on to an inland industry. Industry market only. The railway is checked before anything is built, and the ships are removed again if it still fails | water, then rail |
 
-A mechanic made of two others, such as `dock_pair+rail_line`, uses OpenTTD's
-own transfers: cargo left at a station waits there until a vehicle with an
-order to load it arrives. Nothing new is stored; the port is an ordinary
-station with a dock and railway platforms.
+### Freight routes and transfers
+
+A freight route is a cargo, a source, a destination and one or two **legs**.
+Every mechanic that serves the `industry` market can build a leg: vehicles that
+full-load at one end and either deliver at the other or **transfer and leave
+empty** there. Transfers are OpenTTD's own: cargo left at a station waits until a
+vehicle with an order to load it arrives. Nothing is added to the game; a
+transfer station is an ordinary station, with the second leg's platforms, stops,
+dock or airport joined to the first leg's.
+
+For each freight recipe the planner:
+
+1. lists routes (chains first, then the rival's preferred markets, then shorter
+   ones);
+2. tries the recipe's mechanic alone, within its distance range;
+3. otherwise tries two legs, with the recipe's mechanic as the long leg and each
+   of the rival's **other freight mechanics** as the short one. That short leg
+   either finishes the route from a transfer station near the destination (ships
+   to a port, then a train inland) or starts it with a transfer station near the
+   source (a train from an inland field to a port, then ships).
+
+A transfer station is only chosen where the second leg is known to be buildable
+from it, and the first leg is removed again if the second still fails. So a
+rival can only hand cargo to transport it has adopted for freight. A NewGRF that
+adds a family with a freight-carrying mechanic (or a new mechanic with a leg
+builder in code) takes part in transfers with no further declarations.
 
 A new kind of construction, such as pads on rooftops, needs a new mechanic in
 code.
@@ -195,7 +216,6 @@ fl_profile/integrated_logistics/adopt/any/road_route/industry/2
 fl_profile/integrated_logistics/adopt/any/rail_line/industry/5
 fl_profile/integrated_logistics/adopt/conventional/dock_pair/industry/0
 fl_profile/integrated_logistics/adopt/conventional/airport_pair/industry/0
-fl_profile/integrated_logistics/adopt/conventional/dock_pair+rail_line/industry/0
 ```
 
 A NewGRF can also add rules to a built-in rival, for example

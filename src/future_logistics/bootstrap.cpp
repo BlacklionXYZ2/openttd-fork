@@ -37,17 +37,27 @@
 extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
 
 namespace {
-constexpr DoCommandFlags EXEC{DoCommandFlag::Execute};
-constexpr DoCommandFlags CONSTRUCT{DoCommandFlag::Auto, DoCommandFlag::NoWater};
-constexpr size_t MAX_SEARCH = 8192;
-constexpr size_t MAX_PAIRS = 128;
+constexpr DoCommandFlags EXEC{DoCommandFlag::Execute}; ///< Execute after command validation.
+constexpr DoCommandFlags CONSTRUCT{DoCommandFlag::Auto, DoCommandFlag::NoWater}; ///< Normal construction trait flags.
+constexpr size_t MAX_SEARCH = 8192; ///< Maximum visited tiles per town pair.
+constexpr size_t MAX_PAIRS = 128; ///< Maximum town pairs considered per company.
 
-/** No demolition of houses, shared roads, water, bridges or slopes in this first version. */
+/**
+ * Exclude houses, shared roads, water, bridges and slopes.
+ * @param tile Candidate construction tile.
+ * @return Whether the tile is eligible for command preflight.
+ */
 bool Buildable(TileIndex tile)
 {
 	return IsValidTile(tile) && (IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees)) && IsTileFlat(tile);
 }
 
+/**
+ * Get the direction between adjacent route tiles.
+ * @param from Origin tile.
+ * @param to Adjacent destination tile.
+ * @return Direction from origin to destination.
+ */
 DiagDirection RouteDirection(TileIndex from, TileIndex to)
 {
 	if (TileX(to) > TileX(from)) return DiagDirection::SW;
@@ -56,6 +66,11 @@ DiagDirection RouteDirection(TileIndex from, TileIndex to)
 	return DiagDirection::NW;
 }
 
+/**
+ * Convert a route direction to its road bit.
+ * @param direction Diagonal direction.
+ * @return Corresponding road bit.
+ */
 RoadBits Bit(DiagDirection direction)
 {
 	switch (direction) {
@@ -67,6 +82,11 @@ RoadBits Bit(DiagDirection direction)
 	}
 }
 
+/**
+ * Enumerate adjacent tiles in deterministic order, excluding map borders.
+ * @param tile Origin tile.
+ * @return Adjacent interior tiles.
+ */
 std::vector<TileIndex> Neighbours(TileIndex tile)
 {
 	std::vector<TileIndex> result;
@@ -80,6 +100,12 @@ std::vector<TileIndex> Neighbours(TileIndex tile)
 	return result;
 }
 
+/**
+ * Find station candidates that can generate and accept the selected cargo.
+ * @param town Town to serve.
+ * @param cargo Passenger cargo type.
+ * @return Buildable candidate tiles belonging to this town's area.
+ */
 std::vector<TileIndex> Stops(const Town *town, CargoType cargo)
 {
 	std::vector<TileIndex> result;
@@ -95,13 +121,19 @@ std::vector<TileIndex> Stops(const Town *town, CargoType cargo)
 	return result;
 }
 
+/** Proposed owned road corridor and attached depot. */
 struct Route {
-	std::vector<TileIndex> path;
-	TileIndex depot = INVALID_TILE;
-	size_t junction = 0;
+	std::vector<TileIndex> path; ///< Ordered tiles between the two stops.
+	TileIndex depot = INVALID_TILE; ///< Depot tile, invalid if planning failed.
+	size_t junction = 0; ///< Index of the road tile adjoining the depot.
 };
 
-/** Multi-source BFS, with a hard exploration limit for each town pair. */
+/**
+ * Find a corridor using bounded multi-source breadth-first search.
+ * @param starts Candidate stops in the origin town.
+ * @param ends Candidate stops in the destination town.
+ * @return Proposed route, with an invalid depot if no suitable corridor exists.
+ */
 Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends)
 {
 	std::set<TileIndex> targets(ends.begin(), ends.end());
@@ -140,6 +172,12 @@ Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileInde
 	return {};
 }
 
+/**
+ * Calculate road connections for one corridor tile.
+ * @param route Proposed corridor and depot.
+ * @param i Tile index within the corridor.
+ * @return Road bits connecting neighbours and, if applicable, the depot.
+ */
 RoadBits Pieces(const Route &route, size_t i)
 {
 	RoadBits bits;
@@ -154,15 +192,33 @@ RoadBits Pieces(const Route &route, size_t i)
 	return bits;
 }
 
+/**
+ * Test or build a separate drive-through bus stop.
+ * @param tile Station tile.
+ * @param direction Road alignment direction.
+ * @param roadtype Compatible road type.
+ * @param flags Command execution flags.
+ * @return Command cost or rejection.
+ */
 CommandCost Stop(TileIndex tile, DiagDirection direction, RoadType roadtype, DoCommandFlags flags)
 {
 	return Command<Commands::BuildRoadStop>::Do(flags | CONSTRUCT, tile, 1, 1, RoadStopType::Bus, true, direction,
 		roadtype, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, true);
 }
 
-enum class ConstructionResult { Rejected, Failed, Success };
+/** Outcome controlling whether another candidate may safely be tried. */
+enum class ConstructionResult {
+	Rejected, ///< Preflight rejected the layout without construction.
+	Failed, ///< Execution failed and cleanup was attempted; stop this company.
+	Success, ///< An operational route and vehicle were constructed.
+};
 
-/** Preflight the entire layout, then execute through the engine's accounting command interface. */
+/**
+ * Preflight the entire layout, then execute through accounting commands.
+ * @param route Corridor and depot proposal.
+ * @param engine Compatible passenger bus engine.
+ * @return Whether preflight rejected, execution failed, or service was built.
+ */
 ConstructionResult Build(const Route &route, const Engine *engine)
 {
 	const RoadType rt = engine->VehInfo<RoadVehicleInfo>().roadtype;
@@ -235,6 +291,12 @@ ConstructionResult Build(const Route &route, const Engine *engine)
 	return ConstructionResult::Success;
 }
 
+/**
+ * Build one starter network in an unused town market.
+ * @param cargo Passenger cargo type.
+ * @param[in,out] used_towns Towns reserved by successfully completed rivals.
+ * @return Whether an operational network was completed.
+ */
 bool Network(CargoType cargo, std::set<TownID> &used_towns)
 {
 	const Engine *bus = nullptr;

@@ -9,7 +9,10 @@
 /** Called exactly once from MakeNewGameDone, after the human company is created. */
 void BootstrapFutureLogistics();
 
-/** Read-only connectivity and ownership diagnostic, also usable after save/reload. */
+/**
+ * Read-only connectivity and ownership diagnostic, also usable after save/reload.
+ * @return Whether human ownership and all inspected vehicle routes are valid.
+ */
 bool InspectFutureLogistics();
 
 #endif

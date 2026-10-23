@@ -90,14 +90,24 @@ std::vector<TileIndex> FindStops(TileIndex centre, int radius, const std::functi
 }
 
 /**
- * Find stop tiles in a town that both send and accept passengers.
+ * Get the stop type that serves a cargo: buses for passengers, truck stops for everything else, including mail.
+ * @param cargo Cargo type.
+ * @return Stop type.
+ */
+RoadStopType StopFor(CargoType cargo)
+{
+	return CargoSpec::Get(cargo)->classes.Test(CargoClass::Passengers) ? RoadStopType::Bus : RoadStopType::Truck;
+}
+
+/**
+ * Find stop tiles in a town that both send and accept a town cargo.
  * @param town Town to serve.
- * @param cargo Passenger cargo type.
+ * @param cargo Passengers or mail.
  * @return Buildable candidate tiles belonging to this town's area.
  */
 std::vector<TileIndex> TownStops(const Town *town, CargoType cargo)
 {
-	const int radius = StopCatchment(RoadStopType::Bus);
+	const int radius = StopCatchment(StopFor(cargo));
 	return FindStops(town->xy, TOWN_SEARCH_RADIUS, [&](TileIndex tile) {
 		if (ClosestTownFromTile(tile, UINT_MAX)->index != town->index) return false;
 		return GetAcceptanceAroundTiles(tile, 1, 1, radius).first[cargo] >= 8 && GetProductionAroundTiles(tile, 1, 1, radius)[cargo] > 0;
@@ -324,16 +334,18 @@ const Engine *ChooseRoadVehicle(const TechLibrary &library, const ServiceSpec &s
 } // namespace
 
 /**
- * Build a bus route between two unused towns.
+ * Build a road route carrying passengers (buses) or mail (mail trucks) between two unused towns.
  * @param library Loaded transport technology.
- * @param[in,out] used_towns Towns reserved by earlier rivals; the chosen towns are added on success.
+ * @param spec Family, limits and preferences of the service.
+ * @param cargo Passengers or mail.
+ * @param[in,out] used_towns Towns already served for this cargo; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildBusService(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
+ConstructionResult BuildTownRoad(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns)
 {
-	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
-	const Engine *bus = ChooseRoadVehicle(library, spec, TechRole::PassengerFeeder, cargo);
+	const RoadStopType stop = StopFor(cargo);
+	const Engine *bus = ChooseRoadVehicle(library, spec, TownRole(library, cargo, TechRole::PassengerFeeder), cargo);
 	if (bus == nullptr) return ConstructionResult::Rejected;
 	struct Pair { uint distance; const Town *a; const Town *b; };
 	std::vector<Pair> pairs;
@@ -359,7 +371,7 @@ ConstructionResult BuildBusService(const TechLibrary &library, const ServiceSpec
 		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index));
 		if (route.depot == INVALID_TILE) continue;
 		const MarketTier tier = TierForTowns(pair.a, pair.b);
-		auto result = Build(route, {"bus", RoadStopType::Bus, bus, cargo, GetTierLimits(tier).fleet, false});
+		auto result = Build(route, {stop == RoadStopType::Bus ? "bus" : "mail", stop, bus, cargo, GetTierLimits(tier).fleet, false});
 		if (result == ConstructionResult::Failed) return ConstructionResult::Failed;
 		if (result == ConstructionResult::Success) {
 			used_towns.insert(pair.a->index);

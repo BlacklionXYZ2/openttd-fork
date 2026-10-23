@@ -20,9 +20,10 @@ badgetable {
     "fl_family/testjet/min_tier/town",
     "fl_tech/testjet",
     "fl_role/passenger_intercity",
-    /* A family whose vehicles need a site nobody provides, and an unsupported market. */
+    /* A family whose vehicles need a site nobody provides, an unsupported market and a missing mechanic. */
     "fl_family/testrocket",
-    "fl_family/testrocket/market/industry",
+    "fl_family/testrocket/market/feeder",
+    "fl_family/testrocket/mechanic/launch_site",
     "fl_tech/testrocket",
     "fl_needs/testpad",
     /* A new rival that adopts the new family at once. */
@@ -36,6 +37,9 @@ badgetable {
     "fl_profile/testcorp/adopt/nosuchfamily/any/any/0",
     "fl_profile/testcorp/adopt/testjet/teleporter/any/0",
     "fl_tier/high",
+    /* Stable names code can find items by; test_airliner is given to two vehicles on purpose. */
+    "fl_id/test_airliner",
+    "fl_id/test_rocket",
 }
 
 item(FEAT_BADGES, family_testjet, 0)    { property { label: "fl_family/testjet";    name: string(STR_FAMILY_TESTJET); } }
@@ -44,12 +48,17 @@ item(FEAT_BADGES, profile_testcorp, 2)  { property { label: "fl_profile/testcorp
 
 /* Base aircraft 1 (Coleman Count) joins the test jet family. */
 item(FEAT_AIRCRAFT, coleman_testjet, 1) {
-    property { badges: ["fl_format/2", "fl_tech/testjet", "fl_role/passenger_intercity"]; }
+    property { badges: ["fl_format/2", "fl_id/test_airliner", "fl_tech/testjet", "fl_role/passenger_intercity"]; }
 }
 
 /* Base aircraft 2 (FFP Dart) joins the test rocket family and needs a test pad. */
 item(FEAT_AIRCRAFT, dart_testrocket, 2) {
-    property { badges: ["fl_format/2", "fl_tech/testrocket", "fl_needs/testpad"]; }
+    property { badges: ["fl_format/2", "fl_id/test_rocket", "fl_tech/testrocket", "fl_needs/testpad"]; }
+}
+
+/* Base aircraft 4 reuses test_airliner, which validate must report. It stays conventional. */
+item(FEAT_AIRCRAFT, duplicate_id, 4) {
+    property { badges: ["fl_format/2", "fl_id/test_airliner"]; }
 }
 
 /* Base aircraft 3 has a tag but no fl_format, so its tags must be ignored and reported. */

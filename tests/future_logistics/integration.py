@@ -36,7 +36,7 @@ def main():
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
             towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
-            climate="temperate", commands="", industries=4, map_bits=8, grfs=()):
+            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False):
         folder = output / name
         folder.mkdir(exist_ok=True)
         if grfs:
@@ -93,6 +93,9 @@ DayZeroMonopolies =
 """)
         if grfs:
             cfg.write_text(cfg.read_text() + "[newgrf]\n" + "".join(f"{grf.name} = \n" for grf in grfs))
+        if coastal:
+            text = cfg.read_text().replace("land_generator = 0", "land_generator = 1").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 3")
+            cfg.write_text(text.replace("terrain_type = 0", "terrain_type = 1").replace("tree_placer = 0", "tree_placer = 2"))
         if default_world:
             text = cfg.read_text().replace("land_generator = 0", "land_generator = 1")
             text = text.replace("tree_placer = 0", "tree_placer = 2").replace("number_towns = 4", "number_towns = 2")
@@ -129,7 +132,7 @@ DayZeroMonopolies =
     first, snapshot = run("new-game", commands="future_logistics_tech best road passenger_feeder PASS\n")
     # Trains are one vehicle each; road and air services log their fleet size.
     fleet = lambda text: (len(re.findall(r"FL rail company=", text))
-                          + sum(int(n) for n in re.findall(r"FL (?:route|air) company=\d+ (?:kind=\w+ cargo=\w+ |airport=\d+ )vehicles=(\d+)", text)))
+                          + sum(int(n) for n in re.findall(r"FL (?:route|air|ship) company=\d+ (?:kind=\w+ cargo=\w+ |airport=\d+ )vehicles=(\d+)", text)))
     vehicle_count = lambda text: [int(n) for n in re.findall(r"FL check result=true companies=5 vehicles=(\d+) human=0", text)]
     profiles = re.findall(r"FL profile company=([1-4]) profile=(\w+)", first)
     require(profiles == [("1", "national_rail"), ("2", "aerolink"), ("3", "metro_regional"), ("4", "integrated_logistics")],
@@ -163,7 +166,7 @@ DayZeroMonopolies =
     ledger = re.findall(rf"FL check funds company=([1-4]).*other_expense=-{market_grant} ai=true", first)
     require(len(ledger) == 4, "grant ledger or AI company type is incorrect")
     tiers = re.findall(r"FL towns company=\d+ a=\d+ b=\d+ tier=(\w+) population=(\d+),(\d+)", first)
-    limits = {"town": 500, "city": 1500, "metropolis": 4000}
+    limits = {"village": 0, "town": 500, "city": 1500, "metropolis": 4000}
     require(tiers and all(min(int(a), int(b)) >= limits[tier] for tier, a, b in tiers),
             "a railway or airline was built for towns smaller than its tier allows")
     require(snapshot.exists(), "new-game snapshot missing")
@@ -201,6 +204,20 @@ DayZeroMonopolies =
     require(vehicle_count(modern_run)[-1:] == [modern_vehicles] and len(set(modern_served)) == modern_vehicles,
             "not every 2026 vehicle visited an ordered station")
 
+    mail = re.findall(r"FL service company=\d+ recipe=conventional/(rail_line|road_route)/mail fallback=false result=success", first)
+    require(set(mail) == {"rail_line", "road_route"}, "mail trains and mail trucks should run from day zero")
+    require(re.search(r"FL route company=\d+ kind=mail cargo=MAIL ", first), "mail trucks were not built for mail")
+
+    coast, coast_save = run("coastal-world", coastal=True)
+    require(re.search(r"FL ship company=\d+ kind=ferry cargo=PASS vehicles=\d+", coast), "no ferry was built in a coastal world")
+    require(re.search(r"FL service company=\d+ recipe=conventional/dock_pair/town_pair fallback=false result=success", coast), "the ferry recipe did not succeed")
+    coast_vehicles = fleet(coast)
+    coast_run, _ = run("coastal-service", load=coast_save, service=True)
+    coast_served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", coast_run)
+    require(re.search(r"FL check company=\d+ vehicle=\d+ type=water connected=true served=true", coast_run), "the ferry did not reach its docks")
+    require(vehicle_count(coast_run)[-1:] == [coast_vehicles] and len(set(coast_served)) == coast_vehicles,
+            "not every vehicle in the coastal world visited an ordered station")
+
     tiny, _ = run("tiny-world", map_bits=6, towns=2, industries=0)
     tiny_grant = int(re.search(r"FL market population=\d+ towns=2 industries=0 grant=(\d+)", tiny).group(1))
     require(tiny_grant < 500000, "two villages should not fund rivals with millions")
@@ -209,7 +226,8 @@ DayZeroMonopolies =
 
     # A NewGRF that adds a tech family, a rival, a cargo meaning, a rule for a built-in rival, and mistakes.
     grf_text, _ = run("newgrf-tech-tree", limit=5, grfs=[ROOT / "tests/future_logistics/grf/fl_test.grf"],
-                      commands="future_logistics_tech recipes\nfuture_logistics_tech validate\nfuture_logistics_tech list\n")
+                      commands="future_logistics_tech recipes\nfuture_logistics_tech validate\nfuture_logistics_tech list\n"
+                               "future_logistics_tech find test_rocket\nfuture_logistics_tech find test_airliner\n")
     require("FL catalogue families=3 profiles=5" in grf_text, "the NewGRF's families and profile were not read")
     require("FL profile company=5 profile=testcorp" in grf_text, "the NewGRF's rival was not created")
     require(re.search(r"FL service company=5 recipe=testjet/airport_pair/town_pair fallback=false result=success", grf_text),
@@ -219,10 +237,16 @@ DayZeroMonopolies =
     require(re.search(r"FL tech family key=testrocket declared=true .* recipes=- ", grf_text), "unsupported recipe was not skipped")
     require(re.search(r"FL tech vehicle id=\S+ mode=road track=ROAD cargo=MAIL .*roles=parcel ", grf_text), "the cargo meaning was not applied")
     for problem in ["cannot understand tag 'fl_tier/high'", "fl_ tags ignored because fl_format/1 or fl_format/2 is missing",
-                    "unknown mechanic", "airport_pair cannot serve the industry market yet",
-                    "no loaded track type or airport has fl_provides/testpad", "adopts unknown family 'nosuchfamily'"]:
+                    "'fl_profile/testcorp/adopt/testjet/teleporter/any/0': this build of the game has no such mechanic",
+                    "'fl_family/testrocket/mechanic/launch_site': this build of the game has no such mechanic",
+                    "airport_pair cannot serve the feeder market yet",
+                    "no loaded track type or airport has fl_provides/testpad", "adopts unknown family 'nosuchfamily'",
+                    "fl_id/test_airliner is used by 2 items of kind vehicle"]:
         require(f"FL tech problem" in grf_text and problem in grf_text, f"validate did not report: {problem}")
-    require("FL tech validate problems=6" in grf_text, "validate reported unexpected problems")
+    require("FL tech validate problems=8" in grf_text, "validate reported unexpected problems")
+    require(re.search(r"FL tech found id=test_rocket kind=vehicle index=\d+", grf_text) and "FL tech find id=test_rocket matches=1" in grf_text,
+            "fl_id lookup did not find the tagged vehicle")
+    require("FL tech find id=test_airliner matches=2" in grf_text, "fl_id lookup did not find both items sharing an id")
     require("FL check result=true companies=6" in grf_text, "a NewGRF rival's network failed the connectivity check")
 
     default_world, _ = run("default-world", default_world=True)
@@ -279,7 +303,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; ferries in a coastal world; NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

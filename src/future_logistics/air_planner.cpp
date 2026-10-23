@@ -5,6 +5,7 @@
 /** @file air_planner.cpp Day-zero airlines: an airport in each of two towns and a passenger aircraft between them. */
 #include "../stdafx.h"
 #include "air_planner.h"
+#include "catalogue.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../airport.h"
@@ -14,6 +15,7 @@
 #include "../core/math_func.hpp"
 #include "../debug.h"
 #include "../engine_base.h"
+#include "../industry.h"
 #include "../landscape_cmd.h"
 #include "../newgrf_airport.h"
 #include "../order_base.h"
@@ -25,14 +27,15 @@
 #include "../town.h"
 #include "../vehicle_base.h"
 #include "../vehicle_cmd.h"
+#include <functional>
 #include <map>
 
 #include "../safeguards.h"
 
 namespace FutureLogistics {
 namespace {
-constexpr size_t MAX_AIRPORT_SITES = 2; ///< Airport sites tried per town.
-constexpr size_t MAX_AIR_PAIRS = 32; ///< Town pairs tried per airport type.
+constexpr size_t MAX_AIRPORT_SITES = 2; ///< Airport sites tried per endpoint.
+constexpr size_t MAX_AIR_PAIRS = 32; ///< Routes tried per airport type.
 constexpr int AIRPORT_SEARCH_RADIUS = 20; ///< How far from the town centre an airport may go.
 constexpr uint MIN_AIR_DISTANCE = 48; ///< Shorter hops are left to road and rail.
 constexpr uint MAX_AIR_DISTANCE = 256; ///< Longest route considered, in Manhattan tiles.
@@ -47,20 +50,38 @@ int AirportCatchment(const AirportSpec *spec)
 	return _settings_game.station.modified_catchment ? spec->catchment : CA_UNMODIFIED;
 }
 
+/** One end of a route: a town or an industry. */
+struct Endpoint {
+	const Town *town = nullptr;
+	const Industry *industry = nullptr;
+
+	TileIndex Centre() const
+	{
+		if (this->town != nullptr) return this->town->xy;
+		return TileAddXY(this->industry->location.tile, this->industry->location.w / 2, this->industry->location.h / 2);
+	}
+};
+
 /**
- * Find places for an airport near a town: flat, clear, at one height, and where passengers are accepted.
- * @param town Town to serve.
+ * Find places for an airport at one end of a route: flat, clear, at one height, and serving the endpoint.
+ * At a town the airport must belong to the town and accept the cargo; at an industry its catchment must
+ * reach the industry, and at a destination it must also accept the cargo.
+ * @param end Town or industry to serve.
  * @param spec Airport type.
- * @param cargo Passenger cargo type.
- * @return Up to MAX_AIRPORT_SITES top corners, nearest to the town centre first.
+ * @param cargo Cargo carried.
+ * @param destination Whether the cargo is delivered here.
+ * @return Up to MAX_AIRPORT_SITES top corners, nearest first.
  */
-std::vector<TileIndex> FindAirportSites(const Town *town, const AirportSpec *spec, CargoType cargo)
+std::vector<TileIndex> FindAirportSites(const Endpoint &end, const AirportSpec *spec, CargoType cargo, bool destination)
 {
 	std::vector<TileIndex> result;
 	const int radius = AirportCatchment(spec);
-	const int cx = TileX(town->xy), cy = TileY(town->xy);
-	for (int y = std::max(1, cy - AIRPORT_SEARCH_RADIUS); y <= std::min((int)Map::SizeY() - 1 - spec->size_y, cy + AIRPORT_SEARCH_RADIUS); y++) {
-		for (int x = std::max(1, cx - AIRPORT_SEARCH_RADIUS); x <= std::min((int)Map::SizeX() - 1 - spec->size_x, cx + AIRPORT_SEARCH_RADIUS); x++) {
+	const TileIndex centre = end.Centre();
+	const int search = end.town != nullptr ? AIRPORT_SEARCH_RADIUS
+		: std::max<int>(end.industry->location.w, end.industry->location.h) / 2 + radius + std::max(spec->size_x, spec->size_y);
+	const int cx = TileX(centre), cy = TileY(centre);
+	for (int y = std::max(1, cy - search); y <= std::min((int)Map::SizeY() - 1 - spec->size_y, cy + search); y++) {
+		for (int x = std::max(1, cx - search); x <= std::min((int)Map::SizeX() - 1 - spec->size_x, cx + search); x++) {
 			const TileIndex corner = TileXY(x, y);
 			const TileArea area(corner, spec->size_x, spec->size_y);
 			const int z = GetTileZ(corner);
@@ -68,12 +89,19 @@ std::vector<TileIndex> FindAirportSites(const Town *town, const AirportSpec *spe
 			for (TileIndex tile : area) {
 				if (!Buildable(tile) || GetTileZ(tile) != z) { usable = false; break; }
 			}
-			if (!usable || ClosestTownFromTile(corner, UINT_MAX)->index != town->index) continue;
-			if (GetAcceptanceAroundTiles(corner, spec->size_x, spec->size_y, radius).first[cargo] < 8) continue;
+			if (!usable) continue;
+			if (end.town != nullptr) {
+				if (ClosestTownFromTile(corner, UINT_MAX)->index != end.town->index) continue;
+			} else {
+				TileArea catchment = area;
+				catchment.Expand(radius);
+				if (!catchment.Intersects(end.industry->location)) continue;
+			}
+			if ((end.town != nullptr || destination) && GetAcceptanceAroundTiles(corner, spec->size_x, spec->size_y, radius).first[cargo] < 8) continue;
 			result.push_back(corner);
 		}
 	}
-	std::ranges::stable_sort(result, {}, [&](TileIndex t) { return DistanceManhattan(t, town->xy); });
+	std::ranges::stable_sort(result, {}, [&](TileIndex t) { return DistanceManhattan(t, centre); });
 	if (result.size() > MAX_AIRPORT_SITES) result.resize(MAX_AIRPORT_SITES);
 	return result;
 }
@@ -86,9 +114,10 @@ std::vector<TileIndex> FindAirportSites(const Town *town, const AirportSpec *spe
  * @param aircraft Aircraft to buy.
  * @param cargo Cargo to refit it to.
  * @param fleet Number of aircraft.
+ * @param full_load Full load at the first airport and unload at the second, as for freight.
  * @return Whether preflight rejected, execution failed, or the service was built.
  */
-ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const Engine *aircraft, CargoType cargo, uint fleet)
+ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const Engine *aircraft, CargoType cargo, uint fleet, bool full_load)
 {
 	Money cost = 0;
 	for (TileIndex corner : {a, b}) {
@@ -140,6 +169,7 @@ ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const En
 			order.MakeGoToStation(GetStationIndex(i == 0 ? a : b));
 			/* Non-train orders must use the far end; the default near end is rejected. */
 			order.SetStopLocation(OrderStopLocation::FarEnd);
+			if (full_load) order.SetLoadType(i == 0 ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);
 			auto inserted = Command<Commands::InsertOrder>::Do(EXEC, vehicle, i, order);
 			if (inserted.Failed()) {
 				Debug(Facility::Misc, Severity::Warning, "FL order rejected error={}", inserted.GetErrorMessage());
@@ -152,23 +182,33 @@ ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const En
 		_current_company, type, fleet, vehicles.front(), a, b, DistanceManhattan(a, b), Company::Get(_current_company)->money);
 	return ConstructionResult::Success;
 }
-} // namespace
+
+/** A candidate route for an airport pair. */
+struct AirPair {
+	size_t preference; ///< Rival's industry market preference; 0 is best.
+	uint distance; ///< Manhattan distance between the endpoints.
+	Endpoint a; ///< Origin, which gets the aircraft.
+	Endpoint b; ///< Destination.
+	MarketTier tier; ///< Market tier of the route.
+};
 
 /**
- * Build an airport in each of two unused towns and fly a passenger aircraft between them.
- * Larger airport types are tried first, since they allow larger and faster aircraft, but the
- * smaller town's market tier caps the airport class: no airline for villages, small airports
- * for towns, large ones for cities and hubs only for metropolises. NewGRF airport classes
- * beyond hub are never used.
+ * Try routes until one airport pair is built. Larger airport types are tried first, since they allow
+ * larger and faster aircraft, but the route's market tier caps the airport class: no airports for
+ * villages, small airports for towns, large ones for cities and hubs only for metropolises.
+ * NewGRF airport classes beyond hub are never used.
  * @param library Loaded transport technology, including the airport types.
- * @param[in,out] used_towns Towns already served by rivals; the chosen towns are added on success.
+ * @param spec Family, limits and preferences of the service.
+ * @param cargo Cargo carried.
+ * @param role Role the aircraft needs.
+ * @param pairs Candidate routes, best first.
+ * @param freight Whether aircraft full-load at the origin.
+ * @param on_success Called with the route and aircraft that were built.
  * @return Outcome.
  */
-ConstructionResult BuildPassengerAirline(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
+ConstructionResult TryAirPairs(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, TechRole role, const std::vector<AirPair> &pairs,
+	bool freight, const std::function<void(const AirPair &, const TechRecord &)> &on_success)
 {
-	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
-	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
-
 	std::vector<const InfraRecord *> airports;
 	for (const InfraRecord &record : library.Infrastructure()) {
 		if (record.kind != InfraKind::Airport || !spec.AllowsInfrastructure(record.tech)) continue;
@@ -177,43 +217,18 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, const Servi
 	}
 	std::ranges::stable_sort(airports, std::greater{}, [](const InfraRecord *r) { return r->size_x * r->size_y; });
 
-	struct Pair { uint distance; const Town *a; const Town *b; };
-	std::vector<const Town *> towns;
-	for (const Town *town : Town::Iterate()) {
-		if (towns.size() == 128) break;
-		if (!used_towns.contains(town->index)) towns.push_back(town);
-	}
-	std::vector<Pair> pairs;
-	for (const Town *a : towns) {
-		for (const Town *b : towns) {
-			if (a->index >= b->index) continue;
-			const uint distance = DistanceManhattan(a->xy, b->xy);
-			const MarketTier tier = TierForTowns(a, b);
-			if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(tier).air_passenger || tier < spec.min_tier) continue;
-			pairs.push_back({distance, a, b});
-		}
-	}
-	std::ranges::stable_sort(pairs, {}, &Pair::distance);
-
 	for (const InfraRecord *airport : airports) {
 		const uint8_t type = static_cast<uint8_t>(airport->index);
 		const AirportSpec *airport_spec = AirportSpec::Get(type);
 		const bool short_strip = GetAirport(type)->flags.Test(AirportFTAClass::Flag::ShortStrip);
-		std::map<TownID, std::vector<TileIndex>> sites;
-		auto town_sites = [&](const Town *town) -> const std::vector<TileIndex> & {
-			auto it = sites.find(town->index);
-			if (it != sites.end()) return it->second;
-			return sites.emplace(town->index, FindAirportSites(town, airport_spec, cargo)).first->second;
-		};
 		for (size_t i = 0; i < std::min(MAX_AIR_PAIRS, pairs.size()); i++) {
-			const Pair &pair = pairs[i];
-			const MarketTier tier = TierForTowns(pair.a, pair.b);
-			const TierLimits &limits = GetTierLimits(tier);
+			const AirPair &pair = pairs[i];
+			const TierLimits &limits = GetTierLimits(pair.tier);
 			if (!limits.air_passenger || airport_spec->class_index.base() > limits.max_airport_class) continue;
-			const uint range_needed = static_cast<uint>(std::ceil(std::sqrt(static_cast<double>(DistanceSquare(pair.a->xy, pair.b->xy)))));
+			const uint range_needed = static_cast<uint>(std::ceil(std::sqrt(static_cast<double>(DistanceSquare(pair.a.Centre(), pair.b.Centre())))));
 			TechQuery query;
 			query.mode = TechMode::Air;
-			query.role = TechRole::PassengerIntercity;
+			query.role = role;
 			query.cargo = cargo;
 			query.company = _current_company;
 			query.short_strip = short_strip;
@@ -223,20 +238,109 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, const Servi
 			query.early_adopters = spec.early_adopters;
 			const TechRecord *record = library.FindBest(query);
 			if (record == nullptr) continue;
-			for (TileIndex a : town_sites(pair.a)) {
-				for (TileIndex b : town_sites(pair.b)) {
-					const auto result = BuildAirline(type, a, b, Engine::Get(record->engine), cargo, limits.fleet);
+			const auto origins = FindAirportSites(pair.a, airport_spec, cargo, false);
+			const auto destinations = FindAirportSites(pair.b, airport_spec, cargo, true);
+			for (TileIndex a : origins) {
+				for (TileIndex b : destinations) {
+					const auto result = BuildAirline(type, a, b, Engine::Get(record->engine), cargo, limits.fleet, freight);
 					if (result == ConstructionResult::Rejected) continue;
-					if (result == ConstructionResult::Success) {
-						used_towns.insert(pair.a->index);
-						used_towns.insert(pair.b->index);
-						Debug(Facility::Misc, Severity::Notice, "FL towns company={} a={} b={} tier={} population={},{} aircraft={}", _current_company,
-							pair.a->index, pair.b->index, TierName(tier), pair.a->cache.population, pair.b->cache.population, record->id);
-					}
+					if (result == ConstructionResult::Success) on_success(pair, *record);
 					return result;
 				}
 			}
 		}
+	}
+	return ConstructionResult::Rejected;
+}
+} // namespace
+
+/**
+ * Build an airport in each of two unused towns and fly passengers or mail between them.
+ * @param library Loaded transport technology, including the airport types.
+ * @param spec Family, limits and preferences of the service.
+ * @param cargo Passengers or mail.
+ * @param[in,out] used_towns Towns already served for this cargo; the chosen towns are added on success.
+ * @return Outcome.
+ */
+ConstructionResult BuildTownAirline(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns)
+{
+	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
+	std::vector<const Town *> towns;
+	for (const Town *town : Town::Iterate()) {
+		if (towns.size() == 128) break;
+		if (!used_towns.contains(town->index)) towns.push_back(town);
+	}
+	std::vector<AirPair> pairs;
+	for (const Town *a : towns) {
+		for (const Town *b : towns) {
+			if (a->index >= b->index) continue;
+			const uint distance = DistanceManhattan(a->xy, b->xy);
+			const MarketTier tier = TierForTowns(a, b);
+			if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(tier).air_passenger || tier < spec.min_tier) continue;
+			pairs.push_back({0, distance, {a, nullptr}, {b, nullptr}, tier});
+		}
+	}
+	std::ranges::stable_sort(pairs, {}, &AirPair::distance);
+	return TryAirPairs(library, spec, cargo, TownRole(library, cargo, TechRole::PassengerIntercity), pairs, false, [&](const AirPair &pair, const TechRecord &record) {
+		used_towns.insert(pair.a.town->index);
+		used_towns.insert(pair.b.town->index);
+		Debug(Facility::Misc, Severity::Notice, "FL towns company={} a={} b={} tier={} population={},{} aircraft={}", _current_company,
+			pair.a.town->index, pair.b.town->index, TierName(pair.tier), pair.a.town->cache.population, pair.b.town->cache.population, record.id);
+	});
+}
+
+/**
+ * Build an airport near a producing industry and one near an industry that accepts its cargo, and fly
+ * freight aircraft between them. Sources are unused primary industries, or secondary ones another
+ * freight service already supplies.
+ * @param library Loaded transport technology, including the airport types.
+ * @param spec Family, limits and preferences of the service.
+ * @param[in,out] reserved Markets already taken; the chosen industries are added on success.
+ * @return Outcome.
+ */
+ConstructionResult BuildAirFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved)
+{
+	struct Candidate { AirPair pair; CargoType cargo; };
+	std::vector<Candidate> candidates;
+	for (const Industry *source : Industry::Iterate()) {
+		const bool chain = reserved.supplied.contains(source->index);
+		if (reserved.industries.contains(source->index) && !chain) continue;
+		for (const auto &produced : source->produced) {
+			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
+			/* Secondary industries produce nothing until supplied; aircraft would wait for a full load forever. */
+			if (produced.rate == 0 && !chain) continue;
+			const MarketTier tier = TierForIndustry(source, produced.cargo);
+			if (tier < spec.min_tier) continue;
+			for (const Industry *destination : Industry::Iterate()) {
+				if (destination == source || reserved.industries.contains(destination->index) || !destination->IsCargoAccepted(produced.cargo)) continue;
+				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
+				if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE) continue;
+				const size_t preference = std::min(IndustryPreference(source, spec.industry_markets), IndustryPreference(destination, spec.industry_markets));
+				candidates.push_back({{preference, distance, {nullptr, source}, {nullptr, destination}, tier}, produced.cargo});
+			}
+		}
+	}
+	std::ranges::stable_sort(candidates, [](const Candidate &a, const Candidate &b) {
+		return a.pair.preference != b.pair.preference ? a.pair.preference < b.pair.preference : a.pair.distance < b.pair.distance;
+	});
+	/* Each cargo needs its own aircraft, so try the candidates one cargo at a time, in order of their best route. */
+	std::vector<CargoType> cargoes;
+	for (const Candidate &candidate : candidates) {
+		if (std::ranges::find(cargoes, candidate.cargo) == cargoes.end()) cargoes.push_back(candidate.cargo);
+	}
+	for (CargoType cargo : cargoes) {
+		std::vector<AirPair> pairs;
+		for (const Candidate &candidate : candidates) {
+			if (candidate.cargo == cargo) pairs.push_back(candidate.pair);
+		}
+		const auto result = TryAirPairs(library, spec, cargo, FreightRole(library, cargo), pairs, true, [&](const AirPair &pair, const TechRecord &record) {
+			reserved.industries.insert(pair.a.industry->index);
+			reserved.industries.insert(pair.b.industry->index);
+			reserved.supplied.insert(pair.b.industry->index);
+			Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} destination={} cargo={} tier={} aircraft={}", _current_company,
+				pair.a.industry->index, pair.b.industry->index, CargoSpec::Get(cargo)->label.AsString(), TierName(pair.tier), record.id);
+		});
+		if (result != ConstructionResult::Rejected) return result;
 	}
 	return ConstructionResult::Rejected;
 }

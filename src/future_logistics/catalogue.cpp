@@ -14,16 +14,20 @@
 
 namespace FutureLogistics {
 namespace {
-constexpr std::array<std::string_view, to_underlying(Mechanic::End)> MECHANIC_NAMES{"rail_line", "road_route", "airport_pair"};
-constexpr std::array<std::string_view, to_underlying(Market::End)> MARKET_NAMES{"town_pair", "industry", "feeder"};
 constexpr std::array<std::string_view, 4> TIER_LABELS{"village", "town", "city", "metropolis"};
 
-/** The recipes of the built-in conventional family, which uses every supported combination. */
-const std::vector<std::pair<Mechanic, Market>> CONVENTIONAL_RECIPES{
-	{Mechanic::RailLine, Market::TownPair}, {Mechanic::RailLine, Market::Industry},
-	{Mechanic::RoadRoute, Market::TownPair}, {Mechanic::RoadRoute, Market::Feeder}, {Mechanic::RoadRoute, Market::Industry},
-	{Mechanic::AirportPair, Market::TownPair},
-};
+/**
+ * The recipes of the built-in conventional family: every market of every registered mechanic.
+ * @return Mechanic and market pairs in registry order.
+ */
+std::vector<std::pair<std::string, Market>> ConventionalRecipes()
+{
+	std::vector<std::pair<std::string, Market>> recipes;
+	for (const MechanicInfo &mechanic : GetMechanics()) {
+		for (Market market : mechanic.markets) recipes.emplace_back(std::string{mechanic.name}, market);
+	}
+	return recipes;
+}
 
 /**
  * The four built-in rivals, written in the same declaration format a NewGRF uses.
@@ -34,21 +38,27 @@ const std::vector<BadgeInfo> BUILTIN_DECLARATIONS{
 	{"fl_profile/national_rail/adopt/conventional/rail_line/industry/0", ""},
 	{"fl_profile/national_rail/adopt/conventional/rail_line/town_pair/0", ""},
 	{"fl_profile/national_rail/adopt/any/rail_line/any/5", ""},
+	{"fl_profile/national_rail/adopt/conventional/rail_line/mail/0", ""},
 
 	{"fl_profile/aerolink", "AeroLink"},
 	{"fl_profile/aerolink/adopt/conventional/airport_pair/town_pair/0", ""},
 	{"fl_profile/aerolink/adopt/any/airport_pair/any/2", ""},
+	{"fl_profile/aerolink/adopt/conventional/airport_pair/mail/0", ""},
 
 	{"fl_profile/metro_regional", "Metro & Regional"},
 	{"fl_profile/metro_regional/adopt/conventional/rail_line/town_pair/0", ""},
 	{"fl_profile/metro_regional/adopt/conventional/road_route/feeder/0", ""},
 	{"fl_profile/metro_regional/adopt/any/road_route/town_pair/3", ""},
+	{"fl_profile/metro_regional/adopt/conventional/road_route/mail/0", ""},
+	{"fl_profile/metro_regional/adopt/conventional/dock_pair/town_pair/0", ""},
 
 	{"fl_profile/integrated_logistics", "Integrated Logistics"},
 	{"fl_profile/integrated_logistics/adopt/conventional/rail_line/industry/0", ""},
 	{"fl_profile/integrated_logistics/adopt/conventional/road_route/industry/0", ""},
 	{"fl_profile/integrated_logistics/adopt/any/road_route/industry/2", ""},
 	{"fl_profile/integrated_logistics/adopt/any/rail_line/industry/5", ""},
+	{"fl_profile/integrated_logistics/adopt/conventional/dock_pair/industry/0", ""},
+	{"fl_profile/integrated_logistics/adopt/conventional/airport_pair/industry/0", ""},
 };
 
 /**
@@ -76,25 +86,8 @@ std::optional<int> ParseYears(std::string_view text)
 }
 
 /** Tag classes, which the catalogue leaves to the Tech Library. */
-constexpr std::array<std::string_view, 9> TAG_CLASSES{"fl_format", "fl_tech", "fl_tier", "fl_role", "fl_needs", "fl_provides", "fl_ai", "fl_industry", "fl_market"};
+constexpr std::array<std::string_view, 10> TAG_CLASSES{"fl_format", "fl_id", "fl_tech", "fl_tier", "fl_role", "fl_needs", "fl_provides", "fl_ai", "fl_industry", "fl_market"};
 } // namespace
-
-std::string_view MechanicName(Mechanic mechanic) { return MECHANIC_NAMES[to_underlying(mechanic)]; }
-std::string_view MarketName(Market market) { return MARKET_NAMES[to_underlying(market)]; }
-
-std::optional<Mechanic> ParseMechanic(std::string_view name)
-{
-	auto it = std::ranges::find(MECHANIC_NAMES, name);
-	if (it == MECHANIC_NAMES.end()) return std::nullopt;
-	return static_cast<Mechanic>(std::distance(MECHANIC_NAMES.begin(), it));
-}
-
-std::optional<Market> ParseMarket(std::string_view name)
-{
-	auto it = std::ranges::find(MARKET_NAMES, name);
-	if (it == MARKET_NAMES.end()) return std::nullopt;
-	return static_cast<Market>(std::distance(MARKET_NAMES.begin(), it));
-}
 
 std::optional<MarketTier> ParseTier(std::string_view name)
 {
@@ -104,23 +97,12 @@ std::optional<MarketTier> ParseTier(std::string_view name)
 }
 
 /**
- * Check whether a mechanic can serve a market.
- * @param mechanic Mechanic.
- * @param market Market.
- * @return Whether a planner exists for the combination.
- */
-bool IsSupported(Mechanic mechanic, Market market)
-{
-	return std::ranges::find(CONVENTIONAL_RECIPES, std::pair{mechanic, market}) != CONVENTIONAL_RECIPES.end();
-}
-
-/**
  * Get a recipe's name for logs and the console.
  * @return Name such as "rocket/airport_pair/town_pair".
  */
 std::string Recipe::Key() const
 {
-	return fmt::format("{}/{}/{}", this->family, MechanicName(this->mechanic), MarketName(this->market));
+	return fmt::format("{}/{}/{}", this->family, this->mechanic, MarketName(this->market));
 }
 
 /**
@@ -159,7 +141,7 @@ Family &Catalogue::FamilyFor(std::string_view key)
 	conventional.declared = true;
 	conventional.name = "Conventional";
 	conventional.min_tier = MarketTier::Village;
-	conventional.recipes = CONVENTIONAL_RECIPES;
+	conventional.recipes = ConventionalRecipes();
 
 	auto profile_for = [&](std::string_view key) -> Profile & {
 		auto it = std::ranges::find(catalogue.profiles, key, &Profile::key);
@@ -185,10 +167,10 @@ Family &Catalogue::FamilyFor(std::string_view key)
 				family.declared = true;
 				if (!badge.name.empty()) family.name = badge.name;
 			} else if (parts.size() == 4 && parts[2] == "mechanic") {
-				const auto mechanic = ParseMechanic(parts[3]);
-				if (!mechanic.has_value()) { bad("unknown mechanic"); continue; }
-				if (family.mechanic.has_value() && *family.mechanic != *mechanic) { bad("a family has one mechanic; this one is ignored"); continue; }
-				family.mechanic = mechanic;
+				if (!IsValidName(parts[3])) { bad("invalid mechanic name"); continue; }
+				if (FindMechanic(parts[3]) == nullptr) { bad("this build of the game has no such mechanic"); continue; }
+				if (family.mechanic.has_value() && *family.mechanic != parts[3]) { bad("a family has one mechanic; this one is ignored"); continue; }
+				family.mechanic = std::string{parts[3]};
 			} else if (parts.size() == 4 && parts[2] == "market") {
 				const auto market = ParseMarket(parts[3]);
 				if (!market.has_value()) { bad("unknown market"); continue; }
@@ -212,8 +194,8 @@ Family &Catalogue::FamilyFor(std::string_view key)
 					rule.family = std::string{parts[3]};
 				}
 				if (parts[4] != "any") {
-					rule.mechanic = ParseMechanic(parts[4]);
-					if (!rule.mechanic.has_value()) { bad("unknown mechanic"); continue; }
+					if (FindMechanic(parts[4]) == nullptr) { bad("this build of the game has no such mechanic"); continue; }
+					rule.mechanic = std::string{parts[4]};
 				}
 				if (parts[5] != "any") {
 					rule.market = ParseMarket(parts[5]);
@@ -275,17 +257,16 @@ void Catalogue::Resolve(const TechLibrary &library)
 				this->problems.push_back(fmt::format("family '{}' has vehicles of several modes; declare fl_family/{}/mechanic/<mechanic>", family.key, family.key));
 				continue;
 			}
-			switch (*modes.begin()) {
-				case TechMode::Rail: family.mechanic = Mechanic::RailLine; break;
-				case TechMode::Road: family.mechanic = Mechanic::RoadRoute; break;
-				case TechMode::Air: family.mechanic = Mechanic::AirportPair; break;
-				case TechMode::Water:
-					this->problems.push_back(fmt::format("family '{}' has ships, but there is no ship mechanic yet", family.key));
-					continue;
+			const MechanicInfo *mechanic = DefaultMechanic(*modes.begin());
+			if (mechanic == nullptr) {
+				this->problems.push_back(fmt::format("family '{}' has vehicles of a mode no mechanic builds yet", family.key));
+				continue;
 			}
+			family.mechanic = std::string{mechanic->name};
 		}
 		if (family.markets.empty()) {
-			if (roles.Any({TechRole::PassengerIntercity, TechRole::PassengerCommuter, TechRole::PassengerFeeder, TechRole::Express, TechRole::Parcel})) family.markets.push_back(Market::TownPair);
+			if (roles.Any({TechRole::PassengerIntercity, TechRole::PassengerCommuter, TechRole::PassengerFeeder})) family.markets.push_back(Market::TownPair);
+			if (roles.Any({TechRole::Express, TechRole::Parcel})) family.markets.push_back(Market::Mail);
 			if (roles.Any({TechRole::FreightBulk, TechRole::FreightGeneral})) family.markets.push_back(Market::Industry);
 		}
 		family.recipes.clear();
@@ -293,7 +274,7 @@ void Catalogue::Resolve(const TechLibrary &library)
 			if (IsSupported(*family.mechanic, market)) {
 				family.recipes.emplace_back(*family.mechanic, market);
 			} else {
-				this->problems.push_back(fmt::format("family '{}': {} cannot serve the {} market yet", family.key, MechanicName(*family.mechanic), MarketName(market)));
+				this->problems.push_back(fmt::format("family '{}': {} cannot serve the {} market yet", family.key, *family.mechanic, MarketName(market)));
 			}
 		}
 	}
@@ -450,6 +431,22 @@ TechRole FreightRole(const TechLibrary &library, CargoType cargo)
 		if (declared.Test(static_cast<TechRole>(i))) return static_cast<TechRole>(i);
 	}
 	return CargoSpec::Get(cargo)->classes.Any({CargoClass::Bulk, CargoClass::Liquid}) ? TechRole::FreightBulk : TechRole::FreightGeneral;
+}
+
+/**
+ * Choose the role a vehicle needs to carry a town cargo.
+ * @param library Loaded transport technology, with any fl_cargo declarations.
+ * @param cargo Passengers or mail.
+ * @param passenger_role Role for passengers, which depends on the mechanic.
+ * @return The cargo's first declared role, else the passenger role for passengers and express for anything else.
+ */
+TechRole TownRole(const TechLibrary &library, CargoType cargo, TechRole passenger_role)
+{
+	const TechRoles declared = library.CargoRoles(cargo);
+	for (uint8_t i = 0; i < to_underlying(TechRole::End); i++) {
+		if (declared.Test(static_cast<TechRole>(i))) return static_cast<TechRole>(i);
+	}
+	return CargoSpec::Get(cargo)->classes.Test(CargoClass::Passengers) ? passenger_role : TechRole::Express;
 }
 
 } // namespace FutureLogistics

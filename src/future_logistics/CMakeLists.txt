@@ -5,6 +5,8 @@ add_files(
     bootstrap.h
     catalogue.cpp
     catalogue.h
+    mechanics.cpp
+    mechanics.h
     planner_common.h
     rail_planner.cpp
     rail_planner.h
@@ -12,7 +14,11 @@ add_files(
     road_planner.h
     scale.cpp
     scale.h
+    tag_index.cpp
+    tag_index.h
     tech_console.cpp
     tech_library.cpp
     tech_library.h
+    water_planner.cpp
+    water_planner.h
 )

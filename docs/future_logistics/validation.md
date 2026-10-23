@@ -46,9 +46,12 @@ test was run for these phases.
 | Check | Result |
 | --- | --- |
 | Feature GUI Debug build | Passed, no compiler warnings/errors |
-| CTest suite | **106/106 passed** (98 upstream and phase 0, 8 Tech Library, scaling and format unit tests) |
-| Full-engine integration suite | **24 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 1 tiny world, 1 NewGRF tech tree) |
-| NewGRF tech tree (`tests/future_logistics/grf/fl_test.grf`, five rivals) | TestCorp Airways, declared only by the NewGRF, built an airline with the NewGRF's "testjet" family; AeroLink adopted it through a NewGRF rule; mail vehicles took the declared parcel role; `validate` reported exactly the six deliberate mistakes |
+| CTest suite | **107/107 passed** (98 upstream and phase 0, 9 Tech Library, scaling and format unit tests) |
+| Full-engine integration suite | **26 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 2 for a coastal world, 1 tiny world, 1 NewGRF tech tree) |
+| Mail, ships, air freight (1950) | Mail trains (National Rail) and mail trucks (Metro & Regional) built and checked; air mail and air freight correctly rejected (no base-game mail or freight aircraft) |
+| Coastal world, three seeds | A ferry was built in each; in the tested seed it reached both docks within three months. Freight ships were rejected because no industry had usable coast nearby |
+| `fl_id` and the mechanic registry | The test NewGRF's `fl_id` lookups found the tagged vehicle, both items sharing a duplicate id, and `validate` reported the duplicate and a mechanic the game does not have |
+| NewGRF tech tree (`tests/future_logistics/grf/fl_test.grf`, five rivals) | TestCorp Airways, declared only by the NewGRF, built an airline with the NewGRF's "testjet" family; AeroLink adopted it through a NewGRF rule; mail vehicles took the declared parcel role; `validate` reported exactly the eight deliberate mistakes |
 | Without NewGRFs after the phase 5 rewrite | Same seven services and nine vehicles as phase 4; catalogue reports no problems |
 | Headstart scaling | Controlled world: 34,011 people, grant 4,251,375 per rival (below the 25 million cap), every railway and airline within its tier. Tiny world (64×64, two towns, no industries): grant about 250,000, no railways or airlines |
 | Controlled world with normal industry density, seed 12345, 1950 | All four rivals operational with seven services and nine vehicles: grain and coal freight railways, two passenger railways, an airline with two aircraft, a two-bus feeder into Metro & Regional's railway station, and a goods truck from the factory that the grain railway supplies |

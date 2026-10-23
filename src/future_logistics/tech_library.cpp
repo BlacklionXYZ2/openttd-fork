@@ -374,6 +374,9 @@ ItemTags ParseItemTags(std::span<const std::string> labels)
 			} else {
 				tags.problems.push_back(fmt::format("unsupported format '{}'", label));
 			}
+		} else if (kind == "fl_id" && simple) {
+			if (tags.id.has_value()) tags.problems.push_back(fmt::format("an item has one fl_id; '{}' is ignored", label));
+			else tags.id = std::string{parts[1]};
 		} else if (kind == "fl_tech" && simple) {
 			tags.tech = std::string{parts[1]};
 		} else if (kind == "fl_tier" && parts.size() == 2 && parts[1].size() == 1 && parts[1][0] >= '0' && parts[1][0] <= '9') {

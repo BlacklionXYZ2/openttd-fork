@@ -102,7 +102,9 @@ same way for two terminus stations, a single line, a depot and one train; freigh
 railways reserve their two industries. All engine command executions in the rail
 planner flush the track signal update buffer, as the normal command loop does.
 The air planner builds two airports of the type the market tier allows and a
-small fleet chosen by the Tech Library. The road planner builds buses, feeder
+small fleet chosen by the Tech Library, for passengers, mail or freight. The
+water planner builds two docks on the same water, a ship depot and a fleet, and
+uses an oil rig's own dock where there is one. The road planner builds buses, feeder
 buses that join the company's railway stations, and trucks that may continue a
 freight railway's cargo chain. No shared infrastructure is
 modified. All changes go through tested engine command interfaces and normal
@@ -152,7 +154,7 @@ multiplayer dedicated server. Test artifacts go in `work/`.
 
 ## Scope and remaining work
 
-No ships, multi-stage cargo chains beyond one rail-to-truck step, signals,
+No multi-stage cargo chains beyond one step, signals,
 bridges, tunnels, terrain engineering, strategic AI expansion or in-game AI
 vehicle adoption are implemented here. Drones, hyperloop and rockets are
 supported as NewGRF tech families, but the Future Logistics NewGRF itself

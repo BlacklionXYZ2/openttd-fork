@@ -6,6 +6,7 @@
 #include "../stdafx.h"
 #include "tech_library.h"
 #include "catalogue.h"
+#include "tag_index.h"
 #include "../company_func.h"
 #include "../console_func.h"
 #include "../debug.h"
@@ -106,7 +107,7 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 		const Catalogue catalogue = Catalogue::Build(library);
 		for (const Family &family : catalogue.Families()) {
 			std::string recipes;
-			for (const auto &[mechanic, market] : family.recipes) recipes += fmt::format("{}{}/{}", recipes.empty() ? "" : ",", MechanicName(mechanic), MarketName(market));
+			for (const auto &[mechanic, market] : family.recipes) recipes += fmt::format("{}{}/{}", recipes.empty() ? "" : ",", mechanic, MarketName(market));
 			const auto since = family.key == CONVENTIONAL ? std::optional<TimerGameCalendar::Date>{} : FamilyAvailableSince(library, family.key);
 			Report(fmt::format("FL tech family key={} declared={} min_tier={} available={} recipes={} name={}", family.key, family.declared, TierName(family.min_tier),
 				family.key == CONVENTIONAL ? "always" : (since.has_value() ? fmt::format("{}", TimerGameCalendar::ConvertDateToYMD(*since).year) : "never"),
@@ -123,9 +124,23 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 		using namespace FutureLogistics;
 		const TechLibrary library = TechLibrary::Build();
 		const Catalogue catalogue = Catalogue::Build(library);
-		for (const std::string &problem : library.Problems()) Report("FL tech problem " + problem);
-		for (const std::string &problem : catalogue.Problems()) Report("FL tech problem " + problem);
-		Report(fmt::format("FL tech validate problems={}", library.Problems().size() + catalogue.Problems().size()));
+		std::vector<std::string> problems = library.Problems();
+		problems.insert(problems.end(), catalogue.Problems().begin(), catalogue.Problems().end());
+		/* Code finds items by fl_id, so one id must not name two items of the same kind. */
+		std::map<std::pair<std::string, TaggedKind>, uint> uses;
+		for (const TaggedItem &item : CollectTaggedItems()) uses[{item.id, item.kind}]++;
+		for (const auto &[key, count] : uses) {
+			if (count > 1) problems.push_back(fmt::format("fl_id/{} is used by {} items of kind {}", key.first, count, TaggedKindName(key.second)));
+		}
+		for (const std::string &problem : problems) Report("FL tech problem " + problem);
+		Report(fmt::format("FL tech validate problems={}", problems.size()));
+		return true;
+	}
+	if (argv.size() == 2 && argv[0] == "find") {
+		using namespace FutureLogistics;
+		const auto items = FindTagged(argv[1]);
+		for (const TaggedItem &item : items) Report(fmt::format("FL tech found id={} kind={} index={}", item.id, TaggedKindName(item.kind), item.index));
+		Report(fmt::format("FL tech find id={} matches={}", argv[1], items.size()));
 		return true;
 	}
 	if ((argv.size() == 3 || argv.size() == 4) && argv[0] == "best") {

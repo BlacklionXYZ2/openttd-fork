@@ -24,6 +24,7 @@ constexpr size_t MAX_PAIRS = 128; ///< Maximum town pairs considered per company
 /** Markets already taken by earlier rivals, so they do not compete for the same customers. */
 struct Reservations {
 	std::set<TownID> towns; ///< Towns served by passenger services.
+	std::set<TownID> mail_towns; ///< Towns served by mail services.
 	std::set<IndustryID> industries; ///< Industries served by freight services.
 	std::set<IndustryID> supplied; ///< Industries that receive freight, so secondary ones will produce.
 };

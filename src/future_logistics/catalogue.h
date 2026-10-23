@@ -6,6 +6,7 @@
 #ifndef FUTURE_LOGISTICS_CATALOGUE_H
 #define FUTURE_LOGISTICS_CATALOGUE_H
 
+#include "mechanics.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../timer/timer_game_calendar.h"
@@ -13,29 +14,13 @@
 
 namespace FutureLogistics {
 
-/** A way of building a service. Only mechanics are code. */
-enum class Mechanic : uint8_t {
-	RailLine,
-	RoadRoute,
-	AirportPair,
-	End,
-};
-
-/** What a service connects. */
-enum class Market : uint8_t {
-	TownPair,
-	Industry,
-	Feeder,
-	End,
-};
-
 /** The family that covers everything without an fl_tech tag. */
 inline constexpr std::string_view CONVENTIONAL = "conventional";
 
 /** One family, one mechanic, one market. */
 struct Recipe {
 	std::string family;
-	Mechanic mechanic = Mechanic::RoadRoute;
+	std::string mechanic{"road_route"}; ///< Name of a registered mechanic; see mechanics.cpp.
 	Market market = Market::TownPair;
 	MarketTier min_tier = MarketTier::Village; ///< Smallest market this recipe may serve.
 	bool early_adopters = true; ///< Whether fl_ai/early_adopter vehicles may be used.
@@ -49,16 +34,16 @@ struct Family {
 	std::string key;
 	std::string name; ///< Display name, from the declaration badge.
 	bool declared = false; ///< Declared with fl_family, not just used in an fl_tech tag.
-	std::optional<Mechanic> mechanic; ///< Declared mechanic; filled from the vehicles if absent.
+	std::optional<std::string> mechanic; ///< Declared mechanic; filled from the vehicles if absent.
 	std::vector<Market> markets; ///< Declared markets; filled from the vehicles' roles if absent.
 	MarketTier min_tier = MarketTier::Town;
-	std::vector<std::pair<Mechanic, Market>> recipes; ///< Resolved mechanic and market combinations.
+	std::vector<std::pair<std::string, Market>> recipes; ///< Resolved mechanic and market combinations.
 };
 
 /** One rule in a profile: adopt matching recipes some years after their family becomes available. */
 struct AdoptRule {
 	std::optional<std::string> family; ///< Family name, or empty for any family except conventional.
-	std::optional<Mechanic> mechanic; ///< Mechanic, or empty for any.
+	std::optional<std::string> mechanic; ///< Mechanic, or empty for any.
 	std::optional<Market> market; ///< Market, or empty for any.
 	int years = 0; ///< Delay after the family becomes available.
 };
@@ -107,16 +92,12 @@ private:
 	std::vector<std::string> problems; ///< Human-readable issues for future_logistics_tech validate.
 };
 
-std::string_view MechanicName(Mechanic mechanic);
-std::string_view MarketName(Market market);
-std::optional<Mechanic> ParseMechanic(std::string_view name);
-std::optional<Market> ParseMarket(std::string_view name);
 std::optional<MarketTier> ParseTier(std::string_view name);
-bool IsSupported(Mechanic mechanic, Market market);
 std::optional<TimerGameCalendar::Date> FamilyAvailableSince(const TechLibrary &library, std::string_view family);
 std::vector<std::string> IndustryMarkets(const struct Industry *industry);
 size_t IndustryPreference(const struct Industry *industry, std::span<const std::string> preferred);
 TechRole FreightRole(const TechLibrary &library, CargoType cargo);
+TechRole TownRole(const TechLibrary &library, CargoType cargo, TechRole passenger_role);
 
 } // namespace FutureLogistics
 

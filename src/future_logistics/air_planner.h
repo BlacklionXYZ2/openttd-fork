@@ -7,6 +7,7 @@
 #define FUTURE_LOGISTICS_AIR_PLANNER_H
 
 #include "planner_common.h"
+#include "../cargo_type.h"
 #include "../station_type.h"
 #include "../town_type.h"
 #include "../vehicle_type.h"
@@ -15,7 +16,8 @@ class TechLibrary;
 
 namespace FutureLogistics {
 
-ConstructionResult BuildPassengerAirline(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
+ConstructionResult BuildTownAirline(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns);
+ConstructionResult BuildAirFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved);
 std::set<StationID> AirportsReachable(const Vehicle *aircraft);
 
 } // namespace FutureLogistics

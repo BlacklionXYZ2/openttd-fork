@@ -95,6 +95,7 @@ struct InfraRecord {
 struct ItemTags {
 	bool any = false; ///< Has at least one fl_ badge.
 	bool formatted = false; ///< Has fl_format/1 or fl_format/2; without it, the other fl_ tags are ignored.
+	std::optional<std::string> id; ///< fl_id: a stable name code can find the item by.
 	std::optional<std::string> tech; ///< fl_tech
 	std::optional<uint8_t> tier; ///< fl_tier
 	TechRoles roles{}; ///< fl_role, all of them.

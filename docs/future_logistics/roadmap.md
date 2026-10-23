@@ -190,13 +190,29 @@ replaced the original "read GRF tags" phase and goes further.
   family, AeroLink adopts it, the cargo meaning applies, and `validate` reports
   exactly the six mistakes.
 
+Completed afterwards in the same phase:
+
+- **Mail** market for rail, road (mail trucks at truck stops), air and water.
+- **Freight by air** (`airport_pair/industry`), with airports placed so their
+  catchment reaches the industries.
+- **Ships** (`dock_pair` mechanic): docks on sloped coast facing open water, a
+  check that both docks share the same water, a ship depot, and a fleet.
+  Industries with their own dock, such as oil rigs, are used as they are.
+- **Mechanic registry** (`src/future_logistics/mechanics.cpp`): NewGRFs name
+  mechanics; code adds one with a planner and one table row.
+- **`fl_id` and lookups** (`src/future_logistics/tag_index.h`): code finds a
+  particular NewGRF item by a stable name; `future_logistics_tech find`.
+- Built-in rivals gained rules for mail trains, mail trucks, air mail,
+  ferries, freight ships and air freight, after their existing rules.
+
 Limits:
 
-- Mechanics are rail lines, road routes and airport pairs. Ships, and any new
-  kind of construction (rooftop pads, launch sequences), need a new mechanic
-  in code.
-- Airports serve the `town_pair` market only; freight aircraft need an
-  `airport_pair/industry` planner.
+- Any new kind of construction (rooftop pads, launch sequences) needs a new
+  mechanic in code.
+- In the base game there are no mail or freight aircraft, so air mail and air
+  freight only happen with NewGRF aircraft.
+- Freight ships need industries near usable coast; in the test maps none was,
+  so freight shipping has not yet been seen to succeed. Ferries have.
 - Cargo types cannot carry badges, so their meaning is declared by label.
 
 ## Phase 6: rivals that keep up
@@ -223,9 +239,9 @@ is only needed where a new mechanic or market is.
 | Tech | Year | GRF provides | Code needed |
 |---|---|---|---|
 | Parcels | TBD | Parcel cargo, sorting hub, delivery van, `fl_cargo` meaning | None expected (road and rail freight recipes) |
-| Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | Likely an `airport_pair/industry` planner for parcel freight |
+| Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | None expected (airport pair mechanic, mail or industry market) |
 | Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | None expected (rail line mechanic) |
-| Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | None for passengers; freight needs `airport_pair/industry` |
+| Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | None expected; a launch sequence would need a new mechanic |
 | Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | Depends on what carries their cargo |
 
 Underground hyperloop and true rocket flight behaviour need engine changes and

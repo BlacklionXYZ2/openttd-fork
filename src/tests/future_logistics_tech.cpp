@@ -150,10 +150,13 @@ TEST_CASE("FutureLogisticsFormat - built-in rivals use the declaration format")
 	CHECK(catalogue.Profiles()[0].name == "National Rail & Freight");
 	CHECK(catalogue.Profiles()[0].id == 1);
 	CHECK(catalogue.Profiles()[3].id == 4);
-	CHECK(catalogue.Profiles()[1].rules.size() == 2);
+	CHECK(catalogue.Profiles()[1].rules.size() == 3);
 	REQUIRE(catalogue.Families().size() == 1);
 	CHECK(catalogue.Families()[0].key == "conventional");
-	CHECK(catalogue.Families()[0].recipes.size() == 6);
+	/* Every market of every registered mechanic. */
+	size_t markets = 0;
+	for (const MechanicInfo &mechanic : GetMechanics()) markets += mechanic.markets.size();
+	CHECK(catalogue.Families()[0].recipes.size() == markets);
 }
 
 TEST_CASE("FutureLogisticsFormat - declarations and plans")
@@ -173,7 +176,7 @@ TEST_CASE("FutureLogisticsFormat - declarations and plans")
 	const Family *rocket = catalogue.GetFamily("rocket");
 	REQUIRE(rocket != nullptr);
 	CHECK(rocket->name == "Rocket freight");
-	CHECK(rocket->mechanic == Mechanic::AirportPair);
+	CHECK(rocket->mechanic == "airport_pair");
 	CHECK(rocket->min_tier == MarketTier::City);
 	CHECK(rocket->recipes.size() == 1);
 
@@ -193,13 +196,16 @@ TEST_CASE("FutureLogisticsFormat - declarations and plans")
 	const Profile &aerolink = catalogue.Profiles()[1];
 	/* Before the rocket's delay has passed, AeroLink only flies conventional aircraft. */
 	auto plan = catalogue.Plan(aerolink, launch + CalendarTime::DAYS_IN_YEAR, available);
-	REQUIRE(plan.size() == 1);
-	CHECK(plan[0].Key() == "conventional/airport_pair/town_pair");
-	plan = catalogue.Plan(aerolink, launch + CalendarTime::DAYS_IN_YEAR * 3, available);
 	REQUIRE(plan.size() == 2);
+	CHECK(plan[0].Key() == "conventional/airport_pair/town_pair");
+	CHECK(plan[1].Key() == "conventional/airport_pair/mail");
+	/* Rules apply in order: AeroLink's own "any air family after 2 years" rule comes before its mail rule. */
+	plan = catalogue.Plan(aerolink, launch + CalendarTime::DAYS_IN_YEAR * 3, available);
+	REQUIRE(plan.size() == 3);
 	CHECK(plan[1].Key() == "rocket/airport_pair/town_pair");
 	CHECK(plan[1].min_tier == MarketTier::City);
 	CHECK_FALSE(plan[1].early_adopters);
+	CHECK(plan[2].Key() == "conventional/airport_pair/mail");
 
 	/* "any" never matches the conventional family, and nothing is available before launch. */
 	CHECK(catalogue.Plan(spacecorp, launch - 1, available).empty());
@@ -207,4 +213,22 @@ TEST_CASE("FutureLogisticsFormat - declarations and plans")
 	REQUIRE(plan.size() == 1);
 	CHECK(plan[0].family == "rocket");
 	CHECK(plan[0].early_adopters);
+}
+
+TEST_CASE("FutureLogisticsFormat - mechanics and ids")
+{
+	using namespace FutureLogistics;
+	CHECK(FindMechanic("dock_pair") != nullptr);
+	CHECK(FindMechanic("launch_site") == nullptr);
+	CHECK(DefaultMechanic(TechMode::Water)->name == "dock_pair");
+	CHECK(DefaultMechanic(TechMode::Rail)->name == "rail_line");
+	CHECK(IsSupported("airport_pair", Market::Industry));
+	CHECK(IsSupported("road_route", Market::Mail));
+	CHECK_FALSE(IsSupported("airport_pair", Market::Feeder));
+	CHECK_FALSE(IsSupported("launch_site", Market::TownPair));
+	CHECK(ParseMarket("mail") == Market::Mail);
+
+	const ItemTags tagged = ParseItemTags(std::vector<std::string>{"fl_format/2", "fl_id/launchpad_small", "fl_id/second"});
+	CHECK(tagged.id == "launchpad_small");
+	CHECK(tagged.problems.size() == 1);
 }

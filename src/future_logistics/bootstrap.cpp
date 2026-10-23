@@ -10,6 +10,7 @@
 #include "catalogue.h"
 #include "rail_planner.h"
 #include "road_planner.h"
+#include "water_planner.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../ai/ai.hpp"
@@ -51,33 +52,18 @@ extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
 
 namespace {
 /**
- * Build one starter service for the current company with the planner for its recipe's mechanic and market.
+ * Build one starter service for the current company with the mechanic its recipe names.
  * @param recipe Family, mechanic and market.
  * @param profile The rival, for its preferences.
  * @param library Loaded transport technology.
  * @param[in,out] reserved Markets already taken.
- * @return Outcome; Rejected for a combination no planner supports.
+ * @return Outcome; Rejected for a mechanic or market this build does not support.
  */
 ConstructionResult BuildService(const Recipe &recipe, const Profile &profile, const TechLibrary &library, Reservations &reserved)
 {
+	if (!IsSupported(recipe.mechanic, recipe.market)) return ConstructionResult::Rejected;
 	const ServiceSpec spec{recipe.family, recipe.min_tier, recipe.early_adopters, profile.industry_markets};
-	switch (recipe.mechanic) {
-		case Mechanic::RailLine:
-			if (recipe.market == Market::TownPair) return BuildPassengerRail(library, spec, reserved.towns);
-			if (recipe.market == Market::Industry) return BuildFreightRail(library, spec, reserved);
-			break;
-		case Mechanic::RoadRoute:
-			if (recipe.market == Market::TownPair) return BuildBusService(library, spec, reserved.towns);
-			if (recipe.market == Market::Feeder) return BuildFeederBus(library, spec, reserved.towns);
-			if (recipe.market == Market::Industry) return BuildTruckFreight(library, spec, reserved);
-			break;
-		case Mechanic::AirportPair:
-			if (recipe.market == Market::TownPair) return BuildPassengerAirline(library, spec, reserved.towns);
-			break;
-		default:
-			break;
-	}
-	return ConstructionResult::Rejected;
+	return FindMechanic(recipe.mechanic)->build(library, spec, recipe.market, reserved);
 }
 
 /**
@@ -164,7 +150,7 @@ void BootstrapFutureLogistics()
 					if (!stopped) attempt(recipe, false);
 				}
 			}
-			const Recipe bus{std::string{CONVENTIONAL}, Mechanic::RoadRoute, Market::TownPair};
+			const Recipe bus{std::string{CONVENTIONAL}, "road_route", Market::TownPair};
 			if (built == 0 && !stopped && std::ranges::find(plan, bus) == plan.end()) attempt(bus, true);
 			services += built;
 			if (built > 0) {
@@ -186,7 +172,7 @@ bool InspectFutureLogistics()
 		Debug(Facility::Misc, Severity::Notice, "FL check funds company={} balance={} loan={} road_bits={} station_tiles={} rail_bits={} other_expense={} ai={}", company->index, company->money, company->current_loan, company->infrastructure.GetRoadTotal(), company->infrastructure.station, company->infrastructure.GetRailTotal(), company->yearly_expenses[0][ExpensesType::Other], company->is_ai);
 	}
 	for (const Vehicle *vehicle : Vehicle::Iterate()) {
-		if ((vehicle->type != VehicleType::Road && vehicle->type != VehicleType::Train && vehicle->type != VehicleType::Aircraft) || !vehicle->IsPrimaryVehicle() || vehicle->owner == CompanyID{0}) continue;
+		if (vehicle->type == VehicleType::Effect || vehicle->type == VehicleType::Disaster || !vehicle->IsPrimaryVehicle() || vehicle->owner == CompanyID{0}) continue;
 		bool connected = Company::IsValidAiID(vehicle->owner) && vehicle->GetNumOrders() == 2 && !vehicle->vehstatus.Test(VehState::Stopped);
 		std::set<StationID> destinations;
 		for (const Order &order : vehicle->Orders()) {
@@ -197,6 +183,7 @@ bool InspectFutureLogistics()
 		switch (vehicle->type) {
 			case VehicleType::Train: reached = RailStationsReachable(vehicle); break;
 			case VehicleType::Aircraft: reached = AirportsReachable(vehicle); break;
+			case VehicleType::Ship: reached = DocksReachable(vehicle); break;
 			default: reached = RoadStationsReachable(vehicle); break;
 		}
 		connected &= destinations.size() == 2 && std::ranges::includes(reached, destinations);
@@ -207,7 +194,7 @@ bool InspectFutureLogistics()
 		uint delivered = company->cur_economy.delivered_cargo.GetSum<uint>();
 		for (const auto &quarter : company->old_economy) delivered += quarter.delivered_cargo.GetSum<uint>();
 		Debug(Facility::Misc, Severity::Notice, "FL check company={} vehicle={} type={} connected={} served={} tile={} profit={} delivered={}",
-			vehicle->owner, vehicle->index, vehicle->type == VehicleType::Train ? "rail" : (vehicle->type == VehicleType::Aircraft ? "air" : "road"), connected, destinations.contains(vehicle->last_station_visited),
+			vehicle->owner, vehicle->index, vehicle->type == VehicleType::Train ? "rail" : (vehicle->type == VehicleType::Aircraft ? "air" : (vehicle->type == VehicleType::Ship ? "water" : "road")), connected, destinations.contains(vehicle->last_station_visited),
 			vehicle->tile, vehicle->profit_this_year, delivered);
 	}
 	Debug(Facility::Misc, Severity::Notice, "FL check result={} companies={} vehicles={} human={}", valid, Company::GetNumItems(), checked, _local_company);

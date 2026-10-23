@@ -7,6 +7,7 @@
 #define FUTURE_LOGISTICS_ROAD_PLANNER_H
 
 #include "planner_common.h"
+#include "../cargo_type.h"
 #include "../industry_type.h"
 #include "../station_type.h"
 #include "../town_type.h"
@@ -16,7 +17,7 @@ class TechLibrary;
 
 namespace FutureLogistics {
 
-ConstructionResult BuildBusService(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
+ConstructionResult BuildTownRoad(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns);
 ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
 ConstructionResult BuildTruckFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved);
 std::set<StationID> RoadStationsReachable(const Vehicle *vehicle);

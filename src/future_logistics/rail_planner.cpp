@@ -352,7 +352,7 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
 	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={}",
-		_current_company, consist.freight ? "freight" : "passenger", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
+		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
 		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature);
 	return ConstructionResult::Success;
 }
@@ -442,15 +442,17 @@ TileArea Catchment(const Terminus &site)
 } // namespace
 
 /**
- * Build a passenger railway between two unused towns.
+ * Build a railway carrying passengers or mail between two unused towns.
  * @param library Loaded transport technology.
- * @param[in,out] used_towns Towns already served by rivals; the chosen towns are added on success.
+ * @param spec Family, limits and preferences of the service.
+ * @param cargo Passengers or mail.
+ * @param[in,out] used_towns Towns already served for this cargo; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildPassengerRail(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
+ConstructionResult BuildTownRail(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns)
 {
-	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
+	const TechRole role = TownRole(library, cargo, TechRole::PassengerIntercity);
 
 	struct Pair { uint distance; const Town *a; const Town *b; };
 	std::vector<const Town *> towns;
@@ -485,7 +487,7 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, const ServiceS
 		const Pair &pair = pairs[i];
 		const MarketTier tier = TierForTowns(pair.a, pair.b);
 		const TierLimits &limits = GetTierLimits(tier);
-		const Consist consist = ChooseConsist(library, spec, TechRole::PassengerIntercity, cargo, false, limits.track_rank);
+		const Consist consist = ChooseConsist(library, spec, role, cargo, false, limits.track_rank);
 		if (consist.locomotive == nullptr) continue;
 		const auto result = TrySites(town_sites(pair.a, limits.platform_length), town_sites(pair.b, limits.platform_length), consist);
 		if (result == ConstructionResult::Rejected) continue;

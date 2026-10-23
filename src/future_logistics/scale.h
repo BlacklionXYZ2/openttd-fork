@@ -28,8 +28,9 @@ struct TierLimits {
 	bool rail_passenger; ///< Passenger railways allowed.
 	bool air_passenger; ///< Airlines allowed.
 	uint8_t max_airport_class; ///< Largest airport class: 0 small, 1 large, 2 hub.
-	uint8_t track_rank; ///< How many of the available track types (cheapest first) may be used.
+	uint8_t track_rank; ///< How many usable track types may be considered, in the game's list order (plain rail first).
 	int platform_length; ///< Station platform length in tiles, which also limits train length.
+	uint fleet; ///< Road vehicles or aircraft per service.
 };
 
 const TierLimits &GetTierLimits(MarketTier tier);
@@ -38,6 +39,7 @@ MarketTier TierForPopulation(uint32_t population);
 MarketTier TierForTowns(const Town *a, const Town *b);
 MarketTier TierForIndustry(const Industry *industry, CargoType cargo);
 Money RivalGrant(uint64_t world_population, uint rivals, Money per_head, Money cap);
+uint ServiceRounds(uint64_t world_population);
 
 } // namespace FutureLogistics
 

@@ -14,6 +14,8 @@ enum class ServiceType : uint8_t {
 	RailPassenger, ///< Town-to-town passenger train.
 	RailFreight, ///< Industry-to-industry freight train.
 	AirPassenger, ///< Town-to-town passenger aircraft.
+	FeederBus, ///< Bus from a nearby town into one of the company's railway stations.
+	TruckFreight, ///< Industry-to-industry trucks.
 };
 
 /** One rival company's character. */

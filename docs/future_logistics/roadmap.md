@@ -5,9 +5,10 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phases 0–3 are complete. The four rivals have
-distinct profiles, and the starting market has an airline, passenger trains,
-freight trains and buses. See `validation.md` for the recorded test results.
+**Status (October 2026):** phases 0–4 are complete. The four rivals have
+distinct profiles, and the starting market has an airline, passenger and
+freight trains, feeder buses into railway stations, and trucks that continue
+rail cargo chains, all scaled to the size of the world. See `validation.md` for the recorded test results.
 
 The key design rule for everything below: **rivals ask the Tech Library for
 "the best tech for this job", never for a specific vehicle.** The library and
@@ -55,8 +56,8 @@ Goal: the four rivals differ, and trains run on day one.
   |---|---|
   | National Rail & Freight | freight railway, passenger railway |
   | AeroLink | passenger airline (phase 3) |
-  | Metro & Regional | passenger railway, bus |
-  | Integrated Logistics | freight railway, trucks from phase 4 |
+  | Metro & Regional | passenger railway, feeder bus (phase 4) |
+  | Integrated Logistics | freight railway, trucks (phase 4) |
 
 - Each rival is renamed after its profile, and its CorporateAI gets a
   `profile` setting. Both are saved with the game, and the AI logs its profile
@@ -116,12 +117,16 @@ The headstart stays in proportion to the world. The thresholds are one table in
 - **Services:** each route is classed by its smaller town's population, or for
   freight by the source industry's production rate:
 
-  | Tier | Smallest town | Allows |
-  |---|---|---|
-  | Village | under 500 | buses only (freight trains on 2-tile platforms) |
-  | Town | 500 | short trains on the first usable track type, small airports |
-  | City | 1,500 | 3-tile trains, first two usable track types, large airports |
-  | Metropolis | 4,000 | 4-tile trains, any track type, hub airports |
+  | Tier | Smallest town | Allows | Vehicles per road or air service |
+  |---|---|---|---|
+  | Village | under 500 | buses only (freight trains on 2-tile platforms) | 1 |
+  | Town | 500 | short trains on the first usable track type, small airports | 2 |
+  | City | 1,500 | 3-tile trains, first two usable track types, large airports | 3 |
+  | Metropolis | 4,000 | 4-tile trains, any track type, hub airports | 4 |
+
+- **Route count:** each rival works through its profile's list once, plus once
+  more per 50,000 inhabitants, up to three times. Every round reserves its own
+  towns and industries.
 
 - Results in testing: a 48-town world of 34,000 people gives about 4.25
   million per rival; two towns of about 1,000 people each give about 250,000
@@ -129,13 +134,26 @@ The headstart stays in proportion to the world. The thresholds are one table in
   rather than an intercontinental one, and town railways use electrified
   track rather than maglev.
 
-## Phase 4: trucks and multimodal (A3)
+## Phase 4: trucks and multimodal (A3) (done)
 
-- Truck freight between industries and towns, bus feeders into rail stations.
-- Spread services so the market visibly contains air, rail passengers, rail
-  freight, buses and trucks.
-- Scale route counts to map size, and keep towns and industries free for the
-  player.
+- Road planner (`src/future_logistics/road_planner.cpp`) now builds buses,
+  feeder buses and trucks with one shared road builder, and a fleet sized by
+  the market tier.
+- **Feeder buses:** the first bus stop is built next to one of the company's
+  railway stations and joins it, so the two form one interchange. The other
+  end is an unused town 16–64 tiles away.
+- **Trucks:** from a producing industry to an industry or a town that accepts
+  the cargo, 12–96 tiles away, full-loading at the source. Secondary
+  industries (factories and so on) are only used as sources when another
+  freight service already supplies them, and those cargo chains are preferred.
+  In testing: grain by rail to a factory, then goods by truck into a town.
+- Larger worlds get more routes (see headstart scaling above).
+- Towns and industries reserved by each service stay off-limits to later
+  rivals; with four rivals and one round, most of a normal map stays free for
+  the player.
+
+Known limits: road vehicles share a single-lane dead-end road with turning at
+the stops, which limits fleet size; no trams.
 
 ## Phase 5: GRF tags (shared format live)
 

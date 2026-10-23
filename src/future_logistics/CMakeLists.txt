@@ -8,6 +8,8 @@ add_files(
     profiles.h
     rail_planner.cpp
     rail_planner.h
+    road_planner.cpp
+    road_planner.h
     scale.cpp
     scale.h
     tech_console.cpp

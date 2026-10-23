@@ -101,8 +101,10 @@ depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
 railways reserve their two industries. All engine command executions in the rail
 planner flush the track signal update buffer, as the normal command loop does.
-The air planner builds two airports of the largest available type and one
-passenger aircraft chosen by the Tech Library. No shared infrastructure is
+The air planner builds two airports of the type the market tier allows and a
+small fleet chosen by the Tech Library. The road planner builds buses, feeder
+buses that join the company's railway stations, and trucks that may continue a
+freight railway's cargo chain. No shared infrastructure is
 modified. All changes go through tested engine command interfaces and normal
 cost accounting. No map tiles are changed directly. No interactive RNG is used.
 Equivalent map seed, game settings, installed scripts and NewGRFs are required for
@@ -142,7 +144,7 @@ multiplayer dedicated server. Test artifacts go in `work/`.
 
 ## Scope and remaining work
 
-No trucks, drones, multi-stage cargo chains, hyperloop, rocket freight,
+No drones, multi-stage cargo chains, hyperloop, rocket freight,
 custom NewGRFs, signals, bridges, tunnels, terrain engineering, strategic AI
 expansion or AI vehicle adoption are implemented here. Difficult maps, disconnected heights, very early start dates,
 NewGRFs that remove compatible standard-road buses, and town restrictions may

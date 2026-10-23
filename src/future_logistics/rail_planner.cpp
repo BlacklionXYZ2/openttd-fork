@@ -487,11 +487,12 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
 /**
  * Build a freight railway from an unused producing industry to one that accepts its cargo.
  * @param library Loaded transport technology.
- * @param[in,out] used_industries Industries already served by rivals; the chosen pair is added on success.
+ * @param[in,out] reserved Markets already taken; the chosen industries are added on success, and the destination is marked as supplied.
  * @return Outcome.
  */
-ConstructionResult BuildFreightRail(const TechLibrary &library, std::set<IndustryID> &used_industries)
+ConstructionResult BuildFreightRail(const TechLibrary &library, Reservations &reserved)
 {
+	std::set<IndustryID> &used_industries = reserved.industries;
 	struct Pair { uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
 	std::vector<const Industry *> industries;
 	for (const Industry *industry : Industry::Iterate()) {
@@ -537,6 +538,7 @@ ConstructionResult BuildFreightRail(const TechLibrary &library, std::set<Industr
 		if (result == ConstructionResult::Success) {
 			used_industries.insert(pair.source->index);
 			used_industries.insert(pair.destination->index);
+			reserved.supplied.insert(pair.destination->index);
 			Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} destination={} cargo={} tier={}", _current_company,
 				pair.source->index, pair.destination->index, CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
 		}

@@ -11,8 +11,7 @@
 namespace FutureLogistics {
 
 /**
- * The rivals, in the order companies are created. Trucks (Integrated Logistics) arrive in
- * phase 4; until then that company uses what exists.
+ * The rivals, in the order companies are created.
  * @return All profiles; company N uses profile (N - 1) modulo the count.
  */
 std::span<const CompanyProfile> GetCompanyProfiles()
@@ -20,8 +19,8 @@ std::span<const CompanyProfile> GetCompanyProfiles()
 	static const std::array<CompanyProfile, 4> profiles{{
 		{1, "national_rail", "National Rail & Freight", {ServiceType::RailFreight, ServiceType::RailPassenger}},
 		{2, "aerolink", "AeroLink", {ServiceType::AirPassenger}},
-		{3, "metro_regional", "Metro & Regional", {ServiceType::RailPassenger, ServiceType::Bus}},
-		{4, "integrated_logistics", "Integrated Logistics", {ServiceType::RailFreight}},
+		{3, "metro_regional", "Metro & Regional", {ServiceType::RailPassenger, ServiceType::FeederBus}},
+		{4, "integrated_logistics", "Integrated Logistics", {ServiceType::RailFreight, ServiceType::TruckFreight}},
 	}};
 	return profiles;
 }
@@ -38,6 +37,8 @@ std::string_view ServiceName(ServiceType type)
 		case ServiceType::RailPassenger: return "rail_passenger";
 		case ServiceType::RailFreight: return "rail_freight";
 		case ServiceType::AirPassenger: return "air_passenger";
+		case ServiceType::FeederBus: return "feeder_bus";
+		case ServiceType::TruckFreight: return "truck_freight";
 	}
 	NOT_REACHED();
 }

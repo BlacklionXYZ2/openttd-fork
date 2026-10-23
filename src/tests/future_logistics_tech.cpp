@@ -98,3 +98,16 @@ TEST_CASE("FutureLogisticsScale - tiers and grants")
 	CHECK(RivalGrant(2000, 0, 500, 25000000) == 0);
 	CHECK(RivalGrant(0, 4, 500, 25000000) == 0);
 }
+
+TEST_CASE("FutureLogisticsScale - fleets and rounds")
+{
+	using namespace FutureLogistics;
+	CHECK(GetTierLimits(MarketTier::Village).fleet == 1);
+	for (uint8_t i = 1; i <= to_underlying(MarketTier::Metropolis); i++) {
+		CHECK(GetTierLimits(static_cast<MarketTier>(i)).fleet >= GetTierLimits(static_cast<MarketTier>(i - 1)).fleet);
+	}
+	CHECK(ServiceRounds(0) == 1);
+	CHECK(ServiceRounds(49999) == 1);
+	CHECK(ServiceRounds(50000) == 2);
+	CHECK(ServiceRounds(10000000) == 3);
+}

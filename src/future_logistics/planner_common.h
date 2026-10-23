@@ -9,7 +9,9 @@
 #include "../command_type.h"
 #include "../direction_type.h"
 #include "../map_func.h"
+#include "../industry_type.h"
 #include "../tile_map.h"
+#include "../town_type.h"
 
 namespace FutureLogistics {
 
@@ -17,6 +19,13 @@ constexpr DoCommandFlags EXEC{DoCommandFlag::Execute}; ///< Execute after comman
 constexpr DoCommandFlags CONSTRUCT{DoCommandFlag::Auto, DoCommandFlag::NoWater}; ///< Normal construction trait flags.
 constexpr size_t MAX_SEARCH = 8192; ///< Maximum visited tiles per town pair.
 constexpr size_t MAX_PAIRS = 128; ///< Maximum town pairs considered per company.
+
+/** Markets already taken by earlier rivals, so they do not compete for the same customers. */
+struct Reservations {
+	std::set<TownID> towns; ///< Towns served by passenger services.
+	std::set<IndustryID> industries; ///< Industries served by freight services.
+	std::set<IndustryID> supplied; ///< Industries that receive freight, so secondary ones will produce.
+};
 
 /** Outcome controlling whether another candidate may safely be tried. */
 enum class ConstructionResult {

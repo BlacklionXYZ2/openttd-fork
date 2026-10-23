@@ -85,9 +85,10 @@ std::vector<TileIndex> FindAirportSites(const Town *town, const AirportSpec *spe
  * @param b Top corner of the second airport.
  * @param aircraft Aircraft to buy.
  * @param cargo Cargo to refit it to.
+ * @param fleet Number of aircraft.
  * @return Whether preflight rejected, execution failed, or the service was built.
  */
-ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const Engine *aircraft, CargoType cargo)
+ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const Engine *aircraft, CargoType cargo, uint fleet)
 {
 	Money cost = 0;
 	for (TileIndex corner : {a, b}) {
@@ -99,16 +100,18 @@ ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const En
 		cost += result.GetCost();
 	}
 	const Company *company = Company::Get(_current_company);
-	if (cost * 2 + aircraft->GetCost() * 2 > company->money) return ConstructionResult::Rejected;
+	if (cost * 2 + aircraft->GetCost() * 2 * fleet > company->money) return ConstructionResult::Rejected;
 	const AirportSpec *spec = AirportSpec::Get(type);
 	if ((company->clear_limit >> 16) < static_cast<uint>(spec->size_x * spec->size_y) * 2 + 8) return ConstructionResult::Rejected;
 
 	std::vector<TileIndex> built;
-	VehicleID vehicle = VehicleID::Invalid();
+	std::vector<VehicleID> vehicles;
 	auto rollback = [&]() {
-		if (vehicle != VehicleID::Invalid() && Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid).Failed()) {
-			Debug(Facility::Misc, Severity::Error, "FL rollback failed selling vehicle={}; infrastructure retained", vehicle);
-			return;
+		for (VehicleID vehicle : vehicles) {
+			if (Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid).Failed()) {
+				Debug(Facility::Misc, Severity::Error, "FL rollback failed selling vehicle={}; infrastructure retained", vehicle);
+				return;
+			}
 		}
 		/* Clearing any airport tile removes the whole airport. */
 		for (auto it = built.rbegin(); it != built.rend(); ++it) {
@@ -127,23 +130,26 @@ ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const En
 	}
 	const Station *origin = Station::GetByTile(a);
 	if (origin->airport.GetNumHangars() == 0) return fail("hangar");
-	auto result = Command<Commands::BuildVehicle>::Do(EXEC, origin->airport.GetHangarTile(0), aircraft->index, false, cargo, ClientID::Invalid);
-	if (ExtractCommandCost(result).Failed()) return fail("vehicle");
-	vehicle = std::get<1>(result);
-	for (VehicleOrderID i = 0; i < 2; i++) {
-		Order order;
-		order.MakeGoToStation(GetStationIndex(i == 0 ? a : b));
-		/* Non-train orders must use the far end; the default near end is rejected. */
-		order.SetStopLocation(OrderStopLocation::FarEnd);
-		auto inserted = Command<Commands::InsertOrder>::Do(EXEC, vehicle, i, order);
-		if (inserted.Failed()) {
-			Debug(Facility::Misc, Severity::Warning, "FL order rejected error={}", inserted.GetErrorMessage());
-			return fail("orders");
+	for (uint n = 0; n < fleet; n++) {
+		auto result = Command<Commands::BuildVehicle>::Do(EXEC, origin->airport.GetHangarTile(0), aircraft->index, false, cargo, ClientID::Invalid);
+		if (ExtractCommandCost(result).Failed()) return fail("vehicle");
+		const VehicleID vehicle = std::get<1>(result);
+		vehicles.push_back(vehicle);
+		for (VehicleOrderID i = 0; i < 2; i++) {
+			Order order;
+			order.MakeGoToStation(GetStationIndex(i == 0 ? a : b));
+			/* Non-train orders must use the far end; the default near end is rejected. */
+			order.SetStopLocation(OrderStopLocation::FarEnd);
+			auto inserted = Command<Commands::InsertOrder>::Do(EXEC, vehicle, i, order);
+			if (inserted.Failed()) {
+				Debug(Facility::Misc, Severity::Warning, "FL order rejected error={}", inserted.GetErrorMessage());
+				return fail("orders");
+			}
 		}
+		if (Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true).Failed()) return fail("start");
 	}
-	if (Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true).Failed()) return fail("start");
-	Debug(Facility::Misc, Severity::Notice, "FL air company={} airport={} vehicle={} from={} to={} distance={} balance={}",
-		_current_company, type, vehicle, a, b, DistanceManhattan(a, b), Company::Get(_current_company)->money);
+	Debug(Facility::Misc, Severity::Notice, "FL air company={} airport={} vehicles={} vehicle={} from={} to={} distance={} balance={}",
+		_current_company, type, fleet, vehicles.front(), a, b, DistanceManhattan(a, b), Company::Get(_current_company)->money);
 	return ConstructionResult::Success;
 }
 } // namespace
@@ -209,7 +215,7 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<To
 			if (record == nullptr) continue;
 			for (TileIndex a : town_sites(pair.a)) {
 				for (TileIndex b : town_sites(pair.b)) {
-					const auto result = BuildAirline(type, a, b, Engine::Get(record->engine), cargo);
+					const auto result = BuildAirline(type, a, b, Engine::Get(record->engine), cargo, limits.fleet);
 					if (result == ConstructionResult::Rejected) continue;
 					if (result == ConstructionResult::Success) {
 						used_towns.insert(pair.a->index);

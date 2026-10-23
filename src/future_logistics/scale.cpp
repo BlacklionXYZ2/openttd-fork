@@ -17,11 +17,11 @@ namespace FutureLogistics {
  * Town tiers use the smaller town of a pair; freight uses the source industry's production rate.
  */
 static constexpr std::array<TierLimits, 4> TIERS{{
-	/* min_population, min_production, rail_passenger, air_passenger, max_airport_class, track_rank, platform_length */
-	{0, 0, false, false, 0, 1, 2}, // Village: buses only.
-	{500, 8, true, true, 0, 1, 2}, // Town: short trains on the cheapest track, small airports.
-	{1500, 16, true, true, 1, 2, 3}, // City: longer trains, better track, large airports.
-	{4000, 32, true, true, 2, UINT8_MAX, 4}, // Metropolis: any track, hub airports.
+	/* min_population, min_production, rail_passenger, air_passenger, max_airport_class, track_rank, platform_length, fleet */
+	{0, 0, false, false, 0, 1, 2, 1}, // Village: buses only, one vehicle per service.
+	{500, 8, true, true, 0, 1, 2, 2}, // Town: short trains on the first usable track type, small airports.
+	{1500, 16, true, true, 1, 2, 3, 3}, // City: longer trains, better track, large airports.
+	{4000, 32, true, true, 2, UINT8_MAX, 4, 4}, // Metropolis: any track, hub airports.
 }};
 static constexpr std::array<std::string_view, 4> TIER_NAMES{"village", "town", "city", "metropolis"};
 
@@ -101,6 +101,19 @@ Money RivalGrant(uint64_t world_population, uint rivals, Money per_head, Money c
 	Money share = per_head * static_cast<int64_t>(world_population);
 	share /= static_cast<int>(rivals);
 	return std::min(share, cap);
+}
+
+/**
+ * Work out how many times each rival works through its profile's services, so larger worlds
+ * get more routes. Every round still reserves its own towns and industries.
+ * @param world_population Total population of all towns.
+ * @return One round, plus one per POPULATION_PER_ROUND inhabitants, up to MAX_ROUNDS.
+ */
+uint ServiceRounds(uint64_t world_population)
+{
+	static constexpr uint64_t POPULATION_PER_ROUND = 50000;
+	static constexpr uint MAX_ROUNDS = 3;
+	return static_cast<uint>(std::min<uint64_t>(MAX_ROUNDS, 1 + world_population / POPULATION_PER_ROUND));
 }
 
 } // namespace FutureLogistics

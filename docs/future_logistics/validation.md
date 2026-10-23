@@ -73,6 +73,29 @@ rollback tripped a direction assertion from stale signal-buffer entries. Both
 were caused by not flushing the signal update buffer between directly executed
 commands.
 
+## Phase 6 (rivals that keep up)
+
+Branch `feature/rivals-keep-up`, 23 October 2026, Linux, same build setup as above.
+
+| Check | Result |
+| --- | --- |
+| CTest suite | **All passed** (2307 assertions in 104 test cases) |
+| Full-engine integration suite | **29 scenarios passed**, including a new 13-month growth run; the service scenarios now require every day-zero vehicle to keep serving its stations and the fleet not to shrink, as the rivals grow |
+| Controlled world, 1950, 13 months | Fleet 11 → 24 vehicles. AeroLink opened a new airline, Metro & Regional a mail truck route, Integrated Logistics a goods truck route; mail planes and goods trucks were added to busy routes, never past five per route. National Rail opened nothing: the rail planner found no flat, clear line between unserved towns or industries on the small map |
+| Controlled world, 1955, ten years | Every two-yearly check passed (24, 41, 43, 48 and 47 vehicles). 23 new routes, including railways for National Rail, Metro & Regional and Integrated Logistics, ferries and airlines. Locomotives went steam → UU '37' → Floss '47' and aircraft Coleman Count → FFP Dart → Bakewell Luckett through the Tech Library's replacements; at year ten every locomotive was a Floss '47' and every aircraft a Luckett. 16 loss-making vehicles were sold. All four rivals ended with 5.3 to 6.1 million and no loan |
+
+Found and fixed during the runs:
+
+- Day-zero vehicles do not share orders, so the AI counted each as its own
+  route and kept adding mail planes; routes are now told apart by cargo and
+  stations.
+- Copies were placed in the nearest depot, which could be on another route's
+  road; `GetRouteDepot` now finds a depot on the vehicle's own network.
+- The connectivity check only followed company road, and failed trucks that had
+  used a town road to reach a depot; it now follows town and unowned road too.
+- With breakdowns off vehicles never visit depots, so autorenew and autoreplace
+  never ran; the AI now sends vehicles that are due.
+
 ## Reproduction and evidence
 
 Local build (dependencies were extracted into `work/deps/usr` because this

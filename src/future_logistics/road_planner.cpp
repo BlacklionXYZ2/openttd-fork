@@ -502,7 +502,7 @@ ConstructionResult RoadLeg(const TechLibrary &library, const ServiceSpec &spec, 
  * Follow a road vehicle's owned road from where it is now.
  * @param vehicle Road vehicle to inspect.
  * @param[out] depot If given, receives the first of the owner's road depots found on that road, or INVALID_TILE.
- * @return Road stops the vehicle can reach over its owner's connected road.
+ * @return Road stops of the owner that the vehicle can reach over its owner's, town and unowned roads.
  */
 std::set<StationID> RoadStationsReachable(const Vehicle *vehicle, TileIndex *depot)
 {
@@ -516,7 +516,9 @@ std::set<StationID> RoadStationsReachable(const Vehicle *vehicle, TileIndex *dep
 		if (depot != nullptr && *depot == INVALID_TILE && IsRoadDepotTile(tile) && GetTileOwner(tile) == vehicle->owner) *depot = tile;
 		for (TileIndex next : Neighbours(tile)) {
 			if (seen.contains(next) || GetAnyRoadBits(next, RoadTramType::Road).None()) continue;
-			if (GetRoadOwner(next, RoadTramType::Road) != vehicle->owner) continue;
+			/* Road vehicles may also use town and unowned roads, which towns build onto company roads as they grow. */
+			const Owner road_owner = GetRoadOwner(next, RoadTramType::Road);
+			if (road_owner != vehicle->owner && road_owner != OWNER_TOWN && road_owner != OWNER_NONE) continue;
 			if (!GetAnyRoadBits(tile, RoadTramType::Road).Any(Bit(RouteDirection(tile, next))) || !GetAnyRoadBits(next, RoadTramType::Road).Any(Bit(RouteDirection(next, tile)))) continue;
 			seen.insert(next); queue.push(next);
 		}

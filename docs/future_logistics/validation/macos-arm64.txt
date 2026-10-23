@@ -1,0 +1,17 @@
+Native Apple Silicon CI evidence
+Commit: 133554042118cb6662f70cd7f2c03d29308695bc
+Job: https://github.com/gaznet-droid/openttd/actions/runs/39886968883/job/120197653586
+Outcome: success
+
+2026-10-23T01:59:47.6532370Z Image: macos-15-arm64
+2026-10-23T01:59:51.8059660Z ##[group]Run test "$(uname -m)" = arm64
+2026-10-23T01:59:53.3599340Z ##[group]Run cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+2026-10-23T01:59:54.2743170Z -- The CXX compiler identification is AppleClang 17.0.0.17000013
+2026-10-23T01:59:56.2144820Z -- The OBJCXX compiler identification is AppleClang 17.0.0.17000013
+2026-10-23T02:00:35.4692160Z [506/922] Building CXX object CMakeFiles/openttd_lib.dir/src/future_logistics/bootstrap.cpp.o
+2026-10-23T02:02:19.7073100Z [920/922] Linking CXX executable openttd_test
+2026-10-23T02:02:20.1597860Z [922/922] Linking CXX executable openttd
+2026-10-23T02:02:34.4363280Z 100% tests passed out of 98
+2026-10-23T02:02:34.4363540Z Total Test time (real) =  13.73 sec
+2026-10-23T02:02:35.5319190Z Artifact macos-arm64-test-logs.zip successfully finalized. Artifact ID 12472982814
+2026-10-23T02:02:35.5319780Z Artifact macos-arm64-test-logs has been successfully uploaded! Final size is 6635 bytes. Artifact ID is 12472982814

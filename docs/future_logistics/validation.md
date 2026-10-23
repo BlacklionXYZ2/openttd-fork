@@ -15,7 +15,7 @@ CMake 4.4.4, Ninja 1.13.2, SDL 2.32.4, LZMA 5.8.1, OpenGFX 7.1.
 | Full-engine integration suite | **16 scenarios passed** |
 | Default terrain, town density and tree settings, seed 12345 | Four operational starter networks |
 | Controlled world, seed 12345, repeated | Identical grants, vehicles, route endpoints, route hashes and balances |
-| Native macOS ARM64 | CI configured and submitted; not executed locally; GitHub jobs queued at documentation time |
+| Native macOS ARM64 | **Passed** on macOS 15 ARM64, AppleClang 17: native Debug build and **98/98 CTest checks** |
 
 In the controlled test, human company 0 remained local and human-controlled.
 Rivals 1–4 each received a single 25,000,000-unit grant, recorded as negative
@@ -59,12 +59,16 @@ artifact size. Optional PNG, audio, font-rendering and HTTP libraries were not
 installed here. OpenGFX and LZMA are required for the upstream saved-game tests.
 The new-game checks use SDL's dummy display and the actual GUI-capable startup
 path. Saved single-player games use the null driver for fast simulation. No
-interactive macOS GUI or Apple Silicon runtime session was available here.
+interactive macOS GUI session was available. GitHub's native ARM64 runner
+subsequently compiled commit `133554042118cb6662f70cd7f2c03d29308695bc`
+(the same engine code plus recorded validation) and passed all 98 CTest checks.
+This proves native compilation and test execution, not a manual Mac play session.
 
 - [Configure and build logs](validation/linux-build.txt)
 - [Full CTest result](validation/linux-tests.txt)
 - [Integration scenario report](validation/integration.txt)
 - [Engine and script runtime trace](validation/runtime-trace.txt)
+- [Native Apple Silicon CI evidence](validation/macos-arm64.txt)
 - [Native macOS/Linux workflow](../../.github/workflows/future-logistics.yml)
 
 ## Remaining limits
@@ -79,5 +83,5 @@ but does not refund construction/demolition costs or restore cleared trees.
 CorporateAI preserves the initial fleet; strategic expansion and technology
 adoption are not implemented. Other user-selected AIs may change the supplied
 network after startup. The GS milestone messages describe planned content and do
-not unlock vehicles. Native Apple Silicon compilation/runtime must be assessed
-from the CI result and a later Mac play test; Linux results do not establish it.
+not unlock vehicles. Native compilation and automated tests passed; a manual Mac play test remains
+outstanding. The 16 full-game integration scenarios were run on Linux.

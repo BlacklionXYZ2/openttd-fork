@@ -43,6 +43,7 @@ This experimental fork enables bootstrap by default. Set these in openttd.cfg:
 [game_creation]
 bootstrap_enabled = true
 bootstrap_capital = 25000000
+bootstrap_capital_per_head = 500
 
 [difficulty]
 max_no_competitors = 4
@@ -53,7 +54,9 @@ configuration's explicit zero still disables rivals. At most four are created,
 respecting a lower competitor limit. `bootstrap_enabled=false` restores ordinary
 new-game startup. The bootstrap settings are new-game-only, local configuration,
 not new savegame fields. Capital is in internal currency units, independent of
-the display currency. Each rival receives one grant **in addition to** its
+the display currency. Each rival's grant is the world's total population times
+`bootstrap_capital_per_head`, shared between the rivals, and never more than
+`bootstrap_capital`. Each rival receives that one grant **in addition to** its
 normal initial loan. `ExpensesType::Other` records the grant; construction and
 vehicle purchases reduce the cash normally. The loan is not erased or duplicated.
 

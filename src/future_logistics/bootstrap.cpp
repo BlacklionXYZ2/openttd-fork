@@ -9,6 +9,7 @@
 #include "planner_common.h"
 #include "profiles.h"
 #include "rail_planner.h"
+#include "scale.h"
 #include "tech_library.h"
 #include "../ai/ai.hpp"
 #include "../ai/ai_config.hpp"
@@ -20,6 +21,7 @@
 #include "../debug.h"
 #include "../engine_base.h"
 #include "../engine_func.h"
+#include "../industry.h"
 #include "../landscape_cmd.h"
 #include "../misc_cmd.h"
 #include "../network/network.h"
@@ -357,14 +359,19 @@ void BootstrapFutureLogistics()
 	Reservations reserved;
 	const TechLibrary library = TechLibrary::Build();
 	const auto profiles = GetCompanyProfiles();
+	/* The headstart is in proportion to the world: capital follows the total population, capped by the setting. */
+	uint64_t population = 0;
+	for (const Town *town : Town::Iterate()) population += town->cache.population;
+	const Money grant = RivalGrant(population, count, _settings_game.game_creation.bootstrap_capital_per_head, _settings_game.game_creation.bootstrap_capital);
+	Debug(Facility::Misc, Severity::Notice, "FL market population={} towns={} industries={} grant={}", population, Town::GetNumItems(), Industry::GetNumItems(), grant);
 	for (uint i = 1; i <= count; i++) {
 		Company *company = DoStartupNewCompany(true, CompanyID{static_cast<uint8_t>(i)});
 		if (company == nullptr) { Debug(Facility::Misc, Severity::Warning, "FL company allocation failed slot={}", i); break; }
 		/* StartNew initializes a VM; no AI GameLoop runs in this synchronous callback. */
 		AI::Pause(company->index);
-		{
+		if (grant > 0) {
 			AutoRestoreBackup owner(_current_company, OWNER_DEITY);
-			auto result = Command<Commands::ChangeBankBalance>::Do(EXEC, TileIndex{0}, (Money)_settings_game.game_creation.bootstrap_capital, company->index, ExpensesType::Other);
+			auto result = Command<Commands::ChangeBankBalance>::Do(EXEC, TileIndex{0}, grant, company->index, ExpensesType::Other);
 			if (result.Failed()) {
 				Debug(Facility::Misc, Severity::Error, "FL funding failed company={}", company->index);
 				AI::Unpause(company->index);
@@ -372,7 +379,7 @@ void BootstrapFutureLogistics()
 			}
 		}
 		Debug(Facility::Misc, Severity::Notice, "FL funded company={} grant={} balance={} loan={}", company->index,
-			_settings_game.game_creation.bootstrap_capital, company->money, company->current_loan);
+			grant, company->money, company->current_loan);
 		const CompanyProfile &profile = profiles[(i - 1) % profiles.size()];
 		ApplyProfile(company, profile);
 		{

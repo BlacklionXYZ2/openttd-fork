@@ -11,6 +11,7 @@
 
 #include "../3rdparty/catch2/catch.hpp"
 
+#include "../future_logistics/scale.h"
 #include "../future_logistics/tech_library.h"
 
 #include "../safeguards.h"
@@ -65,4 +66,35 @@ TEST_CASE("FutureLogisticsTech - names round trip")
 	CHECK_FALSE(ParseTechRole("rocket").has_value());
 	CHECK(FormatTechRoles({}) == "-");
 	CHECK(FormatTechRoles({TechRole::PassengerFeeder, TechRole::PassengerCommuter}) == "passenger_commuter,passenger_feeder");
+}
+
+TEST_CASE("FutureLogisticsScale - tiers and grants")
+{
+	using namespace FutureLogistics;
+	CHECK(TierForPopulation(0) == MarketTier::Village);
+	CHECK(TierForPopulation(499) == MarketTier::Village);
+	CHECK(TierForPopulation(500) == MarketTier::Town);
+	CHECK(TierForPopulation(1500) == MarketTier::City);
+	CHECK(TierForPopulation(1000000) == MarketTier::Metropolis);
+
+	/* Each tier allows at least as much as the one below it. */
+	for (uint8_t i = 1; i <= to_underlying(MarketTier::Metropolis); i++) {
+		const TierLimits &lower = GetTierLimits(static_cast<MarketTier>(i - 1));
+		const TierLimits &upper = GetTierLimits(static_cast<MarketTier>(i));
+		CHECK(upper.min_population > lower.min_population);
+		CHECK(upper.platform_length >= lower.platform_length);
+		CHECK(upper.track_rank >= lower.track_rank);
+		CHECK(upper.max_airport_class >= lower.max_airport_class);
+		CHECK((!lower.rail_passenger || upper.rail_passenger));
+		CHECK((!lower.air_passenger || upper.air_passenger));
+	}
+	const TierLimits &village = GetTierLimits(MarketTier::Village);
+	CHECK_FALSE(village.rail_passenger);
+	CHECK_FALSE(village.air_passenger);
+
+	/* Grants follow population, are shared between rivals and never exceed the cap. */
+	CHECK(RivalGrant(2000, 4, 500, 25000000) == 250000);
+	CHECK(RivalGrant(1000000, 4, 500, 25000000) == 25000000);
+	CHECK(RivalGrant(2000, 0, 500, 25000000) == 0);
+	CHECK(RivalGrant(0, 4, 500, 25000000) == 0);
 }

@@ -46,10 +46,11 @@ test was run for these phases.
 | Check | Result |
 | --- | --- |
 | Feature GUI Debug build | Passed, no compiler warnings/errors |
-| CTest suite | **101/101 passed** (98 upstream and phase 0, 3 Tech Library unit tests) |
-| Full-engine integration suite | **22 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start) |
+| CTest suite | **102/102 passed** (98 upstream and phase 0, 4 Tech Library and scaling unit tests) |
+| Full-engine integration suite | **23 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 1 tiny world) |
+| Headstart scaling | Controlled world: 34,011 people, grant 4,251,375 per rival (below the 25 million cap), every railway and airline within its tier. Tiny world (64×64, two towns, no industries): grant about 250,000, no railways or airlines |
 | Controlled world with normal industry density, seed 12345, 1950 | All four rivals operational with six services: grain and coal freight railways, two passenger railways, a passenger airline between two small airports, a bus route |
-| Same world, 2026 start, then three simulated months | Six services on maglev track and intercontinental airports; every vehicle visited both of its stations |
+| Same world, 2026 start, then three simulated months | Six services; after scaling, electrified and monorail track and a large airport; every vehicle visited both of its stations |
 | Same world after three simulated months, then save/reload | Every train and bus had visited both ordered stations; every rival had delivered cargo; all four CorporateAI controllers reported their saved profile |
 | Default terrain, trees and towns | Same six services built |
 | Forced vehicle-purchase failure (vehicle limits 0) | Every rival's rollback left zero road bits, rail bits and station tiles |

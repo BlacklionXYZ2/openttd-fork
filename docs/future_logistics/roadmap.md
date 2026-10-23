@@ -105,6 +105,30 @@ Known limits, for later phases:
 Known limits: one aircraft per airline, no helicopters or heliports, and no
 mail.
 
+## Headstart scaling (done, applies to every phase)
+
+The headstart stays in proportion to the world. The thresholds are one table in
+`src/future_logistics/scale.cpp`, ready for balancing.
+
+- **Capital:** each rival's grant is the world's total population × the
+  `bootstrap_capital_per_head` setting (default 500), shared between the
+  rivals and capped by `bootstrap_capital` (default 25,000,000).
+- **Services:** each route is classed by its smaller town's population, or for
+  freight by the source industry's production rate:
+
+  | Tier | Smallest town | Allows |
+  |---|---|---|
+  | Village | under 500 | buses only (freight trains on 2-tile platforms) |
+  | Town | 500 | short trains on the first usable track type, small airports |
+  | City | 1,500 | 3-tile trains, first two usable track types, large airports |
+  | Metropolis | 4,000 | 4-tile trains, any track type, hub airports |
+
+- Results in testing: a 48-town world of 34,000 people gives about 4.25
+  million per rival; two towns of about 1,000 people each give about 250,000
+  and at most a bus route. In 2026 a pair of cities gets a large airport
+  rather than an intercontinental one, and town railways use electrified
+  track rather than maglev.
+
 ## Phase 4: trucks and multimodal (A3)
 
 - Truck freight between industries and towns, bus feeders into rail stations.

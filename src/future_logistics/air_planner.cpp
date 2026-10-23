@@ -5,6 +5,7 @@
 /** @file air_planner.cpp Day-zero airlines: an airport in each of two towns and a passenger aircraft between them. */
 #include "../stdafx.h"
 #include "air_planner.h"
+#include "scale.h"
 #include "tech_library.h"
 #include "../airport.h"
 #include "../cargotype.h"
@@ -149,7 +150,10 @@ ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const En
 
 /**
  * Build an airport in each of two unused towns and fly a passenger aircraft between them.
- * Larger airport types are tried first, since they allow larger and faster aircraft.
+ * Larger airport types are tried first, since they allow larger and faster aircraft, but the
+ * smaller town's market tier caps the airport class: no airline for villages, small airports
+ * for towns, large ones for cities and hubs only for metropolises. NewGRF airport classes
+ * beyond hub are never used.
  * @param library Loaded transport technology, including the airport types.
  * @param[in,out] used_towns Towns already served by rivals; the chosen towns are added on success.
  * @return Outcome.
@@ -178,7 +182,8 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<To
 		for (const Town *b : towns) {
 			if (a->index >= b->index) continue;
 			const uint distance = DistanceManhattan(a->xy, b->xy);
-			if (distance >= MIN_AIR_DISTANCE && distance <= MAX_AIR_DISTANCE) pairs.push_back({distance, a, b});
+			if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(TierForTowns(a, b)).air_passenger) continue;
+			pairs.push_back({distance, a, b});
 		}
 	}
 	std::ranges::stable_sort(pairs, {}, &Pair::distance);
@@ -195,6 +200,9 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<To
 		};
 		for (size_t i = 0; i < std::min(MAX_AIR_PAIRS, pairs.size()); i++) {
 			const Pair &pair = pairs[i];
+			const MarketTier tier = TierForTowns(pair.a, pair.b);
+			const TierLimits &limits = GetTierLimits(tier);
+			if (!limits.air_passenger || spec->class_index.base() > limits.max_airport_class) continue;
 			const uint range_needed = static_cast<uint>(std::ceil(std::sqrt(static_cast<double>(DistanceSquare(pair.a->xy, pair.b->xy)))));
 			const TechRecord *record = library.FindBest({.mode = TechMode::Air, .role = TechRole::PassengerIntercity, .cargo = cargo,
 				.company = _current_company, .short_strip = short_strip, .distance = range_needed});
@@ -206,7 +214,8 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<To
 					if (result == ConstructionResult::Success) {
 						used_towns.insert(pair.a->index);
 						used_towns.insert(pair.b->index);
-						Debug(Facility::Misc, Severity::Notice, "FL towns company={} a={} b={} aircraft={}", _current_company, pair.a->index, pair.b->index, record->id);
+						Debug(Facility::Misc, Severity::Notice, "FL towns company={} a={} b={} tier={} population={},{} aircraft={}", _current_company,
+							pair.a->index, pair.b->index, TierName(tier), pair.a->cache.population, pair.b->cache.population, record->id);
 					}
 					return result;
 				}

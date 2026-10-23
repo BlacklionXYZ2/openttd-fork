@@ -444,7 +444,8 @@ struct NetworkSettings {
 /** Settings related to the creation of games. */
 struct GameCreationSettings {
 	bool bootstrap_enabled; ///< Future Logistics single-player new-game bootstrap (not saved).
-	uint32_t bootstrap_capital; ///< One-time rival capital grant in internal currency (not saved).
+	uint32_t bootstrap_capital; ///< Largest one-time rival capital grant in internal currency (not saved).
+	uint32_t bootstrap_capital_per_head; ///< Rival capital per inhabitant of the world, shared between rivals (not saved).
 	uint32_t generation_seed; ///< noise seed for world generation
 	TimerGameCalendar::Year starting_year; ///< starting date
 	TimerGameCalendar::Year ending_year; ///< scoring end date

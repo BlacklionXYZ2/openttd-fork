@@ -36,7 +36,7 @@ def main():
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
             towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
-            climate="temperate", commands="", industries=4):
+            climate="temperate", commands="", industries=4, map_bits=8):
         folder = output / name
         folder.mkdir(exist_ok=True)
         for src, dst in [(baseset, folder / "baseset"),
@@ -48,8 +48,8 @@ def main():
 bootstrap_enabled = {str(enabled).lower()}
 bootstrap_capital = {capital}
 landscape = {climate}
-map_x = 8
-map_y = 8
+map_x = {map_bits}
+map_y = {map_bits}
 land_generator = 0
 custom_town_number = {towns}
 custom_sea_level = 0
@@ -138,12 +138,19 @@ DayZeroMonopolies =
     require("FL complete companies=5 operational=4" in first, "expected four operational rivals; see new-game/process.log")
     services = int(re.search(r"FL complete companies=5 operational=4 services=(\d+)", first).group(1))
     require(services >= 4 and vehicle_count(first) == [services], "initial ownership/connectivity failed")
+    population, market_grant = map(int, re.search(r"FL market population=(\d+) towns=\d+ industries=\d+ grant=(\d+)", first).groups())
+    require(market_grant == min(25000000, 500 * population // 4), "grant does not follow world population and the cap")
+    require(market_grant < 25000000, "the controlled world is small enough that the population, not the cap, should set the grant")
     grants = re.findall(r"FL funded company=(\d+) grant=(\d+) balance=(\d+) loan=(\d+)", first)
     require(len(grants) == 4, "expected exactly four funding entries")
-    require(all(int(grant) == 25000000 and int(balance) == int(loan) + int(grant)
+    require(all(int(grant) == market_grant and int(balance) == int(loan) + int(grant)
                 for _, grant, balance, loan in grants), "funding/loan accounting mismatch")
-    ledger = re.findall(r"FL check funds company=([1-4]).*other_expense=-25000000 ai=true", first)
+    ledger = re.findall(rf"FL check funds company=([1-4]).*other_expense=-{market_grant} ai=true", first)
     require(len(ledger) == 4, "grant ledger or AI company type is incorrect")
+    tiers = re.findall(r"FL towns company=\d+ a=\d+ b=\d+ tier=(\w+) population=(\d+),(\d+)", first)
+    limits = {"town": 500, "city": 1500, "metropolis": 4000}
+    require(tiers and all(min(int(a), int(b)) >= limits[tier] for tier, a, b in tiers),
+            "a railway or airline was built for towns smaller than its tier allows")
     require(snapshot.exists(), "new-game snapshot missing")
     second, _ = run("repeat-seed")
     fingerprint = lambda text: re.findall(r"FL (?:funded|profile|route|rail|service|complete)[^\n]*", text)
@@ -178,6 +185,12 @@ DayZeroMonopolies =
     modern_served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", modern_run)
     require(vehicle_count(modern_run)[-1:] == [modern_services] and len(set(modern_served)) == modern_services,
             "not every 2026 vehicle visited an ordered station")
+
+    tiny, _ = run("tiny-world", map_bits=6, towns=2, industries=0)
+    tiny_grant = int(re.search(r"FL market population=\d+ towns=2 industries=0 grant=(\d+)", tiny).group(1))
+    require(tiny_grant < 500000, "two villages should not fund rivals with millions")
+    require(not re.search(r"type=(rail_\w+|air_passenger) fallback=\w+ result=success", tiny),
+            "two villages should not get railways or airlines")
 
     default_world, _ = run("default-world", default_world=True)
     require("FL complete companies=5 operational=4" in default_world, "default terrain/tree/town settings failed")
@@ -233,7 +246,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: four distinct company profiles with an airline, passenger rail, freight rail and buses; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: headstart scaled to world population and town size; four distinct company profiles with an airline, passenger rail, freight rail and buses; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

@@ -110,7 +110,7 @@ Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileInde
 		previous.emplace(tile, INVALID_TILE);
 		queue.push(tile);
 	}
-	while (!queue.empty() && previous.size() <= MAX_SEARCH) {
+	while (!queue.empty()) {
 		TileIndex tile = queue.front();
 		queue.pop();
 		if (targets.contains(tile)) {
@@ -130,6 +130,7 @@ Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileInde
 			}
 		}
 		for (TileIndex next : Neighbours(tile)) {
+			if (previous.size() >= MAX_SEARCH) break;
 			if (previous.contains(next) || !Buildable(next) || GetTileZ(next) != GetTileZ(tile)) continue;
 			previous.emplace(next, tile);
 			queue.push(next);

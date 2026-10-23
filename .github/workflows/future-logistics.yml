@@ -1,10 +1,11 @@
 name: Future Logistics
 on:
-  push:
-    branches: [feature/day-zero-bootstrap]
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: future-logistics-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

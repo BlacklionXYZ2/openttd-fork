@@ -31,7 +31,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
-            towns=48, year=1950, service=False, dedicated=False):
+            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500):
         folder = output / name
         folder.mkdir(exist_ok=True)
         for src, dst in [(baseset, folder / "baseset"),
@@ -56,6 +56,8 @@ terrain_type = 0
 quantity_sea_lakes = 4
 industry_density = 0
 vehicle_breakdowns = 0
+[vehicle]
+max_roadveh = {vehicle_limit}
 [economy]
 town_layout = 1
 [gui]
@@ -118,6 +120,9 @@ DayZeroMonopolies =
 
     restored, served_save = run("service-and-reload", load=snapshot, service=True)
     require("FL begin" not in restored and "FL funded" not in restored, "bootstrap ran on load")
+    require(restored.count("CorporateAI operating the engine-built starter network") == 4,
+            "not every AI resumed its controller")
+    require("Companies visible after startup: 5" in restored, "Game Script did not inspect the initialized companies")
     checks = re.findall(r"FL check result=true companies=5 vehicles=4 human=0", restored)
     require(len(checks) == 2, "initial or three-month saved-game connectivity check failed")
     visits = re.findall(r"FL check company=(\d+).*connected=true served=true", restored)
@@ -144,12 +149,23 @@ DayZeroMonopolies =
     failed, _ = run("one-town-fallback", towns=1)
     require("FL complete companies=5 operational=0" in failed and failed.count("FL no usable bus route") == 4,
             "unfavourable map did not fail cleanly")
+    rolled_back, _ = run("vehicle-command-failure", vehicle_limit=0)
+    require("FL complete companies=5 operational=0" in rolled_back, "vehicle cap failure was not bounded")
+    require("phase=vehicle" in rolled_back, "vehicle construction failure path was not exercised")
+    clean = re.findall(r"FL check funds company=([1-4]).*road_bits=0 station_tiles=0", rolled_back)
+    require(len(clean) == 4, "failed vehicle purchase left orphaned infrastructure")
     early, _ = run("no-available-bus", year=1800)
     require("FL complete companies=5 operational=0" in early, "vehicle availability not respected")
+    _, late_save = run("late-start", year=2050, enabled=False, limit=0, towns=1)
+    late_news, late_announced = run("late-start-news", load=late_save, enabled=False, service=True)
+    require(len(re.findall(r"Published roadmap milestone (2022|2035|2050)", late_news)) == 3,
+            "late-start milestone catch-up failed")
+    persisted_news, _ = run("milestone-persistence", load=late_announced, enabled=False, service=True)
+    require("Published roadmap milestone" not in persisted_news, "milestone news duplicated after reload")
     multiplayer, _ = run("dedicated-multiplayer", dedicated=True)
     require("FL begin" not in multiplayer and "FL funded" not in multiplayer,
             "multiplayer executed bootstrap")
-    summary = "PASS: company ownership/count; funding/loan accounting; four connected started bus networks; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback; dedicated multiplayer exclusion.\n"
+    summary = "PASS: company ownership/count; funding/loan accounting; four connected started bus networks; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

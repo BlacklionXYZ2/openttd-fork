@@ -26,6 +26,7 @@ class DayZeroMonopolies extends GSController {
                 if (year >= milestone[0] && !(key in this.announced)) {
                     if (GSNews.Create(GSNews.NT_GENERAL, milestone[1], GSCompany.COMPANY_INVALID, GSNews.NR_NONE, 0)) {
                         this.announced[key] <- true;
+                        GSLog.Info("Published roadmap milestone " + key);
                     }
                 }
             }

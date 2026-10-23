@@ -1,0 +1,57 @@
+name: Future Logistics
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: future-logistics-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  apple-silicon:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+      - name: Dependencies
+        run: brew install cmake ninja pkg-config xz libpng lzo zstd
+      - name: Configure native Debug build
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+      - name: Build
+        run: cmake --build build --parallel 3
+      - name: Install regression graphics
+        run: |
+          curl -fsSL https://cdn.openttd.org/opengfx-releases/0.6.0/opengfx-0.6.0-all.zip -o work-opengfx.zip
+          unzip -q work-opengfx.zip -d build/baseset
+      - name: Unit and upstream regression tests
+        run: ctest --test-dir build --output-on-failure --parallel 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-arm64-test-logs
+          path: build/Testing/Temporary/
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libsdl2-dev liblzma-dev liblzo2-dev libpng-dev zlib1g-dev openttd-opengfx
+      - name: Configure Debug build
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DISABLE_FIND_PACKAGE_CURL=ON
+      - name: Build
+        run: cmake --build build --parallel 3
+      - name: Install regression graphics
+        run: cp -r /usr/share/games/openttd/baseset/* build/baseset/
+      - name: Unit and upstream regression tests
+        run: ctest --test-dir build --output-on-failure --parallel 3
+      - name: Single-player runtime integration
+        run: python3 tests/future_logistics/integration.py --binary build/openttd --baseset /usr/share/games/openttd/baseset --output work/integration
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-test-logs
+          path: |
+            build/Testing/Temporary/
+            work/integration/

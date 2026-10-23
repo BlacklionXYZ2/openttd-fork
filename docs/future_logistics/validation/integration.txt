@@ -1,0 +1,17 @@
+Running new-game
+Running repeat-seed
+Running service-and-reload
+Running served-save-reload
+Running default-world
+Running no-cleanup-capacity
+Running disabled
+Running ordinary-save-load
+Running competitor-limit
+Running one-town-fallback
+Running vehicle-command-failure
+Running no-available-bus
+Running late-start
+Running late-start-news
+Running milestone-persistence
+Running dedicated-multiplayer
+PASS: company ownership/count; funding/loan accounting; four connected started bus networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.

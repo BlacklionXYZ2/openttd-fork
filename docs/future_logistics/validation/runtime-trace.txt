@@ -1,0 +1,225 @@
+=== competitor-limit ===
+[2026-10-23 01:55:51] dbg: [misc:3] FL begin seed=12345 rivals=2
+[2026-10-23 01:55:51] dbg: [misc:3] FL funded company=1 grant=1000000 balance=1100000 loan=100000
+[2026-10-23 01:55:51] dbg: [misc:3] FL route company=1 vehicle=0 from=48809 to=45215 depot=49066 tiles=45 balance=1087238 signature=11792182889849805783
+[2026-10-23 01:55:51] dbg: [misc:3] FL towns company=1 a=17 b=26
+[2026-10-23 01:55:51] dbg: [misc:3] FL funded company=2 grant=1000000 balance=1100000 loan=100000
+[2026-10-23 01:55:51] dbg: [misc:3] FL route company=2 vehicle=1 from=52271 to=55093 depot=52016 tiles=18 balance=1091492 signature=8233393561985219233
+[2026-10-23 01:55:51] dbg: [misc:3] FL towns company=2 a=19 b=39
+[2026-10-23 01:55:51] dbg: [misc:3] FL complete companies=3 operational=2
+[2026-10-23 01:55:51] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:51] dbg: [misc:3] FL check funds company=1 balance=1087238 loan=100000 road_bits=93 station_tiles=2 other_expense=-1000000 ai=true
+[2026-10-23 01:55:51] dbg: [misc:3] FL check funds company=2 balance=1091492 loan=100000 road_bits=39 station_tiles=2 other_expense=-1000000 ai=true
+[2026-10-23 01:55:51] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=false tile=49066 profit=0 delivered=0
+[2026-10-23 01:55:51] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=false tile=52016 profit=0 delivered=0
+[2026-10-23 01:55:51] dbg: [misc:3] FL check result=true companies=3 vehicles=2 human=0
+=== dedicated-multiplayer ===
+[2026-10-23 01:56:03] dbg: [misc:3] FL check result=false companies=0 vehicles=0 human=255
+=== default-world ===
+[2026-10-23 01:55:41] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:41] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:41] dbg: [misc:3] FL route company=1 vehicle=0 from=45332 to=43795 depot=45330 tiles=8 balance=25093062 signature=5636425644927309658
+[2026-10-23 01:55:41] dbg: [misc:3] FL towns company=1 a=1 b=7
+[2026-10-23 01:55:41] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:41] dbg: [misc:3] FL route company=2 vehicle=1 from=20437 to=18902 depot=20182 tiles=8 balance=25093017 signature=4139838647929161876
+[2026-10-23 01:55:41] dbg: [misc:3] FL towns company=2 a=8 b=9
+[2026-10-23 01:55:41] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:41] dbg: [misc:3] FL route company=3 vehicle=2 from=15738 to=15727 depot=15993 tiles=12 balance=25092314 signature=9453924120320860905
+[2026-10-23 01:55:41] dbg: [misc:3] FL towns company=3 a=14 b=19
+[2026-10-23 01:55:41] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:41] dbg: [misc:3] FL route company=4 vehicle=3 from=36416 to=36921 depot=36159 tiles=10 balance=25092718 signature=3648266870207215687
+[2026-10-23 01:55:41] dbg: [misc:3] FL towns company=4 a=17 b=18
+[2026-10-23 01:55:41] dbg: [misc:3] FL complete companies=5 operational=4
+[2026-10-23 01:55:41] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:41] dbg: [misc:3] FL check funds company=1 balance=25093062 loan=100000 road_bits=19 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:41] dbg: [misc:3] FL check funds company=2 balance=25093017 loan=100000 road_bits=19 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:41] dbg: [misc:3] FL check funds company=3 balance=25092314 loan=100000 road_bits=27 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:41] dbg: [misc:3] FL check funds company=4 balance=25092718 loan=100000 road_bits=23 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:41] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=false tile=45330 profit=0 delivered=0
+[2026-10-23 01:55:41] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=false tile=20182 profit=0 delivered=0
+[2026-10-23 01:55:41] dbg: [misc:3] FL check company=3 vehicle=2 connected=true served=false tile=15993 profit=0 delivered=0
+[2026-10-23 01:55:41] dbg: [misc:3] FL check company=4 vehicle=3 connected=true served=false tile=36159 profit=0 delivered=0
+[2026-10-23 01:55:41] dbg: [misc:3] FL check result=true companies=5 vehicles=4 human=0
+=== disabled ===
+[2026-10-23 01:55:48] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:48] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+=== late-start ===
+[2026-10-23 01:55:59] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:59] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+=== late-start-news ===
+[2026-10-23 01:56:00] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:56:00] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+[2026-10-23 01:56:00] dbg: [script:4] [18] [I] Companies visible after startup: 1
+[2026-10-23 01:56:00] dbg: [script:4] [18] [I] Published roadmap milestone 2022
+[2026-10-23 01:56:00] dbg: [script:4] [18] [I] Published roadmap milestone 2035
+[2026-10-23 01:56:00] dbg: [script:4] [18] [I] Published roadmap milestone 2050
+[2026-10-23 01:56:01] dbg: [misc:3] FL check funds company=0 balance=99616 loan=100000 road_bits=0 station_tiles=0 other_expense=50 ai=false
+[2026-10-23 01:56:01] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+=== milestone-persistence ===
+[2026-10-23 01:56:02] dbg: [misc:3] FL check funds company=0 balance=99616 loan=100000 road_bits=0 station_tiles=0 other_expense=50 ai=false
+[2026-10-23 01:56:02] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+[2026-10-23 01:56:02] dbg: [script:4] [18] [I] Companies visible after startup: 1
+[2026-10-23 01:56:02] dbg: [misc:3] FL check funds company=0 balance=99041 loan=100000 road_bits=0 station_tiles=0 other_expense=125 ai=false
+[2026-10-23 01:56:02] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+=== new-game ===
+[2026-10-23 01:55:35] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:35] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:35] dbg: [misc:3] FL route company=1 vehicle=0 from=48809 to=45215 depot=49066 tiles=45 balance=25087238 signature=11792182889849805783
+[2026-10-23 01:55:35] dbg: [misc:3] FL towns company=1 a=17 b=26
+[2026-10-23 01:55:35] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:35] dbg: [misc:3] FL route company=2 vehicle=1 from=52271 to=55093 depot=52016 tiles=18 balance=25091492 signature=8233393561985219233
+[2026-10-23 01:55:35] dbg: [misc:3] FL towns company=2 a=19 b=39
+[2026-10-23 01:55:35] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:35] dbg: [misc:3] FL route company=3 vehicle=2 from=44511 to=45275 depot=44766 tiles=8 balance=25093062 signature=145972411400559637
+[2026-10-23 01:55:35] dbg: [misc:3] FL towns company=3 a=23 b=38
+[2026-10-23 01:55:35] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:35] dbg: [misc:3] FL route company=4 vehicle=3 from=44366 to=44375 depot=44623 tiles=10 balance=25092748 signature=10838635879303576018
+[2026-10-23 01:55:35] dbg: [misc:3] FL towns company=4 a=1 b=45
+[2026-10-23 01:55:35] dbg: [misc:3] FL complete companies=5 operational=4
+[2026-10-23 01:55:35] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:35] dbg: [misc:3] FL check funds company=1 balance=25087238 loan=100000 road_bits=93 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:35] dbg: [misc:3] FL check funds company=2 balance=25091492 loan=100000 road_bits=39 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:35] dbg: [misc:3] FL check funds company=3 balance=25093062 loan=100000 road_bits=19 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:35] dbg: [misc:3] FL check funds company=4 balance=25092748 loan=100000 road_bits=23 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:35] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=false tile=49066 profit=0 delivered=0
+[2026-10-23 01:55:35] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=false tile=52016 profit=0 delivered=0
+[2026-10-23 01:55:35] dbg: [misc:3] FL check company=3 vehicle=2 connected=true served=false tile=44766 profit=0 delivered=0
+[2026-10-23 01:55:35] dbg: [misc:3] FL check company=4 vehicle=3 connected=true served=false tile=44623 profit=0 delivered=0
+[2026-10-23 01:55:35] dbg: [misc:3] FL check result=true companies=5 vehicles=4 human=0
+=== no-available-bus ===
+[2026-10-23 01:55:57] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:57] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:57] dbg: [misc:2] FL no usable bus route company=1 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:57] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:57] dbg: [misc:2] FL no usable bus route company=2 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:57] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:57] dbg: [misc:2] FL no usable bus route company=3 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:57] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:57] dbg: [misc:2] FL no usable bus route company=4 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:57] dbg: [misc:3] FL complete companies=5 operational=0
+[2026-10-23 01:55:57] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:57] dbg: [misc:3] FL check funds company=1 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:57] dbg: [misc:3] FL check funds company=2 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:57] dbg: [misc:3] FL check funds company=3 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:57] dbg: [misc:3] FL check funds company=4 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:57] dbg: [misc:3] FL check result=true companies=5 vehicles=0 human=0
+=== no-cleanup-capacity ===
+[2026-10-23 01:55:43] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:43] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:44] dbg: [misc:2] FL no usable bus route company=1 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:44] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:45] dbg: [misc:2] FL no usable bus route company=2 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:45] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:45] dbg: [misc:2] FL no usable bus route company=3 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:45] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:46] dbg: [misc:2] FL no usable bus route company=4 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:46] dbg: [misc:3] FL complete companies=5 operational=0
+[2026-10-23 01:55:46] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:46] dbg: [misc:3] FL check funds company=1 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:46] dbg: [misc:3] FL check funds company=2 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:46] dbg: [misc:3] FL check funds company=3 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:46] dbg: [misc:3] FL check funds company=4 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:46] dbg: [misc:3] FL check result=true companies=5 vehicles=0 human=0
+=== one-town-fallback ===
+[2026-10-23 01:55:52] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:52] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:52] dbg: [misc:2] FL no usable bus route company=1 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:52] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:52] dbg: [misc:2] FL no usable bus route company=2 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:52] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:52] dbg: [misc:2] FL no usable bus route company=3 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:52] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:52] dbg: [misc:2] FL no usable bus route company=4 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:52] dbg: [misc:3] FL complete companies=5 operational=0
+[2026-10-23 01:55:52] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:52] dbg: [misc:3] FL check funds company=1 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:52] dbg: [misc:3] FL check funds company=2 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:52] dbg: [misc:3] FL check funds company=3 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:52] dbg: [misc:3] FL check funds company=4 balance=25100000 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:52] dbg: [misc:3] FL check result=true companies=5 vehicles=0 human=0
+=== ordinary-save-load ===
+[2026-10-23 01:55:49] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:49] dbg: [misc:3] FL check result=true companies=1 vehicles=0 human=0
+=== repeat-seed ===
+[2026-10-23 01:55:37] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:37] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:37] dbg: [misc:3] FL route company=1 vehicle=0 from=48809 to=45215 depot=49066 tiles=45 balance=25087238 signature=11792182889849805783
+[2026-10-23 01:55:37] dbg: [misc:3] FL towns company=1 a=17 b=26
+[2026-10-23 01:55:37] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:37] dbg: [misc:3] FL route company=2 vehicle=1 from=52271 to=55093 depot=52016 tiles=18 balance=25091492 signature=8233393561985219233
+[2026-10-23 01:55:37] dbg: [misc:3] FL towns company=2 a=19 b=39
+[2026-10-23 01:55:37] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:37] dbg: [misc:3] FL route company=3 vehicle=2 from=44511 to=45275 depot=44766 tiles=8 balance=25093062 signature=145972411400559637
+[2026-10-23 01:55:37] dbg: [misc:3] FL towns company=3 a=23 b=38
+[2026-10-23 01:55:37] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:37] dbg: [misc:3] FL route company=4 vehicle=3 from=44366 to=44375 depot=44623 tiles=10 balance=25092748 signature=10838635879303576018
+[2026-10-23 01:55:37] dbg: [misc:3] FL towns company=4 a=1 b=45
+[2026-10-23 01:55:37] dbg: [misc:3] FL complete companies=5 operational=4
+[2026-10-23 01:55:37] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:37] dbg: [misc:3] FL check funds company=1 balance=25087238 loan=100000 road_bits=93 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:37] dbg: [misc:3] FL check funds company=2 balance=25091492 loan=100000 road_bits=39 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:37] dbg: [misc:3] FL check funds company=3 balance=25093062 loan=100000 road_bits=19 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:37] dbg: [misc:3] FL check funds company=4 balance=25092748 loan=100000 road_bits=23 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:37] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=false tile=49066 profit=0 delivered=0
+[2026-10-23 01:55:37] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=false tile=52016 profit=0 delivered=0
+[2026-10-23 01:55:37] dbg: [misc:3] FL check company=3 vehicle=2 connected=true served=false tile=44766 profit=0 delivered=0
+[2026-10-23 01:55:37] dbg: [misc:3] FL check company=4 vehicle=3 connected=true served=false tile=44623 profit=0 delivered=0
+[2026-10-23 01:55:37] dbg: [misc:3] FL check result=true companies=5 vehicles=4 human=0
+=== served-save-reload ===
+[2026-10-23 01:55:40] dbg: [misc:3] FL check funds company=0 balance=99616 loan=100000 road_bits=0 station_tiles=0 other_expense=50 ai=false
+[2026-10-23 01:55:40] dbg: [misc:3] FL check funds company=1 balance=25087022 loan=100000 road_bits=93 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:40] dbg: [misc:3] FL check funds company=2 balance=25091347 loan=100000 road_bits=39 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:40] dbg: [misc:3] FL check funds company=3 balance=25092718 loan=100000 road_bits=19 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:40] dbg: [misc:3] FL check funds company=4 balance=25092373 loan=100000 road_bits=23 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:40] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=true tile=46234 profit=43025 delivered=31
+[2026-10-23 01:55:40] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=true tile=54581 profit=61197 delivered=54
+[2026-10-23 01:55:40] dbg: [misc:3] FL check company=3 vehicle=2 connected=true served=true tile=45275 profit=10249 delivered=56
+[2026-10-23 01:55:40] dbg: [misc:3] FL check company=4 vehicle=3 connected=true served=true tile=44369 profit=2309 delivered=34
+[2026-10-23 01:55:40] dbg: [misc:3] FL check result=true companies=5 vehicles=4 human=0
+=== service-and-reload ===
+[2026-10-23 01:55:38] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:38] dbg: [misc:3] FL check funds company=1 balance=25087238 loan=100000 road_bits=93 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:38] dbg: [misc:3] FL check funds company=2 balance=25091492 loan=100000 road_bits=39 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:38] dbg: [misc:3] FL check funds company=3 balance=25093062 loan=100000 road_bits=19 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:38] dbg: [misc:3] FL check funds company=4 balance=25092748 loan=100000 road_bits=23 station_tiles=2 other_expense=-25000000 ai=true
+[2026-10-23 01:55:38] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=false tile=49066 profit=0 delivered=0
+[2026-10-23 01:55:38] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=false tile=52016 profit=0 delivered=0
+[2026-10-23 01:55:38] dbg: [misc:3] FL check company=3 vehicle=2 connected=true served=false tile=44766 profit=0 delivered=0
+[2026-10-23 01:55:38] dbg: [misc:3] FL check company=4 vehicle=3 connected=true served=false tile=44623 profit=0 delivered=0
+[2026-10-23 01:55:38] dbg: [misc:3] FL check result=true companies=5 vehicles=4 human=0
+[2026-10-23 01:55:38] dbg: [script:4] [1] [I] CorporateAI operating the engine-built starter network; expansion is not implemented.
+[2026-10-23 01:55:38] dbg: [script:4] [2] [I] CorporateAI operating the engine-built starter network; expansion is not implemented.
+[2026-10-23 01:55:38] dbg: [script:4] [3] [I] CorporateAI operating the engine-built starter network; expansion is not implemented.
+[2026-10-23 01:55:38] dbg: [script:4] [4] [I] CorporateAI operating the engine-built starter network; expansion is not implemented.
+[2026-10-23 01:55:38] dbg: [script:4] [18] [I] Companies visible after startup: 5
+[2026-10-23 01:55:39] dbg: [misc:3] FL check funds company=0 balance=99616 loan=100000 road_bits=0 station_tiles=0 other_expense=50 ai=false
+[2026-10-23 01:55:39] dbg: [misc:3] FL check funds company=1 balance=25087022 loan=100000 road_bits=93 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:39] dbg: [misc:3] FL check funds company=2 balance=25091347 loan=100000 road_bits=39 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:39] dbg: [misc:3] FL check funds company=3 balance=25092718 loan=100000 road_bits=19 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:39] dbg: [misc:3] FL check funds company=4 balance=25092373 loan=100000 road_bits=23 station_tiles=2 other_expense=-24999950 ai=true
+[2026-10-23 01:55:39] dbg: [misc:3] FL check company=1 vehicle=0 connected=true served=true tile=46234 profit=43025 delivered=31
+[2026-10-23 01:55:39] dbg: [misc:3] FL check company=2 vehicle=1 connected=true served=true tile=54581 profit=61197 delivered=54
+[2026-10-23 01:55:39] dbg: [misc:3] FL check company=3 vehicle=2 connected=true served=true tile=45275 profit=10249 delivered=56
+[2026-10-23 01:55:39] dbg: [misc:3] FL check company=4 vehicle=3 connected=true served=true tile=44369 profit=2309 delivered=34
+[2026-10-23 01:55:39] dbg: [misc:3] FL check result=true companies=5 vehicles=4 human=0
+=== vehicle-command-failure ===
+[2026-10-23 01:55:54] dbg: [misc:3] FL begin seed=12345 rivals=4
+[2026-10-23 01:55:54] dbg: [misc:3] FL funded company=1 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:54] dbg: [misc:2] FL construction failed company=1 phase=vehicle; clearing new infrastructure
+[2026-10-23 01:55:54] dbg: [misc:2] FL no usable bus route company=1 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:54] dbg: [misc:3] FL funded company=2 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:54] dbg: [misc:2] FL construction failed company=2 phase=vehicle; clearing new infrastructure
+[2026-10-23 01:55:54] dbg: [misc:2] FL no usable bus route company=2 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:54] dbg: [misc:3] FL funded company=3 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:54] dbg: [misc:2] FL construction failed company=3 phase=vehicle; clearing new infrastructure
+[2026-10-23 01:55:54] dbg: [misc:2] FL no usable bus route company=3 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:54] dbg: [misc:3] FL funded company=4 grant=25000000 balance=25100000 loan=100000
+[2026-10-23 01:55:54] dbg: [misc:2] FL construction failed company=4 phase=vehicle; clearing new infrastructure
+[2026-10-23 01:55:54] dbg: [misc:2] FL no usable bus route company=4 (terrain, towns, funds or vehicle availability); funded company retained
+[2026-10-23 01:55:54] dbg: [misc:3] FL complete companies=5 operational=0
+[2026-10-23 01:55:54] dbg: [misc:3] FL check funds company=0 balance=100000 loan=100000 road_bits=0 station_tiles=0 other_expense=0 ai=false
+[2026-10-23 01:55:54] dbg: [misc:3] FL check funds company=1 balance=25089415 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:54] dbg: [misc:3] FL check funds company=2 balance=25090120 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:54] dbg: [misc:3] FL check funds company=3 balance=25090120 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:54] dbg: [misc:3] FL check funds company=4 balance=25090120 loan=100000 road_bits=0 station_tiles=0 other_expense=-25000000 ai=true
+[2026-10-23 01:55:54] dbg: [misc:3] FL check result=true companies=5 vehicles=0 human=0

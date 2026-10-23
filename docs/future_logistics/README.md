@@ -149,6 +149,9 @@ ones, so raise `max_no_competitors` to include them. The test NewGRF in
 (NML 0.9.0). The format is described in
 [`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
 
+See [`compatibility.md`](compatibility.md) for how third-party NewGRFs (FIRS,
+Iron Horse, Unsinkable Sam) and the NewGRF specification fit with this format.
+
 See `tests/future_logistics/integration.py` for reproducible full-engine checks.
 Pass `--update-snapshots` after an intended change to the Tech Library to
 rewrite `tests/future_logistics/tech_snapshots/`.

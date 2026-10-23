@@ -155,6 +155,7 @@ private:
 TechRoles InferTechRoles(TechMode mode, CargoClasses classes, bool traction, bool helicopter);
 double ScoreTech(uint capacity, uint speed, uint16_t reliability_max, Money cost, Money running_cost, int life_years);
 std::string_view TechModeName(TechMode mode);
+std::string TechId(const Engine *engine);
 std::string_view TechRoleName(TechRole role);
 std::optional<TechMode> ParseTechMode(std::string_view name);
 std::optional<TechRole> ParseTechRole(std::string_view name);

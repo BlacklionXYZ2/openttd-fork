@@ -195,6 +195,10 @@ bool InspectFutureLogistics()
 			default: reached = RoadStationsReachable(vehicle); break;
 		}
 		connected &= destinations.size() == 2 && std::ranges::includes(reached, destinations);
+		if (!connected) {
+			Debug(Facility::Misc, Severity::Notice, "FL check detail vehicle={} orders={} stopped={} destinations={} reached={}", vehicle->index, vehicle->GetNumOrders(),
+				vehicle->vehstatus.Test(VehState::Stopped), destinations.size(), reached.size());
+		}
 		valid &= connected;
 		checked++;
 		/* All cargo, so freight trains count too. */

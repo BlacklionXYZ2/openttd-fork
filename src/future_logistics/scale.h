@@ -37,6 +37,7 @@ const TierLimits &GetTierLimits(MarketTier tier);
 std::string_view TierName(MarketTier tier);
 MarketTier TierForPopulation(uint32_t population);
 MarketTier TierForTowns(const Town *a, const Town *b);
+uint ProductionRate(const Industry *industry, CargoType cargo);
 MarketTier TierForIndustry(const Industry *industry, CargoType cargo);
 Money RivalGrant(uint64_t world_population, uint rivals, Money per_head, Money cap);
 uint ServiceRounds(uint64_t world_population);

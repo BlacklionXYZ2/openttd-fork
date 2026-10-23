@@ -107,7 +107,7 @@ std::vector<FreightPair> FreightPairs(const ServiceSpec &spec, const Reservation
 		for (const auto &produced : source->produced) {
 			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
 			/* Secondary industries produce nothing until supplied; vehicles would wait for a full load forever. */
-			if (produced.rate == 0 && !chain) continue;
+			if (ProductionRate(source, produced.cargo) == 0 && !chain) continue;
 			const MarketTier tier = TierForIndustry(source, produced.cargo);
 			if (tier < spec.min_tier) continue;
 			for (const Industry *destination : Industry::Iterate()) {
@@ -229,6 +229,7 @@ ConstructionResult BuildFreight(const TechLibrary &library, const ServiceSpec &s
 	const MechanicInfo *main = FindMechanic(mechanic);
 	if (main == nullptr || main->leg == nullptr) return ConstructionResult::Rejected;
 	const std::vector<FreightPair> pairs = FreightPairs(spec, reserved);
+	Debug(Facility::Misc, Severity::Notice, "FL freight company={} lead={} candidates={}", _current_company, main->name, pairs.size());
 
 	size_t tried = 0;
 	for (const FreightPair &pair : pairs) {

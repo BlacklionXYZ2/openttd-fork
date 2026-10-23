@@ -54,8 +54,7 @@ TechRecord Describe(const Engine *engine, const std::map<CargoType, TechRoles> &
 	record.engine = engine->index;
 	const GrfID grfid = engine->GetGRFID();
 	record.mode = ModeOf(engine->type);
-	/* Local IDs are numbered per vehicle type, so the mode is part of the identifier. */
-	record.id = fmt::format("{}:{}:{}", grfid.Empty() ? "base" : FormatArrayAsHex(grfid), TechModeName(record.mode), engine->grf_prop.local_id);
+	record.id = TechId(engine);
 	record.cargo = engine->GetDefaultCargoType();
 	record.refits = GetUnionOfArticulatedRefitMasks(engine->index, true);
 	record.capacity = engine->CanCarryCargo() ? engine->GetDisplayDefaultCapacity() : 0;
@@ -126,6 +125,18 @@ void ApplyInfraTags(InfraRecord &record, std::span<const BadgeID> badges, std::v
 	record.provides = tags.provides;
 }
 } // namespace
+
+/**
+ * Get the identifier the Tech Library and logs use for a vehicle: its NewGRF, mode and local ID, such as "4E4F5602:rail:12".
+ * Local IDs are numbered per vehicle type, so the mode is part of the identifier.
+ * @param engine Engine.
+ * @return Identifier, with "base" for the base game's vehicles.
+ */
+std::string TechId(const Engine *engine)
+{
+	const GrfID grfid = engine->GetGRFID();
+	return fmt::format("{}:{}:{}", grfid.Empty() ? "base" : FormatArrayAsHex(grfid), TechModeName(ModeOf(engine->type)), engine->grf_prop.local_id);
+}
 
 /**
  * Infer the jobs an untagged vehicle suits, from its mode and default cargo.

@@ -23,6 +23,7 @@
 #include "../rail.h"
 #include "../rail_cmd.h"
 #include "../rail_map.h"
+#include "../road_map.h"
 #include "../settings_type.h"
 #include "../signal_func.h"
 #include "../station_cmd.h"
@@ -361,9 +362,9 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={}",
+	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={}",
 		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
-		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature);
+		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon));
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(a.front);
 		result_built->to = GetStationIndex(b.front);
@@ -592,6 +593,11 @@ static std::vector<DiagDirection> RailSides(TileIndex tile)
 	}
 	if (IsTileType(tile, TileType::Station) && HasStationRail(tile)) {
 		if (GetRailStationAxis(tile) == Axis::X) return {DiagDirection::NE, DiagDirection::SW};
+		return {DiagDirection::SE, DiagDirection::NW};
+	}
+	/* Towns may later build roads across the line; the crossing's owner is the track's owner. */
+	if (IsLevelCrossingTile(tile)) {
+		if (GetCrossingRailAxis(tile) == Axis::X) return {DiagDirection::NE, DiagDirection::SW};
 		return {DiagDirection::SE, DiagDirection::NW};
 	}
 	return {};

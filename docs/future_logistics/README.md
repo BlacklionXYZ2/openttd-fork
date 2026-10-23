@@ -24,6 +24,11 @@ ctest --test-dir build --output-on-failure
 file build/openttd.app/Contents/MacOS/openttd
 ```
 
+On an Intel Mac (for example a 2015 MacBook Pro on macOS 12 Monterey), use the
+same steps with `-DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0`.
+The manual "Mac Intel x86_64 build artifact" workflow builds a packaged app for
+that target.
+
 Follow upstream's [build documentation](https://github.com/OpenTTD/OpenTTD/wiki/Compiling-on-macOS)
 for optional audio dependencies. Install a compatible OpenGFX baseset before
 running the game. The CI workflow checks the host architecture on `macos-15`
@@ -38,6 +43,7 @@ This experimental fork enables bootstrap by default. Set these in openttd.cfg:
 [game_creation]
 bootstrap_enabled = true
 bootstrap_capital = 25000000
+bootstrap_capital_per_head = 500
 
 [difficulty]
 max_no_competitors = 4
@@ -48,12 +54,17 @@ configuration's explicit zero still disables rivals. At most four are created,
 respecting a lower competitor limit. `bootstrap_enabled=false` restores ordinary
 new-game startup. The bootstrap settings are new-game-only, local configuration,
 not new savegame fields. Capital is in internal currency units, independent of
-the display currency. Each rival receives one grant **in addition to** its
+the display currency. Each rival's grant is the world's total population times
+`bootstrap_capital_per_head`, shared between the rivals, and never more than
+`bootstrap_capital`. Each rival receives that one grant **in addition to** its
 normal initial loan. `ExpensesType::Other` records the grant; construction and
 vehicle purchases reduce the cash normally. The loan is not erased or duplicated.
 
 Copy `mods/ai/CorporateAI` to your personal OpenTTD `ai/` directory and select it
-for all four rivals in AI/Game Script settings. It preserves the supplied fleet;
+for all four rivals in AI/Game Script settings. Each rival is given a profile
+(see [`roadmap.md`](roadmap.md), phase 2), is named after it, and builds that
+profile's starter railways and bus routes. CorporateAI reads its `profile`
+setting. It preserves the supplied fleet;
 expansion and technology adoption are future work. Other selected AIs remain in
 control after bootstrap and may replace or sell the starter network. Without an
 installed AI, upstream's dummy fallback is used; it is not a strategic competitor.
@@ -83,10 +94,17 @@ The planner considers the first 128 towns, up to 128 nearest town pairs (distanc
 16–96), and explores at most 8192 tiles per pair in a fixed neighbour order.
 Candidate stops must both accept and produce passengers and belong to the selected
 town's area. Each completed network reserves its two towns during bootstrap so
-initial rivals do not starve one another of passengers at overlapping stops. The first implementation
-uses available standard-road passenger buses and flat clear/tree tiles at one
+initial rivals do not starve one another of passengers at overlapping stops. The bus planner
+uses the best available standard-road passenger bus and flat clear/tree tiles at one
 height. It builds an owned route, two distinct drive-through stops, an attached
-depot and one started bus with two station orders. No shared infrastructure is
+depot and one started bus with two station orders. The rail planner works the
+same way for two terminus stations, a single line, a depot and one train; freight
+railways reserve their two industries. All engine command executions in the rail
+planner flush the track signal update buffer, as the normal command loop does.
+The air planner builds two airports of the type the market tier allows and a
+small fleet chosen by the Tech Library. The road planner builds buses, feeder
+buses that join the company's railway stations, and trucks that may continue a
+freight railway's cargo chain. No shared infrastructure is
 modified. All changes go through tested engine command interfaces and normal
 cost accounting. No map tiles are changed directly. No interactive RNG is used.
 Equivalent map seed, game settings, installed scripts and NewGRFs are required for
@@ -112,15 +130,23 @@ vehicle orders, started vehicles and ownership/road-bit connectivity from depot
 to both stops. It logs whether each bus has visited an ordered station, its tile
 and profit. This diagnostic is read-only and can be used after save/reload.
 
+The console command `future_logistics_tech list` prints the Tech Library: every
+loaded vehicle, rail type, road type and airport with the roles the planner
+sees. `future_logistics_tech best <mode> <role> [<cargo label>]` shows which
+vehicle a company would pick for a job. The format is described in
+[`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
+
 See `tests/future_logistics/integration.py` for reproducible full-engine checks.
+Pass `--update-snapshots` after an intended change to the Tech Library to
+rewrite `tests/future_logistics/tech_snapshots/`.
 The tests use a real GUI-capable SDL driver with SDL's dummy display, not a
 multiplayer dedicated server. Test artifacts go in `work/`.
 
 ## Scope and remaining work
 
-No drones, cargo chains, hyperloop, rocket freight, custom NewGRFs, bridges,
-tunnels, terrain engineering, strategic AI expansion or AI vehicle adoption are
-implemented here. Difficult maps, disconnected heights, very early start dates,
+No drones, multi-stage cargo chains, hyperloop, rocket freight,
+custom NewGRFs, signals, bridges, tunnels, terrain engineering, strategic AI
+expansion or AI vehicle adoption are implemented here. Difficult maps, disconnected heights, very early start dates,
 NewGRFs that remove compatible standard-road buses, and town restrictions may
 prevent some or all initial networks. See `validation.md` for actual test results
 and limitations; CI configuration alone is not a completed Apple Silicon test.

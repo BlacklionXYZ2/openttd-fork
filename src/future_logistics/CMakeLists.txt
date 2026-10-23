@@ -1,4 +1,18 @@
 add_files(
+    air_planner.cpp
+    air_planner.h
     bootstrap.cpp
     bootstrap.h
+    planner_common.h
+    profiles.cpp
+    profiles.h
+    rail_planner.cpp
+    rail_planner.h
+    road_planner.cpp
+    road_planner.h
+    scale.cpp
+    scale.h
+    tech_console.cpp
+    tech_library.cpp
+    tech_library.h
 )

@@ -14,6 +14,8 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
+SNAPSHOTS = ROOT / "tests/future_logistics/tech_snapshots"
+CLIMATES = ["temperate", "arctic", "tropic", "toyland"]
 
 
 def require(condition, message):
@@ -26,12 +28,15 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--baseset", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=ROOT / "work/integration")
+    parser.add_argument("--update-snapshots", action="store_true",
+                        help="rewrite the Tech Library snapshots instead of comparing against them")
     args = parser.parse_args()
     binary, baseset, output = args.binary.resolve(), args.baseset.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
-            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False):
+            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
+            climate="temperate", commands="", industries=4, map_bits=8):
         folder = output / name
         folder.mkdir(exist_ok=True)
         for src, dst in [(baseset, folder / "baseset"),
@@ -42,8 +47,9 @@ def main():
         cfg.write_text(f"""[game_creation]
 bootstrap_enabled = {str(enabled).lower()}
 bootstrap_capital = {capital}
-map_x = 8
-map_y = 8
+landscape = {climate}
+map_x = {map_bits}
+map_y = {map_bits}
 land_generator = 0
 custom_town_number = {towns}
 custom_sea_level = 0
@@ -54,12 +60,14 @@ competitors_interval = 0
 number_towns = 4
 terrain_type = 0
 quantity_sea_lakes = 4
-industry_density = 0
+industry_density = {industries}
 vehicle_breakdowns = 0
 [construction]
 clear_frame_burst = {clear_limit}
 [vehicle]
 max_roadveh = {vehicle_limit}
+max_trains = {vehicle_limit}
+max_aircraft = {vehicle_limit}
 [economy]
 town_layout = 1
 [gui]
@@ -85,7 +93,7 @@ DayZeroMonopolies =
             cfg.write_text(text)
         scripts = folder / "scripts"
         scripts.mkdir(exist_ok=True)
-        startup = "future_logistics_check\n"
+        startup = commands + "future_logistics_check\n"
         if service:
             startup += "schedule on-next-calendar-month scripts/month1.scr\n"
             (scripts / "month1.scr").write_text("schedule on-next-calendar-month scripts/month2.scr\n")
@@ -111,37 +119,84 @@ DayZeroMonopolies =
         require("Your script made an error" not in text and "is not a valid index" not in text, f"{name}: Squirrel runtime error")
         return text, folder / "snapshot.sav"
 
-    first, snapshot = run("new-game")
+    first, snapshot = run("new-game", commands="future_logistics_tech best road passenger_feeder PASS\n")
+    # Trains are one vehicle each; road and air services log their fleet size.
+    fleet = lambda text: (len(re.findall(r"FL rail company=", text))
+                          + sum(int(n) for n in re.findall(r"FL (?:route|air) company=\d+ (?:kind=\w+ cargo=\w+ |airport=\d+ )vehicles=(\d+)", text)))
+    vehicle_count = lambda text: [int(n) for n in re.findall(r"FL check result=true companies=5 vehicles=(\d+) human=0", text)]
+    profiles = re.findall(r"FL profile company=([1-4]) profile=(\w+)", first)
+    require(profiles == [("1", "national_rail"), ("2", "aerolink"), ("3", "metro_regional"), ("4", "integrated_logistics")],
+            "each rival should get its own profile, in order")
+    built = set(re.findall(r"FL service company=\d+ type=(\w+) fallback=\w+ result=success", first))
+    require({"air_passenger", "rail_passenger", "rail_freight", "feeder_bus", "truck_freight"} <= built,
+            "the starting market should contain an airline, passenger and freight rail, feeder buses and trucks")
+    require(re.search(r"FL feeder company=3 station=\d+ town=\d+", first), "Metro & Regional did not feed its railway station")
+    require(re.search(r"FL industries company=\d+ source=\d+ chain=true", first), "no truck service continues a freight railway's cargo chain")
+    require(re.search(r"FL air company=2 airport=\d+ vehicles=\d+", first), "AeroLink did not open an airline")
+    freight = re.findall(r"FL rail company=\d+ kind=freight cargo=(\w+) track=\w+ vehicle=\d+ wagons=([1-9])", first)
+    require(freight, "no freight train with wagons was built")
+    chosen = re.findall(r"FL tech company=([1-4]) role=passenger_feeder vehicle=(\S+)", first)
+    require(chosen and len({vehicle for _, vehicle in chosen}) == 1,
+            "every bus should come from the Tech Library")
+    best = re.search(r"FL tech best id=(\S+) mode=road", first)
+    require(best and best.group(1) == chosen[0][1], "console best-vehicle query disagrees with the planner")
     require("FL complete companies=5 operational=4" in first, "expected four operational rivals; see new-game/process.log")
-    require("FL check result=true companies=5 vehicles=4 human=0" in first, "initial ownership/connectivity failed")
+    services = int(re.search(r"FL complete companies=5 operational=4 services=(\d+)", first).group(1))
+    vehicles = fleet(first)
+    require(services >= 4 and vehicles >= services and vehicle_count(first) == [vehicles], "initial ownership/connectivity failed")
+    population, market_grant = map(int, re.search(r"FL market population=(\d+) towns=\d+ industries=\d+ grant=(\d+)", first).groups())
+    require(market_grant == min(25000000, 500 * population // 4), "grant does not follow world population and the cap")
+    require(market_grant < 25000000, "the controlled world is small enough that the population, not the cap, should set the grant")
     grants = re.findall(r"FL funded company=(\d+) grant=(\d+) balance=(\d+) loan=(\d+)", first)
     require(len(grants) == 4, "expected exactly four funding entries")
-    require(all(int(grant) == 25000000 and int(balance) == int(loan) + int(grant)
+    require(all(int(grant) == market_grant and int(balance) == int(loan) + int(grant)
                 for _, grant, balance, loan in grants), "funding/loan accounting mismatch")
-    ledger = re.findall(r"FL check funds company=([1-4]).*other_expense=-25000000 ai=true", first)
+    ledger = re.findall(rf"FL check funds company=([1-4]).*other_expense=-{market_grant} ai=true", first)
     require(len(ledger) == 4, "grant ledger or AI company type is incorrect")
+    tiers = re.findall(r"FL towns company=\d+ a=\d+ b=\d+ tier=(\w+) population=(\d+),(\d+)", first)
+    limits = {"town": 500, "city": 1500, "metropolis": 4000}
+    require(tiers and all(min(int(a), int(b)) >= limits[tier] for tier, a, b in tiers),
+            "a railway or airline was built for towns smaller than its tier allows")
     require(snapshot.exists(), "new-game snapshot missing")
     second, _ = run("repeat-seed")
-    fingerprint = lambda text: re.findall(r"FL (?:funded|route|complete)[^\n]*", text)
+    fingerprint = lambda text: re.findall(r"FL (?:funded|profile|route|rail|service|complete)[^\n]*", text)
     require(fingerprint(first) == fingerprint(second), "fixed-seed setup differs")
 
     restored, served_save = run("service-and-reload", load=snapshot, service=True)
     require("FL begin" not in restored and "FL funded" not in restored, "bootstrap ran on load")
     require(restored.count("CorporateAI operating the engine-built starter network") == 4,
             "not every AI resumed its controller")
+    require(sorted(re.findall(r"CorporateAI profile ([1-4])", restored)) == ["1", "2", "3", "4"],
+            "CorporateAI did not see its saved profile")
     require("Companies visible after startup: 5" in restored, "Game Script did not inspect the initialized companies")
-    checks = re.findall(r"FL check result=true companies=5 vehicles=4 human=0", restored)
-    require(len(checks) == 2, "initial or three-month saved-game connectivity check failed")
-    visits = re.findall(r"FL check company=(\d+).*connected=true served=true", restored)
-    require(len(set(visits)) == 4, "not every rival bus visited an ordered station")
+    require(vehicle_count(restored) == [vehicles, vehicles], "initial or three-month saved-game connectivity check failed")
+    served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", restored)
+    require(len(set(served)) == vehicles, "not every rival vehicle visited an ordered station")
     deliveries = re.findall(r"FL check company=(\d+).*delivered=([1-9]\d*)", restored)
-    require(len({company for company, count in deliveries}) == 4, "not every rival delivered passengers")
+    require(len({company for company, count in deliveries}) == 4, "not every rival delivered cargo")
     funds = lambda text: re.findall(r"FL check funds company=(\d+) balance=(-?\d+) loan=(\d+)", text)[:5]
     require(funds(first) == funds(restored), "funds changed across initial save/reload")
     require(served_save.exists(), "service snapshot missing")
     again, _ = run("served-save-reload", load=served_save)
-    require("FL begin" not in again and "FL check result=true companies=5 vehicles=4 human=0" in again,
+    require("FL begin" not in again and vehicle_count(again) == [vehicles],
             "served network failed save/reload")
+
+    modern, modern_save = run("modern-start", year=2026)
+    require("FL complete companies=5 operational=4" in modern, "2026 start did not give four operational rivals")
+    modern_built = set(re.findall(r"FL service company=\d+ type=(\w+) fallback=false result=success", modern))
+    require({"air_passenger", "rail_passenger", "rail_freight"} <= modern_built,
+            "2026 start should still get airlines and railways on modern track types")
+    modern_vehicles = fleet(modern)
+    modern_run, _ = run("modern-service", load=modern_save, service=True)
+    modern_served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", modern_run)
+    require(vehicle_count(modern_run)[-1:] == [modern_vehicles] and len(set(modern_served)) == modern_vehicles,
+            "not every 2026 vehicle visited an ordered station")
+
+    tiny, _ = run("tiny-world", map_bits=6, towns=2, industries=0)
+    tiny_grant = int(re.search(r"FL market population=\d+ towns=2 industries=0 grant=(\d+)", tiny).group(1))
+    require(tiny_grant < 500000, "two villages should not fund rivals with millions")
+    require(not re.search(r"type=(rail_\w+|air_passenger) fallback=\w+ result=success", tiny),
+            "two villages should not get railways or airlines")
 
     default_world, _ = run("default-world", default_world=True)
     require("FL complete companies=5 operational=4" in default_world, "default terrain/tree/town settings failed")
@@ -158,13 +213,13 @@ DayZeroMonopolies =
     require("FL complete companies=3" in limited and limited.count("FL funded company=") == 2,
             "competitor limit not respected")
     require("grant=1000000" in limited, "configured grant ignored")
-    failed, _ = run("one-town-fallback", towns=1)
-    require("FL complete companies=5 operational=0" in failed and failed.count("FL no usable bus route") == 4,
+    failed, _ = run("one-town-fallback", towns=1, industries=0)
+    require("FL complete companies=5 operational=0" in failed and failed.count("FL no usable starter network") == 4,
             "unfavourable map did not fail cleanly")
     rolled_back, _ = run("vehicle-command-failure", vehicle_limit=0)
     require("FL complete companies=5 operational=0" in rolled_back, "vehicle cap failure was not bounded")
     require("phase=vehicle" in rolled_back, "vehicle construction failure path was not exercised")
-    clean = re.findall(r"FL check funds company=([1-4]).*road_bits=0 station_tiles=0", rolled_back)
+    clean = re.findall(r"FL check funds company=([1-4]).*road_bits=0 station_tiles=0 rail_bits=0", rolled_back)
     require(len(clean) == 4, "failed vehicle purchase left orphaned infrastructure")
     early, _ = run("no-available-bus", year=1800)
     require("FL complete companies=5 operational=0" in early, "vehicle availability not respected")
@@ -177,7 +232,27 @@ DayZeroMonopolies =
     multiplayer, _ = run("dedicated-multiplayer", dedicated=True)
     require("FL begin" not in multiplayer and "FL funded" not in multiplayer,
             "multiplayer executed bootstrap")
-    summary = "PASS: company ownership/count; funding/loan accounting; four connected started bus networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    for climate in CLIMATES:
+        listing, _ = run(f"tech-{climate}", enabled=False, limit=0, towns=1, climate=climate,
+                         commands="future_logistics_tech list\n")
+        lines = re.findall(r"FL tech (?:vehicle|infra|summary)[^\n]*", listing)
+        require(lines and lines[-1].startswith("FL tech summary"), f"{climate}: library listing missing")
+        vehicles = [line for line in lines if line.startswith("FL tech vehicle")]
+        require(not [line for line in vehicles if "roles=-" in line and " capacity=0 " not in line],
+                f"{climate}: a vehicle that carries cargo has no inferred role")
+        require(any("mode=road" in line and "passenger_feeder" in line and "buildable=true" in line for line in vehicles),
+                f"{climate}: no buildable bus in 1950")
+        snapshot_file = SNAPSHOTS / f"{climate}.txt"
+        text = "\n".join(lines) + "\n"
+        if args.update_snapshots:
+            SNAPSHOTS.mkdir(parents=True, exist_ok=True)
+            snapshot_file.write_text(text)
+        else:
+            require(snapshot_file.exists() and snapshot_file.read_text() == text,
+                    f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
+                    "rerun with --update-snapshots if the change is intended")
+
+    summary = "PASS: headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

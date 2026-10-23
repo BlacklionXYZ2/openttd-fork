@@ -36,6 +36,35 @@ exclusion. A forced purchase failure left **zero road bits and station tiles**
 for all four rivals. No Squirrel errors or cleanup failures appeared in the final
 suite.
 
+## Phases 1 to 4 (Tech Library, profiles, railways, airlines, trucks and feeders)
+
+Branch `feature/tech-library`, 23 October 2026. Environment: Ubuntu 24.04,
+x86_64, GCC 13.3.0, CMake 3.28.3, Ninja, SDL 2.30.0, OpenGFX 7.1. Debug build
+with `-g1`, as above. These results are from Linux only; no Mac build or play
+test was run for these phases.
+
+| Check | Result |
+| --- | --- |
+| Feature GUI Debug build | Passed, no compiler warnings/errors |
+| CTest suite | **103/103 passed** (98 upstream and phase 0, 5 Tech Library and scaling unit tests) |
+| Full-engine integration suite | **23 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 1 tiny world) |
+| Headstart scaling | Controlled world: 34,011 people, grant 4,251,375 per rival (below the 25 million cap), every railway and airline within its tier. Tiny world (64×64, two towns, no industries): grant about 250,000, no railways or airlines |
+| Controlled world with normal industry density, seed 12345, 1950 | All four rivals operational with seven services and nine vehicles: grain and coal freight railways, two passenger railways, an airline with two aircraft, a two-bus feeder into Metro & Regional's railway station, and a goods truck from the factory that the grain railway supplies |
+| Same world after three simulated months | Every vehicle visited both of its stations; the goods truck had delivered goods made from rail-delivered grain |
+| Same world, 2026 start, then three simulated months | Seven services; electrified and monorail track, a large airport, a steel-to-goods chain; every vehicle visited both of its stations |
+| Same world after three simulated months, then save/reload | Every train and bus had visited both ordered stations; every rival had delivered cargo; all four CorporateAI controllers reported their saved profile |
+| Default terrain, trees and towns | Same six services built |
+| Forced vehicle-purchase failure (vehicle limits 0) | Every rival's rollback left zero road bits, rail bits and station tiles |
+| 2026 start (manual run, phase 1 only, before railways and airlines) | Four operational bus networks using the Foster Bus, chosen by the Tech Library |
+
+During phase 3, aircraft orders were rejected until they used the far-end stop
+location, as bus orders already did, and railways failed in 2026 until the rail
+planner chose the track type. Two engine issues were found and fixed during phase 2: rail commands from
+different companies tripped a signal-buffer ownership assertion, and rail
+rollback tripped a direction assertion from stale signal-buffer entries. Both
+were caused by not flushing the signal update buffer between directly executed
+commands.
+
 ## Reproduction and evidence
 
 Local build (dependencies were extracted into `work/deps/usr` because this

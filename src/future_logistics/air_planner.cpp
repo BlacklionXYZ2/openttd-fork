@@ -164,16 +164,16 @@ ConstructionResult BuildAirline(uint8_t type, TileIndex a, TileIndex b, const En
  * @param[in,out] used_towns Towns already served by rivals; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildPassengerAirline(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
 {
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
 
 	std::vector<const InfraRecord *> airports;
 	for (const InfraRecord &record : library.Infrastructure()) {
-		if (record.kind != InfraKind::Airport) continue;
-		const AirportSpec *spec = AirportSpec::Get(record.index);
-		if (spec->IsAvailable() && spec->fsm != nullptr && GetAirport(record.index)->flags.Test(AirportFTAClass::Flag::Airplanes)) airports.push_back(&record);
+		if (record.kind != InfraKind::Airport || !spec.AllowsInfrastructure(record.tech)) continue;
+		const AirportSpec *airport_spec = AirportSpec::Get(record.index);
+		if (airport_spec->IsAvailable() && airport_spec->fsm != nullptr && GetAirport(record.index)->flags.Test(AirportFTAClass::Flag::Airplanes)) airports.push_back(&record);
 	}
 	std::ranges::stable_sort(airports, std::greater{}, [](const InfraRecord *r) { return r->size_x * r->size_y; });
 
@@ -188,7 +188,8 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<To
 		for (const Town *b : towns) {
 			if (a->index >= b->index) continue;
 			const uint distance = DistanceManhattan(a->xy, b->xy);
-			if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(TierForTowns(a, b)).air_passenger) continue;
+			const MarketTier tier = TierForTowns(a, b);
+			if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(tier).air_passenger || tier < spec.min_tier) continue;
 			pairs.push_back({distance, a, b});
 		}
 	}
@@ -196,22 +197,31 @@ ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<To
 
 	for (const InfraRecord *airport : airports) {
 		const uint8_t type = static_cast<uint8_t>(airport->index);
-		const AirportSpec *spec = AirportSpec::Get(type);
+		const AirportSpec *airport_spec = AirportSpec::Get(type);
 		const bool short_strip = GetAirport(type)->flags.Test(AirportFTAClass::Flag::ShortStrip);
 		std::map<TownID, std::vector<TileIndex>> sites;
 		auto town_sites = [&](const Town *town) -> const std::vector<TileIndex> & {
 			auto it = sites.find(town->index);
 			if (it != sites.end()) return it->second;
-			return sites.emplace(town->index, FindAirportSites(town, spec, cargo)).first->second;
+			return sites.emplace(town->index, FindAirportSites(town, airport_spec, cargo)).first->second;
 		};
 		for (size_t i = 0; i < std::min(MAX_AIR_PAIRS, pairs.size()); i++) {
 			const Pair &pair = pairs[i];
 			const MarketTier tier = TierForTowns(pair.a, pair.b);
 			const TierLimits &limits = GetTierLimits(tier);
-			if (!limits.air_passenger || spec->class_index.base() > limits.max_airport_class) continue;
+			if (!limits.air_passenger || airport_spec->class_index.base() > limits.max_airport_class) continue;
 			const uint range_needed = static_cast<uint>(std::ceil(std::sqrt(static_cast<double>(DistanceSquare(pair.a->xy, pair.b->xy)))));
-			const TechRecord *record = library.FindBest({.mode = TechMode::Air, .role = TechRole::PassengerIntercity, .cargo = cargo,
-				.company = _current_company, .short_strip = short_strip, .distance = range_needed});
+			TechQuery query;
+			query.mode = TechMode::Air;
+			query.role = TechRole::PassengerIntercity;
+			query.cargo = cargo;
+			query.company = _current_company;
+			query.short_strip = short_strip;
+			query.distance = range_needed;
+			query.family = spec.family;
+			query.provides = airport->provides;
+			query.early_adopters = spec.early_adopters;
+			const TechRecord *record = library.FindBest(query);
 			if (record == nullptr) continue;
 			for (TileIndex a : town_sites(pair.a)) {
 				for (TileIndex b : town_sites(pair.b)) {

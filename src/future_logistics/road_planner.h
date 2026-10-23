@@ -16,9 +16,9 @@ class TechLibrary;
 
 namespace FutureLogistics {
 
-ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> &used_towns);
-ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &used_towns);
-ConstructionResult BuildTruckFreight(const TechLibrary &library, Reservations &reserved);
+ConstructionResult BuildBusService(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
+ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
+ConstructionResult BuildTruckFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved);
 std::set<StationID> RoadStationsReachable(const Vehicle *vehicle);
 
 } // namespace FutureLogistics

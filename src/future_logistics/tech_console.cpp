@@ -5,6 +5,7 @@
 /** @file tech_console.cpp Console access to the Future Logistics Tech Library. */
 #include "../stdafx.h"
 #include "tech_library.h"
+#include "catalogue.h"
 #include "../company_func.h"
 #include "../console_func.h"
 #include "../debug.h"
@@ -99,13 +100,46 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 		}
 		return true;
 	}
+	if (argv.size() == 1 && argv[0] == "recipes") {
+		using namespace FutureLogistics;
+		const TechLibrary library = TechLibrary::Build();
+		const Catalogue catalogue = Catalogue::Build(library);
+		for (const Family &family : catalogue.Families()) {
+			std::string recipes;
+			for (const auto &[mechanic, market] : family.recipes) recipes += fmt::format("{}{}/{}", recipes.empty() ? "" : ",", MechanicName(mechanic), MarketName(market));
+			const auto since = family.key == CONVENTIONAL ? std::optional<TimerGameCalendar::Date>{} : FamilyAvailableSince(library, family.key);
+			Report(fmt::format("FL tech family key={} declared={} min_tier={} available={} recipes={} name={}", family.key, family.declared, TierName(family.min_tier),
+				family.key == CONVENTIONAL ? "always" : (since.has_value() ? fmt::format("{}", TimerGameCalendar::ConvertDateToYMD(*since).year) : "never"),
+				recipes.empty() ? "-" : recipes, family.name));
+		}
+		for (const Profile &profile : catalogue.Profiles()) {
+			std::string plan;
+			for (const Recipe &recipe : catalogue.Plan(profile, library, TimerGameCalendar::date)) plan += (plan.empty() ? "" : ",") + recipe.Key();
+			Report(fmt::format("FL tech profile id={} key={} builtin={} rules={} plan={} name={}", profile.id, profile.key, profile.builtin, profile.rules.size(), plan.empty() ? "-" : plan, profile.name));
+		}
+		return true;
+	}
+	if (argv.size() == 1 && argv[0] == "validate") {
+		using namespace FutureLogistics;
+		const TechLibrary library = TechLibrary::Build();
+		const Catalogue catalogue = Catalogue::Build(library);
+		for (const std::string &problem : library.Problems()) Report("FL tech problem " + problem);
+		for (const std::string &problem : catalogue.Problems()) Report("FL tech problem " + problem);
+		Report(fmt::format("FL tech validate problems={}", library.Problems().size() + catalogue.Problems().size()));
+		return true;
+	}
 	if ((argv.size() == 3 || argv.size() == 4) && argv[0] == "best") {
 		const auto mode = ParseTechMode(argv[1]);
 		const auto role = ParseTechRole(argv[2]);
 		const CargoType cargo = argv.size() == 4 ? ParseCargo(argv[3]) : INVALID_CARGO;
 		if (!mode.has_value() || !role.has_value() || (argv.size() == 4 && !IsValidCargoType(cargo))) return false;
 		const TechLibrary library = TechLibrary::Build();
-		const TechRecord *best = library.FindBest({.mode = *mode, .role = *role, .cargo = cargo, .company = _local_company});
+		TechQuery query;
+		query.mode = *mode;
+		query.role = *role;
+		query.cargo = cargo;
+		query.company = _local_company;
+		const TechRecord *best = library.FindBest(query);
 		Report(best == nullptr ? fmt::format("FL tech best mode={} role={} none", argv[1], argv[2]) : "FL tech best " + FormatVehicle(*best));
 		return true;
 	}

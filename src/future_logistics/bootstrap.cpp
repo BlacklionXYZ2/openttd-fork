@@ -7,7 +7,7 @@
 #include "bootstrap.h"
 #include "air_planner.h"
 #include "planner_common.h"
-#include "profiles.h"
+#include "catalogue.h"
 #include "rail_planner.h"
 #include "road_planner.h"
 #include "scale.h"
@@ -51,23 +51,33 @@ extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
 
 namespace {
 /**
- * Build one starter service for the current company.
- * @param type Service to build.
+ * Build one starter service for the current company with the planner for its recipe's mechanic and market.
+ * @param recipe Family, mechanic and market.
+ * @param profile The rival, for its preferences.
  * @param library Loaded transport technology.
  * @param[in,out] reserved Markets already taken.
- * @return Outcome.
+ * @return Outcome; Rejected for a combination no planner supports.
  */
-ConstructionResult BuildService(ServiceType type, const TechLibrary &library, Reservations &reserved)
+ConstructionResult BuildService(const Recipe &recipe, const Profile &profile, const TechLibrary &library, Reservations &reserved)
 {
-	switch (type) {
-		case ServiceType::Bus: return BuildBusService(library, reserved.towns);
-		case ServiceType::FeederBus: return BuildFeederBus(library, reserved.towns);
-		case ServiceType::TruckFreight: return BuildTruckFreight(library, reserved);
-		case ServiceType::RailPassenger: return BuildPassengerRail(library, reserved.towns);
-		case ServiceType::RailFreight: return BuildFreightRail(library, reserved);
-		case ServiceType::AirPassenger: return BuildPassengerAirline(library, reserved.towns);
+	const ServiceSpec spec{recipe.family, recipe.min_tier, recipe.early_adopters, profile.industry_markets};
+	switch (recipe.mechanic) {
+		case Mechanic::RailLine:
+			if (recipe.market == Market::TownPair) return BuildPassengerRail(library, spec, reserved.towns);
+			if (recipe.market == Market::Industry) return BuildFreightRail(library, spec, reserved);
+			break;
+		case Mechanic::RoadRoute:
+			if (recipe.market == Market::TownPair) return BuildBusService(library, spec, reserved.towns);
+			if (recipe.market == Market::Feeder) return BuildFeederBus(library, spec, reserved.towns);
+			if (recipe.market == Market::Industry) return BuildTruckFreight(library, spec, reserved);
+			break;
+		case Mechanic::AirportPair:
+			if (recipe.market == Market::TownPair) return BuildPassengerAirline(library, spec, reserved.towns);
+			break;
+		default:
+			break;
 	}
-	NOT_REACHED();
+	return ConstructionResult::Rejected;
 }
 
 /**
@@ -76,10 +86,10 @@ ConstructionResult BuildService(ServiceType type, const TechLibrary &library, Re
  * @param company New rival.
  * @param profile Its profile.
  */
-void ApplyProfile(Company *company, const CompanyProfile &profile)
+void ApplyProfile(Company *company, const Profile &profile)
 {
 	AutoRestoreBackup owner(_current_company, company->index);
-	if (Command<Commands::RenameCompany>::Do(EXEC, std::string{profile.name}).Failed()) {
+	if (Command<Commands::RenameCompany>::Do(EXEC, profile.name).Failed()) {
 		Debug(Facility::Misc, Severity::Warning, "FL could not rename company={} to profile name", company->index);
 	}
 	/* Ignored unless the company runs an AI with a "profile" setting, such as CorporateAI. */
@@ -96,13 +106,17 @@ void BootstrapFutureLogistics()
 		Debug(Facility::Misc, Severity::Warning, "FL skipped: expected only human company 0");
 		return;
 	}
-	const uint count = std::min<uint>(4, _settings_game.difficulty.max_no_competitors);
+	const TechLibrary library = TechLibrary::Build();
+	const Catalogue catalogue = Catalogue::Build(library);
+	const auto &profiles = catalogue.Profiles();
+	/* One rival per profile: the built-in four, then any declared by NewGRFs, up to the competitor setting. */
+	const uint count = std::min<uint>(static_cast<uint>(profiles.size()), _settings_game.difficulty.max_no_competitors);
 	Debug(Facility::Misc, Severity::Notice, "FL begin seed={} rivals={}", _settings_game.game_creation.generation_seed, count);
+	Debug(Facility::Misc, Severity::Notice, "FL catalogue families={} profiles={} problems={}", catalogue.Families().size(), profiles.size(),
+		catalogue.Problems().size() + library.Problems().size());
 	uint operational = 0;
 	uint services = 0;
 	Reservations reserved;
-	const TechLibrary library = TechLibrary::Build();
-	const auto profiles = GetCompanyProfiles();
 	/* The headstart is in proportion to the world: capital follows the total population, capped by the setting. */
 	uint64_t population = 0;
 	for (const Town *town : Town::Iterate()) population += town->cache.population;
@@ -125,28 +139,33 @@ void BootstrapFutureLogistics()
 		}
 		Debug(Facility::Misc, Severity::Notice, "FL funded company={} grant={} balance={} loan={}", company->index,
 			grant, company->money, company->current_loan);
-		const CompanyProfile &profile = profiles[(i - 1) % profiles.size()];
+		const Profile &profile = profiles[i - 1];
 		ApplyProfile(company, profile);
+		const std::vector<Recipe> plan = catalogue.Plan(profile, library, TimerGameCalendar::date);
+		std::string plan_names;
+		for (const Recipe &recipe : plan) plan_names += (plan_names.empty() ? "" : ",") + recipe.Key();
+		Debug(Facility::Misc, Severity::Notice, "FL plan company={} recipes={}", company->index, plan_names.empty() ? "-" : plan_names);
 		{
 			AutoRestoreBackup owner(_current_company, company->index);
 			uint built = 0;
 			bool stopped = false;
-			auto attempt = [&](ServiceType type, bool fallback) {
-				const ConstructionResult result = BuildService(type, library, reserved);
+			auto attempt = [&](const Recipe &recipe, bool fallback) {
+				const ConstructionResult result = BuildService(recipe, profile, library, reserved);
 				/* Commands run here bypass the normal command loop, so flush track signal updates before another company builds. */
 				UpdateSignalsInBuffer();
-				Debug(Facility::Misc, Severity::Notice, "FL service company={} type={} fallback={} result={}", company->index, ServiceName(type), fallback,
+				Debug(Facility::Misc, Severity::Notice, "FL service company={} recipe={} fallback={} result={}", company->index, recipe.Key(), fallback,
 					result == ConstructionResult::Success ? "success" : (result == ConstructionResult::Failed ? "failed" : "rejected"));
 				if (result == ConstructionResult::Success) built++;
 				/* After an execution failure the company stops building, as rollback may be incomplete. */
 				if (result == ConstructionResult::Failed) stopped = true;
 			};
 			for (uint round = 0; round < rounds; round++) {
-				for (ServiceType type : profile.services) {
-					if (!stopped) attempt(type, false);
+				for (const Recipe &recipe : plan) {
+					if (!stopped) attempt(recipe, false);
 				}
 			}
-			if (built == 0 && !stopped && std::ranges::find(profile.services, ServiceType::Bus) == profile.services.end()) attempt(ServiceType::Bus, true);
+			const Recipe bus{std::string{CONVENTIONAL}, Mechanic::RoadRoute, Market::TownPair};
+			if (built == 0 && !stopped && std::ranges::find(plan, bus) == plan.end()) attempt(bus, true);
 			services += built;
 			if (built > 0) {
 				operational++;

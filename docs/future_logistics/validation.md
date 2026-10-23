@@ -36,7 +36,7 @@ exclusion. A forced purchase failure left **zero road bits and station tiles**
 for all four rivals. No Squirrel errors or cleanup failures appeared in the final
 suite.
 
-## Phases 1 to 4 (Tech Library, profiles, railways, airlines, trucks and feeders)
+## Phases 1 to 5 (Tech Library, profiles, railways, airlines, trucks and feeders, modular tech trees)
 
 Branch `feature/tech-library`, 23 October 2026. Environment: Ubuntu 24.04,
 x86_64, GCC 13.3.0, CMake 3.28.3, Ninja, SDL 2.30.0, OpenGFX 7.1. Debug build
@@ -46,8 +46,10 @@ test was run for these phases.
 | Check | Result |
 | --- | --- |
 | Feature GUI Debug build | Passed, no compiler warnings/errors |
-| CTest suite | **103/103 passed** (98 upstream and phase 0, 5 Tech Library and scaling unit tests) |
-| Full-engine integration suite | **23 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 1 tiny world) |
+| CTest suite | **106/106 passed** (98 upstream and phase 0, 8 Tech Library, scaling and format unit tests) |
+| Full-engine integration suite | **24 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 1 tiny world, 1 NewGRF tech tree) |
+| NewGRF tech tree (`tests/future_logistics/grf/fl_test.grf`, five rivals) | TestCorp Airways, declared only by the NewGRF, built an airline with the NewGRF's "testjet" family; AeroLink adopted it through a NewGRF rule; mail vehicles took the declared parcel role; `validate` reported exactly the six deliberate mistakes |
+| Without NewGRFs after the phase 5 rewrite | Same seven services and nine vehicles as phase 4; catalogue reports no problems |
 | Headstart scaling | Controlled world: 34,011 people, grant 4,251,375 per rival (below the 25 million cap), every railway and airline within its tier. Tiny world (64×64, two towns, no industries): grant about 250,000, no railways or airlines |
 | Controlled world with normal industry density, seed 12345, 1950 | All four rivals operational with seven services and nine vehicles: grain and coal freight railways, two passenger railways, an airline with two aircraft, a two-bus feeder into Metro & Regional's railway station, and a goods truck from the factory that the grain railway supplies |
 | Same world after three simulated months | Every vehicle visited both of its stations; the goods truck had delivered goods made from rail-delivered grain |

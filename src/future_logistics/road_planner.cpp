@@ -5,6 +5,7 @@
 /** @file road_planner.cpp Day-zero road services: an owned road between two drive-through stops, a depot and a small fleet. */
 #include "../stdafx.h"
 #include "road_planner.h"
+#include "catalogue.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../cargotype.h"
@@ -17,6 +18,7 @@
 #include "../order_base.h"
 #include "../order_cmd.h"
 #include "../road_cmd.h"
+#include "../road_func.h"
 #include "../road_map.h"
 #include "../roadveh.h"
 #include "../settings_type.h"
@@ -287,16 +289,34 @@ ConstructionResult Build(const Route &route, const RoadJob &job)
 }
 
 /**
- * Pick the best road vehicle on plain road for a job.
- * @param library Loaded transport technology.
+ * Pick the best road vehicle for a job. Every road type the company can build that is untagged or
+ * tagged with the service's family is considered; the fastest suitable vehicle wins, and ties go
+ * to the road type listed first. The road is then built with that vehicle's road type.
+ * @param library Loaded transport technology, including the road types.
+ * @param spec Family and preferences of the service.
  * @param role Job the vehicle does.
  * @param cargo Cargo it carries.
  * @return Engine, or nullptr if none is available.
  */
-const Engine *ChooseRoadVehicle(const TechLibrary &library, TechRole role, CargoType cargo)
+const Engine *ChooseRoadVehicle(const TechLibrary &library, const ServiceSpec &spec, TechRole role, CargoType cargo)
 {
-	/* The planner only builds plain road, so ask for a vehicle that runs on it. */
-	const TechRecord *record = library.FindBest({.mode = TechMode::Road, .role = role, .cargo = cargo, .company = _current_company, .roadtype = ROADTYPE_ROAD});
+	const TechRecord *record = nullptr;
+	for (const InfraRecord &road : library.Infrastructure()) {
+		if (road.kind != InfraKind::RoadType || !spec.AllowsInfrastructure(road.tech)) continue;
+		const RoadType roadtype = static_cast<RoadType>(road.index);
+		if (!HasRoadTypeAvail(_current_company, roadtype)) continue;
+		TechQuery query;
+		query.mode = TechMode::Road;
+		query.role = role;
+		query.cargo = cargo;
+		query.company = _current_company;
+		query.roadtype = roadtype;
+		query.family = spec.family;
+		query.provides = road.provides;
+		query.early_adopters = spec.early_adopters;
+		const TechRecord *candidate = library.FindBest(query);
+		if (candidate != nullptr && (record == nullptr || candidate->speed > record->speed)) record = candidate;
+	}
 	if (record == nullptr) return nullptr;
 	Debug(Facility::Misc, Severity::Notice, "FL tech company={} role={} vehicle={}", _current_company, TechRoleName(role), record->id);
 	return Engine::Get(record->engine);
@@ -309,11 +329,11 @@ const Engine *ChooseRoadVehicle(const TechLibrary &library, TechRole role, Cargo
  * @param[in,out] used_towns Towns reserved by earlier rivals; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildBusService(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
 {
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
-	const Engine *bus = ChooseRoadVehicle(library, TechRole::PassengerFeeder, cargo);
+	const Engine *bus = ChooseRoadVehicle(library, spec, TechRole::PassengerFeeder, cargo);
 	if (bus == nullptr) return ConstructionResult::Rejected;
 	struct Pair { uint distance; const Town *a; const Town *b; };
 	std::vector<Pair> pairs;
@@ -326,7 +346,7 @@ ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> 
 		for (const Town *b : towns) {
 			if (a->index >= b->index || used_towns.contains(a->index) || used_towns.contains(b->index)) continue;
 			uint distance = DistanceManhattan(a->xy, b->xy);
-			if (distance >= 16 && distance <= 96) pairs.push_back({distance, a, b});
+			if (distance >= 16 && distance <= 96 && TierForTowns(a, b) >= spec.min_tier) pairs.push_back({distance, a, b});
 		}
 	}
 	std::stable_sort(pairs.begin(), pairs.end(), [](const Pair &a, const Pair &b) { return a.distance < b.distance; });
@@ -359,11 +379,11 @@ ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> 
  * @param[in,out] used_towns Towns reserved by earlier rivals; the fed town is added on success.
  * @return Outcome; Rejected if the company has no railway station yet.
  */
-ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
 {
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
-	const Engine *bus = ChooseRoadVehicle(library, TechRole::PassengerFeeder, cargo);
+	const Engine *bus = ChooseRoadVehicle(library, spec, TechRole::PassengerFeeder, cargo);
 	if (bus == nullptr) return ConstructionResult::Rejected;
 	for (const Station *station : Station::Iterate()) {
 		if (station->owner != _current_company || !station->facilities.Test(StationFacility::Train) || station->town == nullptr) continue;
@@ -380,7 +400,7 @@ ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &
 		for (const Town *town : Town::Iterate()) {
 			if (town == station->town || used_towns.contains(town->index)) continue;
 			const uint distance = DistanceManhattan(town->xy, station->xy);
-			if (distance >= 16 && distance <= 64) towns.push_back({distance, town});
+			if (distance >= 16 && distance <= 64 && TierForTowns(station->town, town) >= spec.min_tier) towns.push_back({distance, town});
 		}
 		std::ranges::stable_sort(towns, {}, &Candidate::distance);
 		if (towns.size() > MAX_FEEDER_TOWNS) towns.resize(MAX_FEEDER_TOWNS);
@@ -411,11 +431,11 @@ ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &
  * @param[in,out] reserved Markets already taken; the chosen industries are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildTruckFreight(const TechLibrary &library, Reservations &reserved)
+ConstructionResult BuildTruckFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved)
 {
 	std::set<IndustryID> &used_industries = reserved.industries;
-	/* The destination is an industry or, for distribution, a town. */
-	struct Pair { bool chain; uint distance; const Industry *source; const Industry *industry; const Town *town; CargoType cargo; };
+	/* The destination is an industry or, for distribution, a town. Chains come first, then the rival's preferred markets, then shorter routes. */
+	struct Pair { bool chain; size_t preference; uint distance; const Industry *source; const Industry *industry; const Town *town; CargoType cargo; };
 	std::vector<const Industry *> industries;
 	std::vector<const Industry *> sources;
 	for (const Industry *industry : Industry::Iterate()) {
@@ -432,20 +452,27 @@ ConstructionResult BuildTruckFreight(const TechLibrary &library, Reservations &r
 			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
 			/* Secondary industries produce nothing until supplied; trucks would wait for a full load forever. */
 			if (produced.rate == 0 && !chain) continue;
+			if (TierForIndustry(source, produced.cargo) < spec.min_tier) continue;
 			for (const Industry *destination : industries) {
 				if (destination == source || !destination->IsCargoAccepted(produced.cargo)) continue;
 				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
-				if (distance >= MIN_TRUCK_DISTANCE && distance <= MAX_TRUCK_DISTANCE) pairs.push_back({chain, distance, source, destination, nullptr, produced.cargo});
+				if (distance < MIN_TRUCK_DISTANCE || distance > MAX_TRUCK_DISTANCE) continue;
+				const size_t preference = std::min(IndustryPreference(source, spec.industry_markets), IndustryPreference(destination, spec.industry_markets));
+				pairs.push_back({chain, preference, distance, source, destination, nullptr, produced.cargo});
 			}
 			for (const Town *town : Town::Iterate()) {
 				const uint distance = DistanceManhattan(source->location.tile, town->xy);
 				if (distance < MIN_TRUCK_DISTANCE || distance > MAX_TRUCK_DISTANCE) continue;
 				if (GetAcceptanceAroundTiles(town->xy, 1, 1, radius).first[produced.cargo] < 8) continue;
-				pairs.push_back({chain, distance, source, nullptr, town, produced.cargo});
+				pairs.push_back({chain, IndustryPreference(source, spec.industry_markets), distance, source, nullptr, town, produced.cargo});
 			}
 		}
 	}
-	std::ranges::stable_sort(pairs, [](const Pair &a, const Pair &b) { return a.chain != b.chain ? a.chain : a.distance < b.distance; });
+	std::ranges::stable_sort(pairs, [](const Pair &a, const Pair &b) {
+		if (a.chain != b.chain) return a.chain;
+		if (a.preference != b.preference) return a.preference < b.preference;
+		return a.distance < b.distance;
+	});
 
 	auto near = [&](const Industry *industry, TileIndex tile) {
 		TileArea area(tile, 1, 1);
@@ -455,9 +482,7 @@ ConstructionResult BuildTruckFreight(const TechLibrary &library, Reservations &r
 	auto centre = [](const Industry *industry) { return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2); };
 	for (size_t i = 0; i < std::min(MAX_FREIGHT_PAIRS, pairs.size()); i++) {
 		const Pair &pair = pairs[i];
-		const CargoClasses classes = CargoSpec::Get(pair.cargo)->classes;
-		const TechRole role = classes.Any({CargoClass::Bulk, CargoClass::Liquid}) ? TechRole::FreightBulk : TechRole::FreightGeneral;
-		const Engine *truck = ChooseRoadVehicle(library, role, pair.cargo);
+		const Engine *truck = ChooseRoadVehicle(library, spec, FreightRole(library, pair.cargo), pair.cargo);
 		if (truck == nullptr) continue;
 		const int search_from = std::max<int>(pair.source->location.w, pair.source->location.h) / 2 + radius;
 		const auto from = FindStops(centre(pair.source), search_from, [&](TileIndex tile) { return near(pair.source, tile); });

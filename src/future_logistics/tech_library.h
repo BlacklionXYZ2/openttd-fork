@@ -12,9 +12,11 @@
 #include "../core/enum_type.hpp"
 #include "../economy_type.h"
 #include "../engine_type.h"
+#include "../newgrf_badge_type.h"
 #include "../rail_type.h"
 #include "../road_type.h"
 #include "../timer/timer_game_calendar.h"
+#include <map>
 
 /** Transport mode of a tech record. See docs/future_logistics/tech_format.md. */
 enum class TechMode : uint8_t {
@@ -65,13 +67,15 @@ struct TechRecord {
 	RailTypes railtypes{}; ///< Rail types for rail vehicles.
 	std::string track; ///< Rail or road type label for ground vehicles.
 
-	/* Fields below come from fl_ badges once phase 5 lands; until then they hold the defaults. */
+	/* Fields below come from fl_ badges; see docs/future_logistics/tech_format.md. */
 	std::string tech = "conventional"; ///< Technology family (fl_tech).
 	uint8_t tier = 0; ///< Progression level (fl_tier).
 	TechRoles roles{}; ///< Jobs this vehicle suits (fl_role, or inferred).
 	std::vector<std::string> needs; ///< Special infrastructure required (fl_needs).
 	bool ai_avoid = false; ///< Rival companies must not use it (fl_ai/avoid).
-	bool tagged = false; ///< Carries fl_format/1.
+	bool early_adopter = false; ///< Only adoption rules with no delay may use it (fl_ai/early_adopter).
+	bool tagged = false; ///< Carries fl_format/1 or fl_format/2.
+	TimerGameCalendar::Date intro_date{}; ///< When the engine is introduced.
 };
 
 /** One rail type, road type or airport in the library. */
@@ -83,7 +87,24 @@ struct InfraRecord {
 	uint speed = 0; ///< Speed limit for rail/road types, 0 for none.
 	uint8_t size_x = 0; ///< Airport footprint.
 	uint8_t size_y = 0; ///< Airport footprint.
+	std::string tech = "conventional"; ///< Technology family (fl_tech).
 	std::vector<std::string> provides; ///< Special sites supplied (fl_provides).
+};
+
+/** The fl_ tags read from one item's badges. */
+struct ItemTags {
+	bool any = false; ///< Has at least one fl_ badge.
+	bool formatted = false; ///< Has fl_format/1 or fl_format/2; without it, the other fl_ tags are ignored.
+	std::optional<std::string> tech; ///< fl_tech
+	std::optional<uint8_t> tier; ///< fl_tier
+	TechRoles roles{}; ///< fl_role, all of them.
+	std::vector<std::string> needs; ///< fl_needs
+	std::vector<std::string> provides; ///< fl_provides
+	std::optional<std::string> industry; ///< fl_industry
+	std::vector<std::string> markets; ///< fl_market
+	bool avoid = false; ///< fl_ai/avoid
+	bool early_adopter = false; ///< fl_ai/early_adopter
+	std::vector<std::string> problems; ///< Labels that could not be understood.
 };
 
 /** Which part of a consist a query wants. */
@@ -105,6 +126,9 @@ struct TechQuery {
 	RailType railtype = INVALID_RAILTYPE; ///< Track the vehicle must run on, or INVALID_RAILTYPE for any.
 	bool short_strip = false; ///< The airports have a short strip, so fast aircraft are unsafe.
 	uint distance = 0; ///< Route length in tiles that an aircraft's range must cover; 0 to ignore.
+	std::string family; ///< Tech family the vehicle must belong to, or empty for any.
+	std::vector<std::string> provides; ///< Sites available, which must cover the vehicle's fl_needs.
+	bool early_adopters = true; ///< Whether fl_ai/early_adopter vehicles may be used.
 };
 
 /** Snapshot of all loaded transport technology. Derived data: build it when needed, never save it. */
@@ -117,10 +141,14 @@ public:
 
 	const std::vector<TechRecord> &Vehicles() const { return this->vehicles; }
 	const std::vector<InfraRecord> &Infrastructure() const { return this->infrastructure; }
+	const std::vector<std::string> &Problems() const { return this->problems; }
+	TechRoles CargoRoles(CargoType cargo) const;
 
 private:
 	std::vector<TechRecord> vehicles;
 	std::vector<InfraRecord> infrastructure;
+	std::map<CargoType, TechRoles> cargo_roles; ///< From fl_cargo declarations.
+	std::vector<std::string> problems; ///< Tag problems, for future_logistics_tech validate.
 };
 
 TechRoles InferTechRoles(TechMode mode, CargoClasses classes, bool traction, bool helicopter);
@@ -130,8 +158,12 @@ std::string_view TechRoleName(TechRole role);
 std::optional<TechMode> ParseTechMode(std::string_view name);
 std::optional<TechRole> ParseTechRole(std::string_view name);
 std::string FormatTechRoles(TechRoles roles);
+std::vector<std::string_view> SplitLabel(std::string_view label);
+ItemTags ParseItemTags(std::span<const std::string> labels);
+ItemTags ReadItemTags(std::span<const BadgeID> badges);
+std::map<std::string, TechRoles> ParseCargoRoles(std::span<const std::string> labels, std::vector<std::string> &problems);
 
-/** Console command: future_logistics_tech list | best <mode> <role> [cargo label]. */
+/** Console command: future_logistics_tech list | badges | recipes | validate | best <mode> <role> [cargo label]. */
 bool FutureLogisticsTechCommand(std::span<std::string_view> argv);
 
 #endif /* FUTURE_LOGISTICS_TECH_LIBRARY_H */

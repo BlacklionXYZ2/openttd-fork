@@ -12,6 +12,7 @@
 #include "../industry_type.h"
 #include "../tile_map.h"
 #include "../town_type.h"
+#include "scale.h"
 
 namespace FutureLogistics {
 
@@ -25,6 +26,21 @@ struct Reservations {
 	std::set<TownID> towns; ///< Towns served by passenger services.
 	std::set<IndustryID> industries; ///< Industries served by freight services.
 	std::set<IndustryID> supplied; ///< Industries that receive freight, so secondary ones will produce.
+};
+
+/** What a planner should build with: the recipe's family and limits, and the rival's preferences. */
+struct ServiceSpec {
+	std::string family{"conventional"}; ///< Tech family whose vehicles may be used.
+	MarketTier min_tier = MarketTier::Village; ///< Smallest market the service may serve.
+	bool early_adopters = true; ///< Whether fl_ai/early_adopter vehicles may be used.
+	std::vector<std::string> industry_markets; ///< Preferred fl_market groups for freight, in order.
+
+	/**
+	 * Check whether a track type or airport may be used: untagged ones always, tagged ones only by their own family.
+	 * @param tech The infrastructure's fl_tech family.
+	 * @return Whether this service may build on it.
+	 */
+	bool AllowsInfrastructure(std::string_view tech) const { return tech == "conventional" || tech == this->family; }
 };
 
 /** Outcome controlling whether another candidate may safely be tried. */

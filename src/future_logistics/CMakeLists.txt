@@ -3,9 +3,9 @@ add_files(
     air_planner.h
     bootstrap.cpp
     bootstrap.h
+    catalogue.cpp
+    catalogue.h
     planner_common.h
-    profiles.cpp
-    profiles.h
     rail_planner.cpp
     rail_planner.h
     road_planner.cpp

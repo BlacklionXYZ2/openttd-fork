@@ -1,0 +1,6 @@
+##grflangid 0x01
+STR_GRF_NAME            :Future Logistics format test
+STR_GRF_DESC            :Test content for the day-zero tech format. Not for normal play.
+STR_FAMILY_TESTJET      :Test jet
+STR_FAMILY_TESTROCKET   :Test rocket
+STR_PROFILE_TESTCORP    :TestCorp Airways

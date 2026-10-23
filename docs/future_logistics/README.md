@@ -133,7 +133,15 @@ and profit. This diagnostic is read-only and can be used after save/reload.
 The console command `future_logistics_tech list` prints the Tech Library: every
 loaded vehicle, rail type, road type and airport with the roles the planner
 sees. `future_logistics_tech best <mode> <role> [<cargo label>]` shows which
-vehicle a company would pick for a job. The format is described in
+vehicle a company would pick for a job. `future_logistics_tech badges`,
+`recipes` and `validate` show what loaded NewGRFs declare, each rival's plan,
+and any problems with the declarations.
+
+NewGRFs can add tech families, rivals and cargo meanings with `fl_` badges; see
+[`tech_format.md`](tech_format.md). NewGRF rivals come after the four built-in
+ones, so raise `max_no_competitors` to include them. The test NewGRF in
+`tests/future_logistics/grf/` is rebuilt with `nmlc -o fl_test.grf fl_test.nml`
+(NML 0.9.0). The format is described in
 [`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
 
 See `tests/future_logistics/integration.py` for reproducible full-engine checks.
@@ -144,9 +152,11 @@ multiplayer dedicated server. Test artifacts go in `work/`.
 
 ## Scope and remaining work
 
-No drones, multi-stage cargo chains, hyperloop, rocket freight,
-custom NewGRFs, signals, bridges, tunnels, terrain engineering, strategic AI
-expansion or AI vehicle adoption are implemented here. Difficult maps, disconnected heights, very early start dates,
+No ships, multi-stage cargo chains beyond one rail-to-truck step, signals,
+bridges, tunnels, terrain engineering, strategic AI expansion or in-game AI
+vehicle adoption are implemented here. Drones, hyperloop and rockets are
+supported as NewGRF tech families, but the Future Logistics NewGRF itself
+does not exist yet; only the format test NewGRF does. Difficult maps, disconnected heights, very early start dates,
 NewGRFs that remove compatible standard-road buses, and town restrictions may
 prevent some or all initial networks. See `validation.md` for actual test results
 and limitations; CI configuration alone is not a completed Apple Silicon test.

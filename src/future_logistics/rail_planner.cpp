@@ -5,6 +5,7 @@
 /** @file rail_planner.cpp Day-zero railways: two terminus stations, a single line, a depot and one train. */
 #include "../stdafx.h"
 #include "rail_planner.h"
+#include "catalogue.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../cargotype.h"
@@ -381,14 +382,17 @@ ConstructionResult TrySites(const std::vector<Terminus> &from, const std::vector
  * order (plain rail first) and only those with a usable locomotive and wagon count. The market
  * tier limits how many of those may be considered; among them, the fastest locomotive wins and
  * ties go to the earlier track type. So small markets get plain rail, big ones better track.
+ * Only the service's family is used, on track that is untagged or tagged with that family.
+ * Wagons come from the same family where it has some, otherwise from conventional wagons.
  * @param library Loaded transport technology, including the track types.
+ * @param spec Family and preferences of the service.
  * @param role Job the train does.
  * @param cargo Cargo the wagons carry.
  * @param freight Whether this is a freight service.
  * @param track_rank How many usable track types may be considered.
  * @return Consist, with null engines if nothing suitable is available.
  */
-Consist ChooseConsist(const TechLibrary &library, TechRole role, CargoType cargo, bool freight, uint8_t track_rank)
+Consist ChooseConsist(const TechLibrary &library, const ServiceSpec &spec, TechRole role, CargoType cargo, bool freight, uint8_t track_rank)
 {
 	Consist best{nullptr, nullptr, cargo, freight, INVALID_RAILTYPE};
 	uint best_speed = 0;
@@ -397,13 +401,24 @@ Consist ChooseConsist(const TechLibrary &library, TechRole role, CargoType cargo
 		if (usable >= track_rank) break;
 		if (track.kind != InfraKind::RailType) continue;
 		const RailType railtype = static_cast<RailType>(track.index);
-		if (!HasRailTypeAvail(_current_company, railtype)) continue;
-		TechQuery query{.mode = TechMode::Rail, .role = role, .cargo = INVALID_CARGO, .company = _current_company, .railtype = railtype};
+		if (!spec.AllowsInfrastructure(track.tech) || !HasRailTypeAvail(_current_company, railtype)) continue;
+		TechQuery query;
+		query.mode = TechMode::Rail;
+		query.role = role;
+		query.company = _current_company;
+		query.railtype = railtype;
+		query.family = spec.family;
+		query.provides = track.provides;
+		query.early_adopters = spec.early_adopters;
 		query.part = TechPart::Locomotive;
 		const TechRecord *locomotive = library.FindBest(query);
 		query.part = TechPart::Wagon;
 		query.cargo = cargo;
 		const TechRecord *wagon = library.FindBest(query);
+		if (wagon == nullptr && spec.family != CONVENTIONAL) {
+			query.family = std::string{CONVENTIONAL};
+			wagon = library.FindBest(query);
+		}
 		if (locomotive == nullptr || wagon == nullptr) continue;
 		usable++;
 		if (locomotive->speed <= best_speed) continue;
@@ -432,7 +447,7 @@ TileArea Catchment(const Terminus &site)
  * @param[in,out] used_towns Towns already served by rivals; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildPassengerRail(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
 {
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
@@ -449,7 +464,8 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
 			if (a->index >= b->index) continue;
 			const uint distance = DistanceManhattan(a->xy, b->xy);
 			/* Villages do not get a railway. */
-			if (distance >= 24 && distance <= 120 && GetTierLimits(TierForTowns(a, b)).rail_passenger) pairs.push_back({distance, a, b});
+			const MarketTier tier = TierForTowns(a, b);
+			if (distance >= 24 && distance <= 120 && GetTierLimits(tier).rail_passenger && tier >= spec.min_tier) pairs.push_back({distance, a, b});
 		}
 	}
 	std::ranges::stable_sort(pairs, {}, &Pair::distance);
@@ -469,7 +485,7 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
 		const Pair &pair = pairs[i];
 		const MarketTier tier = TierForTowns(pair.a, pair.b);
 		const TierLimits &limits = GetTierLimits(tier);
-		const Consist consist = ChooseConsist(library, TechRole::PassengerIntercity, cargo, false, limits.track_rank);
+		const Consist consist = ChooseConsist(library, spec, TechRole::PassengerIntercity, cargo, false, limits.track_rank);
 		if (consist.locomotive == nullptr) continue;
 		const auto result = TrySites(town_sites(pair.a, limits.platform_length), town_sites(pair.b, limits.platform_length), consist);
 		if (result == ConstructionResult::Rejected) continue;
@@ -490,10 +506,11 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
  * @param[in,out] reserved Markets already taken; the chosen industries are added on success, and the destination is marked as supplied.
  * @return Outcome.
  */
-ConstructionResult BuildFreightRail(const TechLibrary &library, Reservations &reserved)
+ConstructionResult BuildFreightRail(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved)
 {
 	std::set<IndustryID> &used_industries = reserved.industries;
-	struct Pair { uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
+	/* Industries in the rival's preferred markets come first, then shorter routes. */
+	struct Pair { size_t preference; uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
 	std::vector<const Industry *> industries;
 	for (const Industry *industry : Industry::Iterate()) {
 		if (industries.size() == 256) break;
@@ -506,21 +523,22 @@ ConstructionResult BuildFreightRail(const TechLibrary &library, Reservations &re
 			for (const Industry *destination : industries) {
 				if (destination == source || !destination->IsCargoAccepted(produced.cargo)) continue;
 				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
-				if (distance >= 20 && distance <= 100) pairs.push_back({distance, source, destination, produced.cargo});
+				if (distance < 20 || distance > 100 || TierForIndustry(source, produced.cargo) < spec.min_tier) continue;
+				const size_t preference = std::min(IndustryPreference(source, spec.industry_markets), IndustryPreference(destination, spec.industry_markets));
+				pairs.push_back({preference, distance, source, destination, produced.cargo});
 			}
 		}
 	}
-	std::ranges::stable_sort(pairs, {}, &Pair::distance);
+	std::ranges::stable_sort(pairs, [](const Pair &a, const Pair &b) { return a.preference != b.preference ? a.preference < b.preference : a.distance < b.distance; });
 
 	auto centre = [](const Industry *industry) { return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2); };
 	const int radius = _settings_game.station.modified_catchment ? CA_TRAIN : CA_UNMODIFIED;
 	for (size_t i = 0; i < std::min(MAX_RAIL_PAIRS, pairs.size()); i++) {
 		const Pair &pair = pairs[i];
-		const CargoClasses classes = CargoSpec::Get(pair.cargo)->classes;
-		const TechRole role = classes.Any({CargoClass::Bulk, CargoClass::Liquid}) ? TechRole::FreightBulk : TechRole::FreightGeneral;
+		const TechRole role = FreightRole(library, pair.cargo);
 		const MarketTier tier = TierForIndustry(pair.source, pair.cargo);
 		const TierLimits &limits = GetTierLimits(tier);
-		const Consist consist = ChooseConsist(library, role, pair.cargo, true, limits.track_rank);
+		const Consist consist = ChooseConsist(library, spec, role, pair.cargo, true, limits.track_rank);
 		if (consist.locomotive == nullptr) continue;
 		const int length = limits.platform_length;
 		const int search = std::max<int>(pair.source->location.w, pair.source->location.h) / 2 + radius + length;

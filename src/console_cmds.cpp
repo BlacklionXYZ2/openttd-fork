@@ -1215,7 +1215,7 @@ static bool ConFutureLogisticsCheck(std::span<std::string_view> argv)
 static bool ConFutureLogisticsTech(std::span<std::string_view> argv)
 {
 	if (argv.empty()) {
-		IConsolePrint(CC_HELP, "List loaded transport technology or pick the best for a job. Usage: 'future_logistics_tech list' or 'future_logistics_tech best <mode> <role> [<cargo label>]'.");
+		IConsolePrint(CC_HELP, "List loaded transport technology or pick the best for a job. Usage: 'future_logistics_tech list|badges|recipes|validate' or 'future_logistics_tech best <mode> <role> [<cargo label>]'.");
 		return true;
 	}
 	if (_game_mode != GameMode::Normal) return false;

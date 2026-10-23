@@ -15,7 +15,7 @@ class TechLibrary;
 
 namespace FutureLogistics {
 
-ConstructionResult BuildPassengerAirline(const TechLibrary &library, std::set<TownID> &used_towns);
+ConstructionResult BuildPassengerAirline(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns);
 std::set<StationID> AirportsReachable(const Vehicle *aircraft);
 
 } // namespace FutureLogistics

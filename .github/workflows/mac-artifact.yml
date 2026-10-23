@@ -1,0 +1,55 @@
+name: Mac arm64 build artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    name: Build Apple Silicon app
+    runs-on: macos-15
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Setup vcpkg
+      id: vcpkg
+      uses: OpenTTD/actions/setup-vcpkg@v7
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_OSX_ARCHITECTURES=arm64 \
+          -DVCPKG_TARGET_TRIPLET=arm64-osx \
+          -DCMAKE_TOOLCHAIN_FILE=${{ steps.vcpkg.outputs.vcpkg-cmake }}
+        cmake --build . -j $(sysctl -n hw.logicalcpu)
+
+    - name: Package
+      run: |
+        file build/openttd.app/Contents/MacOS/openttd
+        mkdir -p pkg/baseset
+        cp -R build/openttd.app pkg/
+        cp -R mods pkg/mods
+        curl -L https://cdn.openttd.org/opengfx-releases/0.6.0/opengfx-0.6.0-all.zip -o og.zip
+        (cd pkg/baseset && unzip -q ../../og.zip)
+        cat > pkg/README.txt <<'EOT'
+        Unsigned build. First launch: right-click openttd.app > Open, or run:
+          xattr -dr com.apple.quarantine openttd.app
+        Copy baseset/* to ~/Documents/OpenTTD/baseset/
+        Copy mods/ai/CorporateAI to ~/Documents/OpenTTD/ai/
+        EOT
+        ditto -c -k --sequesterRsrc --keepParent pkg openttd-mac-arm64.zip
+
+    - name: Upload
+      uses: actions/upload-artifact@v7
+      with:
+        name: openttd-mac-arm64
+        path: openttd-mac-arm64.zip
+        retention-days: 30

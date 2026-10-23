@@ -33,15 +33,16 @@ jobs:
 
     - name: Package
       run: |
-        file build/openttd.app/Contents/MacOS/openttd
+        (cd build && cpack)
         mkdir -p pkg/baseset
-        cp -R build/openttd.app pkg/
+        cp -R build/_CPack_Packages/*/Bundle/openttd-*/OpenTTD.app pkg/
+        file pkg/OpenTTD.app/Contents/MacOS/openttd
         cp -R mods pkg/mods
         curl -L https://cdn.openttd.org/opengfx-releases/0.6.0/opengfx-0.6.0-all.zip -o og.zip
         (cd pkg/baseset && unzip -q ../../og.zip)
         cat > pkg/README.txt <<'EOT'
-        Unsigned build. First launch: right-click openttd.app > Open, or run:
-          xattr -dr com.apple.quarantine openttd.app
+        Unsigned build. First launch: right-click OpenTTD.app > Open, or run:
+          xattr -dr com.apple.quarantine OpenTTD.app
         Copy baseset/* to ~/Documents/OpenTTD/baseset/
         Copy mods/ai/CorporateAI to ~/Documents/OpenTTD/ai/
         EOT

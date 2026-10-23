@@ -140,6 +140,23 @@ TEST_CASE("FutureLogisticsFormat - item tags")
 	CHECK(problems.size() == 1);
 }
 
+TEST_CASE("FutureLogisticsFormat - shared badge classes")
+{
+	/* role/ and power/ are read without fl_format, as other NewGRFs use them. */
+	const std::vector<std::string> labels{"role/freight", "role/express", "role/lolz", "power/electric", "livery/uk/british_rail/blue", "_ih_private"};
+	const ItemTags tags = ParseItemTags(labels);
+	CHECK_FALSE(tags.any);
+	CHECK(tags.community_role);
+	CHECK_FALSE(tags.community_universal);
+	CHECK(tags.community_roles == TechRoles{TechRole::FreightBulk, TechRole::FreightGeneral, TechRole::PassengerIntercity, TechRole::Express});
+	CHECK(tags.power == std::vector<std::string>{"electric"});
+	CHECK(tags.problems.empty());
+
+	CHECK(ParseItemTags(std::vector<std::string>{"role/universal"}).community_universal);
+	CHECK_FALSE(CommunityRoleMeaning("universal").has_value());
+	CHECK(CommunityRoleMeaning("metro") == TechRoles{TechRole::PassengerCommuter});
+}
+
 TEST_CASE("FutureLogisticsFormat - built-in rivals use the declaration format")
 {
 	using namespace FutureLogistics;

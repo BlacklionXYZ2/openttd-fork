@@ -65,19 +65,26 @@ ships had made a profit.
   disconnected. It now follows the track through crossings.
 - The rail log now names the locomotive and wagon (`locomotive=`, `wagon=`).
 
-## Not yet used
+## Shared badges
 
-- **Standard `role/` and `power/` badges.** Iron Horse marks its engines
-  `role/express`, `role/freight`, `role/universal`, `role/metro` and so on.
-  The Tech Library does not read them, so every rival picked the fastest engine
-  (a `role/express` steam engine) for freight as well. Reading the shared
-  `role/` class as a hint, with `fl_role` still taking priority, would line up
-  with the spec's proposed classes.
+- **`role/` and `power/` are now read** (see `tech_format.md`). Iron Horse marks
+  its engines `role/express`, `role/freight`, `role/universal` and so on. Before,
+  every rival picked the fastest engine (a `role/express`, `role/universal` steam
+  engine) for freight too. Now freight trains get the `role/freight` engine
+  (0-6-0 Lamia) and passenger trains keep the universal one; over six months
+  both freight trains earned more than with the express engine (0.59M against
+  0.22M, and 1.35M against 0.99M). `validate` still reports no problems.
+
+## Still to note
+
 - Iron Horse's wagons report a capacity of 2 in the Tech Library, because the
   real capacity comes from a callback. Choice is unaffected (the wagon is chosen
   by cargo and role), but capacity-based scoring would be wrong for such sets.
 
 ## For the Future Logistics NewGRF
+
+These are now rules in `tech_format.md` ("Fitting in with community content").
+
 
 - Give vehicles the shared badges as well as `fl_` ones: `role/...`,
   `power/...` (for example `power/electric`, `power/hydrogen`).

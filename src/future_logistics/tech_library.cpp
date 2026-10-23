@@ -16,6 +16,8 @@
 #include "../road_func.h"
 #include "../string_func.h"
 
+#include <map>
+
 #include "../safeguards.h"
 
 namespace {
@@ -52,7 +54,6 @@ TechRecord Describe(const Engine *engine, const std::map<CargoType, TechRoles> &
 {
 	TechRecord record;
 	record.engine = engine->index;
-	const GrfID grfid = engine->GetGRFID();
 	record.mode = ModeOf(engine->type);
 	record.id = TechId(engine);
 	record.cargo = engine->GetDefaultCargoType();
@@ -97,11 +98,24 @@ TechRecord Describe(const Engine *engine, const std::map<CargoType, TechRoles> &
 	const ItemTags tags = ReadItemTags(engine->badges);
 	for (const std::string &problem : tags.problems) problems.push_back(fmt::format("vehicle {}: {}", record.id, problem));
 	if (tags.any && !tags.formatted) problems.push_back(fmt::format("vehicle {}: fl_ tags ignored because fl_format/1 or fl_format/2 is missing", record.id));
+	/* The shared role/ badges narrow the guess, unless they contradict what the vehicle can carry; role/universal keeps it. */
+	if (tags.community_roles.Any() && !tags.community_universal) {
+		const TechRoles narrowed = record.roles & tags.community_roles;
+		if (narrowed.Any()) {
+			record.roles = narrowed;
+			record.declared_roles = true;
+		}
+	}
+	record.power = tags.power;
 	if (tags.formatted) {
 		record.tagged = true;
 		if (tags.tech.has_value()) record.tech = *tags.tech;
 		if (tags.tier.has_value()) record.tier = *tags.tier;
-		if (tags.roles.Any()) record.roles = tags.roles;
+		if (tags.roles.Any()) {
+			record.roles = tags.roles;
+			record.declared_roles = true;
+		}
+		if (!tags.community_role) problems.push_back(fmt::format("vehicle {}: no role/ badge, so other NewGRFs, AIs and the purchase list filter cannot see its job", record.id));
 		record.needs = tags.needs;
 		record.ai_avoid = tags.avoid;
 		record.early_adopter = tags.early_adopter;
@@ -278,6 +292,7 @@ const TechRecord *TechLibrary::FindBest(const TechQuery &query) const
 {
 	const TechRecord *best = nullptr;
 	double best_score = -1;
+	bool best_declared = false;
 	for (const TechRecord &record : this->vehicles) {
 		if (!this->IsUsable(record, query)) continue;
 		const Engine *engine = Engine::Get(record.engine);
@@ -287,9 +302,12 @@ const TechRecord *TechLibrary::FindBest(const TechQuery &query) const
 		const uint speed = record.wagon && record.speed == 0 ? UINT16_MAX : record.speed;
 		const uint16_t reliability = record.wagon ? UINT16_MAX : record.reliability_max;
 		const double score = ScoreTech(capacity, speed, reliability, engine->GetCost(), engine->GetRunningCost(), record.life_years);
-		if (score > best_score) {
+		/* A vehicle its NewGRF says is made for the job beats one that only might do it. */
+		const bool declared = record.declared_roles && record.roles.Test(query.role);
+		if (best == nullptr || declared > best_declared || (declared == best_declared && score > best_score)) {
 			best = &record;
 			best_score = score;
+			best_declared = declared;
 		}
 	}
 	return best;
@@ -363,6 +381,41 @@ static bool IsValidName(std::string_view name)
 }
 
 /**
+ * The jobs a role/ badge from the shared badge classes stands for. These are the names the NewGRF
+ * specification proposes and that published sets use; unknown ones are ignored.
+ */
+static const std::map<std::string_view, TechRoles> COMMUNITY_ROLES{
+	{"passenger", {TechRole::PassengerIntercity, TechRole::PassengerCommuter, TechRole::PassengerFeeder}},
+	{"freight", {TechRole::FreightBulk, TechRole::FreightGeneral}},
+	{"mail", {TechRole::Express, TechRole::Parcel}},
+	{"express", {TechRole::PassengerIntercity, TechRole::Express}},
+	{"very_high_speed", {TechRole::PassengerIntercity}},
+	{"high_power_railcar", {TechRole::PassengerIntercity}},
+	{"intercity", {TechRole::PassengerIntercity}},
+	{"metro", {TechRole::PassengerCommuter}},
+	{"suburban", {TechRole::PassengerCommuter}},
+	{"commuter", {TechRole::PassengerCommuter}},
+	{"suburban_or_universal_railcar", {TechRole::PassengerCommuter, TechRole::PassengerIntercity}},
+	{"metro_freight", {TechRole::FreightGeneral}},
+	{"bus", {TechRole::PassengerCommuter, TechRole::PassengerFeeder}},
+	{"coach", {TechRole::PassengerIntercity}},
+	{"bulk", {TechRole::FreightBulk}},
+	{"parcel", {TechRole::Parcel}},
+};
+
+/**
+ * Get the jobs a shared role/ badge stands for.
+ * @param name The part after "role/", such as "freight".
+ * @return Roles, or empty for role/universal and names this build does not know.
+ */
+std::optional<TechRoles> CommunityRoleMeaning(std::string_view name)
+{
+	auto it = COMMUNITY_ROLES.find(name);
+	if (it == COMMUNITY_ROLES.end()) return std::nullopt;
+	return it->second;
+}
+
+/**
  * Read the fl_ tags in an item's badge labels. Declarations and other badges are not tags and are skipped or reported.
  * @param labels Badge labels of one item.
  * @return The tags, with any problems.
@@ -371,6 +424,17 @@ ItemTags ParseItemTags(std::span<const std::string> labels)
 {
 	ItemTags tags;
 	for (const std::string &label : labels) {
+		if (label.starts_with("role/")) {
+			tags.community_role = true;
+			const std::string_view name = std::string_view{label}.substr(5);
+			if (name == "universal") tags.community_universal = true;
+			if (auto roles = CommunityRoleMeaning(name); roles.has_value()) tags.community_roles.Set(*roles);
+			continue;
+		}
+		if (label.starts_with("power/")) {
+			tags.power.emplace_back(std::string_view{label}.substr(6));
+			continue;
+		}
 		if (!label.starts_with("fl_")) continue;
 		const auto parts = SplitLabel(label);
 		/* A label without a slash is a badge class, which OpenTTD creates by itself. */

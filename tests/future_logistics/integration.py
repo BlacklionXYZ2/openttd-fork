@@ -256,6 +256,8 @@ DayZeroMonopolies =
                     "fl_id/test_airliner is used by 2 items of kind vehicle"]:
         require(f"FL tech problem" in grf_text and problem in grf_text, f"validate did not report: {problem}")
     require("FL tech validate problems=8" in grf_text, "validate reported unexpected problems")
+    require(re.search(r"FL tech vehicle id=\S+:rail:0 mode=rail .*roles=freight_bulk,freight_general\(declared\) power=steam ", grf_text),
+            "the shared role/ and power/ badges were not read from a vehicle without fl_ tags")
     require(re.search(r"FL tech found id=test_rocket kind=vehicle index=\d+", grf_text) and "FL tech find id=test_rocket matches=1" in grf_text,
             "fl_id lookup did not find the tagged vehicle")
     require("FL tech find id=test_airliner matches=2" in grf_text, "fl_id lookup did not find both items sharing an id")

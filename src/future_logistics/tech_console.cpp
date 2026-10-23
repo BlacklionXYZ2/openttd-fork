@@ -39,9 +39,12 @@ std::string FormatVehicle(const TechRecord &record)
 {
 	const std::string cargo = IsValidCargoType(record.cargo) && record.capacity > 0 ? CargoSpec::Get(record.cargo)->label.AsString() : "-";
 	const bool buildable = IsEngineBuildable(record.engine, Engine::Get(record.engine)->type, _local_company);
-	return fmt::format("id={} mode={} track={} cargo={} capacity={} speed={} roles={} tech={} tier={} wagon={} buildable={} name={}",
+	std::string power;
+	for (const std::string &source : record.power) power += (power.empty() ? "" : ",") + source;
+	return fmt::format("id={} mode={} track={} cargo={} capacity={} speed={} roles={}{} power={} tech={} tier={} wagon={} buildable={} name={}",
 		record.id, TechModeName(record.mode), record.track.empty() ? "-" : record.track, cargo, record.capacity, record.speed,
-		FormatTechRoles(record.roles), record.tech, record.tier, record.wagon, buildable, GetString(STR_ENGINE_NAME, record.engine));
+		FormatTechRoles(record.roles), record.declared_roles ? "(declared)" : "", power.empty() ? "-" : power, record.tech, record.tier, record.wagon, buildable,
+		GetString(STR_ENGINE_NAME, record.engine));
 }
 
 /**

@@ -8,6 +8,13 @@ as it can be built with one of the existing **mechanics** (see below).
 
 Version 1 tags (`fl_format/1`) keep working.
 
+The format sits on top of the NewGRF specification and the shared badge
+classes other NewGRFs use (see "Fitting in with community content"). The `fl_`
+badges only add what the specification has no words for; everything the
+specification already covers (cargo, track types, roles, power sources) is
+written the standard way, so other NewGRFs, AIs and Game Scripts understand
+Future Logistics content and Future Logistics understands theirs.
+
 ## How it fits together
 
 | Layer | Provided by | What it is |
@@ -139,6 +146,22 @@ scaling). A family can raise the minimum with `min_tier`.
 | `fl_industry/<kind>` | industry | What the industry is, for display and validation | none |
 | `fl_market/<market>` | industry | Market group, so rivals can prefer it (`fl_profile/.../industries/...`) | none |
 
+Two shared badge classes from the NewGRF specification are also read, from any
+NewGRF and without `fl_format`:
+
+| Badge | Meaning here |
+|---|---|
+| `role/<name>` | The job the NewGRF says the vehicle is for; narrows the inferred roles (table below) |
+| `power/<source>` | Power source, such as `power/electric`; shown by `list` |
+
+Roles are decided in this order: `fl_role`; then the `role/` badges, which
+narrow the inferred roles to those they name (`role/universal` keeps them all,
+and a `role/` badge that contradicts the cargo is ignored); then inference. A
+vehicle whose roles come from `fl_role` or a specific `role/` badge is
+**declared** for them, and is preferred over one that only might do the job,
+however fast. So a train set's `role/freight` engine pulls freight even if its
+`role/express` engine is faster.
+
 Roles: `passenger_intercity`, `passenger_commuter`, `passenger_feeder`,
 `freight_bulk`, `freight_general`, `parcel`, `express`.
 
@@ -157,6 +180,26 @@ Without `fl_role`, roles are inferred from the vehicle's default cargo:
 
 A cargo declaration (below) overrides the inference for vehicles that carry
 that cargo.
+
+What the shared `role/` names mean here (unknown names are ignored):
+
+| `role/` badge | Roles |
+|---|---|
+| `passenger` | `passenger_intercity`, `passenger_commuter`, `passenger_feeder` |
+| `freight` | `freight_bulk`, `freight_general` |
+| `bulk` | `freight_bulk` |
+| `mail` | `express`, `parcel` |
+| `parcel` | `parcel` |
+| `express` | `passenger_intercity`, `express` |
+| `intercity`, `very_high_speed`, `high_power_railcar`, `coach` | `passenger_intercity` |
+| `metro`, `suburban`, `commuter` | `passenger_commuter` |
+| `suburban_or_universal_railcar` | `passenger_commuter`, `passenger_intercity` |
+| `bus` | `passenger_commuter`, `passenger_feeder` |
+| `metro_freight` | `freight_general` |
+| `universal` | all inferred roles |
+
+The names come from the specification's proposal (`role/passenger`,
+`role/freight`) and from published sets such as Iron Horse.
 
 ## Declarations
 
@@ -243,6 +286,80 @@ services look for `parcel` vehicles, and `fl_cargo/DATA/role/express` makes a
 data centre's `DATA` cargo travel with express vehicles. Vehicles must also be
 able to carry or refit to the cargo.
 
+## Fitting in with community content
+
+Future Logistics content follows the NewGRF specification
+(newgrf-specs.tt-wiki.net) and the conventions published sets use, and only
+adds `fl_` badges on top. [`compatibility.md`](compatibility.md) records the
+sets this was checked against.
+
+### Badge labels
+
+- Labels are `class/name`, with deeper paths allowed, as the specification
+  says. A label without `/` is a class.
+- `fl_` is Future Logistics' own namespace, the way Iron Horse uses `ih_`. The
+  shared classes (`role`, `power`, `livery`, `manufacturer`, `operator`, `flag`)
+  are never used for `fl_` data, and `fl_` names are never used for things the
+  shared classes already describe.
+- `fl_` badges are data for the game's code, not for players. Leave the `fl_`
+  classes without a `name` and without a sprite; the game then never shows any
+  `fl_` badge in the purchase list or its filters. Family and rival names
+  (`fl_family/<family>`, `fl_profile/<profile>`) may have a `name`, which the
+  console and rival names use; they stay hidden because their class has none.
+- Badges with the copy flag (`BADGE_FLAG_COPY_TO_RELATED_ENTITY`) on a track or
+  road type are copied to its vehicles, and are read like the vehicle's own. If
+  `fl_` tags are copied this way, copy `fl_format/2` too.
+- Badges from other NewGRFs, including private ones (by convention starting
+  with `_`) and `newgrf/<GRFID>`, are left alone and never reported.
+
+### Vehicles
+
+Every vehicle in Future Logistics content carries, besides its `fl_` tags:
+
+- at least one `role/` badge from the table above (`validate` reports a
+  formatted vehicle without one), so other NewGRFs, AIs and the purchase list
+  filter can see its job. Use `fl_role` only where a finer role is needed;
+- a `power/` badge where it has a power source. Reuse the labels sets already
+  use: `power/steam`, `power/diesel`, `power/electric`, `power/ohle`,
+  `power/electro_diesel`, `power/dual_voltage`, `power/battery_hybrid`,
+  `power/metro`. A new source gets a plain lower-case name, such as
+  `power/hydrogen` or `power/rocket`;
+- where it helps players, `manufacturer/`, `operator/` and `livery/` badges as
+  the specification proposes. These are given names and sprites, unlike `fl_`.
+
+Standard vehicle properties stay the source of truth: speed, power, capacity,
+introduction date, track type and refits (by cargo class first, with labels
+only for exceptions). Badges never replace them.
+
+### Cargo
+
+- Use the label from the cargo label registry (the specification's
+  CargoTypes page) when the meaning matches, for example `O2__` (oxygen,
+  liquid) for liquid oxygen. Labels already taken must not be reused for
+  something else: `FUEL` means natural gas, so rocket fuel needs a new label.
+- A new label must not clash with the registry or with labels in use by the
+  big industry sets; FIRS, for one, uses about 45 that the registry does not
+  list yet.
+- Always give cargo the right classes (passengers, mail, express, armoured,
+  bulk, piece goods, liquid, refrigerated, hazardous, covered...). Other sets'
+  vehicles refit by class, so classes are what make a new cargo usable by them.
+- `fl_cargo/<LABEL>/role/...` only adds to this, for meanings classes cannot
+  express.
+
+### Track, road and tram types
+
+- Use the standardized railtype and roadtype label schemes where they fit, and
+  give fallbacks (`alternative_railtype_list` and so on) so other sets' vehicles
+  and other sets' tracks work together. A wholly new kind of way, such as a
+  hyperloop tube, uses a label of its own and has no fallback.
+- `fl_tech/<family>` and `fl_provides/<site>` on the type are added on top.
+
+### Industries
+
+- Production may be fixed or given by callbacks; the game's code reads last
+  month's production when there is no fixed rate, so both work.
+- Accepted and produced cargo use the cargo rules above.
+
 ## Linking code and content
 
 Two links connect NewGRF content with the game's code, in both directions.
@@ -291,6 +408,7 @@ badgetable {
     "fl_family/rocket/market/town_pair", "fl_family/rocket/min_tier/city",
     "fl_tech/rocket", "fl_tier/3", "fl_role/express",
     "fl_needs/launchpad", "fl_provides/launchpad",
+    "role/freight", "power/rocket",
     "fl_profile/spacecorp", "fl_profile/spacecorp/adopt/rocket/any/any/0",
 }
 
@@ -300,7 +418,7 @@ item(FEAT_BADGES, spacecorp, 1)     { property { label: "fl_profile/spacecorp"; 
 item(FEAT_AIRCRAFT, cargo_rocket) {
     property {
         /* normal properties: introduction date, speed, capacity, cost ... */
-        badges: ["fl_format/2", "fl_tech/rocket", "fl_tier/3", "fl_role/express", "fl_needs/launchpad"];
+        badges: ["fl_format/2", "fl_tech/rocket", "fl_tier/3", "fl_role/express", "fl_needs/launchpad", "role/freight", "power/rocket"];
     }
 }
 item(FEAT_AIRPORTS, launchpad) {
@@ -323,7 +441,7 @@ Load it in a new game, open the console and use:
 | `future_logistics_tech badges` | Every `fl_` badge the loaded NewGRFs declare, and every tagged vehicle |
 | `future_logistics_tech list` | Every vehicle, track type and airport as the library reads it |
 | `future_logistics_tech recipes` | Every recipe, and each rival's adoption plan for today's date |
-| `future_logistics_tech validate` | Problems: unknown names and mechanics, bad numbers, needs nobody provides, families with no vehicles, duplicate `fl_id`s, tags without `fl_format` |
+| `future_logistics_tech validate` | Problems: unknown names and mechanics, bad numbers, needs nobody provides, families with no vehicles, duplicate `fl_id`s, tags without `fl_format`, formatted vehicles without a `role/` badge |
 | `future_logistics_tech find <id>` | Every item with that `fl_id` |
 | `future_logistics_tech best <mode> <role> [<cargo label>]` | The vehicle a company would pick for a job |
 
@@ -334,6 +452,8 @@ Load it in a new game, open the console and use:
   if a company could not legally buy it.
 - `fl_ai/avoid` is always obeyed.
 - Unknown `fl_` labels are reported by `validate` and otherwise ignored.
+- Other NewGRFs' badges are never reported; of the shared classes, only `role/`
+  and `power/` are read, and only as described above.
 - A recipe that cannot be built (no vehicles, no matching site, unsupported
   market) is skipped and the reason is logged; it never stops other recipes.
 - The library and catalogue are rebuilt from the loaded NewGRFs and never saved,

@@ -70,7 +70,9 @@ struct TechRecord {
 	/* Fields below come from fl_ badges; see docs/future_logistics/tech_format.md. */
 	std::string tech = "conventional"; ///< Technology family (fl_tech).
 	uint8_t tier = 0; ///< Progression level (fl_tier).
-	TechRoles roles{}; ///< Jobs this vehicle suits (fl_role, or inferred).
+	TechRoles roles{}; ///< Jobs this vehicle suits (fl_role, the shared role/ badges, or inferred).
+	bool declared_roles = false; ///< The roles come from fl_role or a specific role/ badge rather than a guess, so it is preferred for them.
+	std::vector<std::string> power; ///< Power sources from the shared power/ badges, such as "electric".
 	std::vector<std::string> needs; ///< Special infrastructure required (fl_needs).
 	bool ai_avoid = false; ///< Rival companies must not use it (fl_ai/avoid).
 	bool early_adopter = false; ///< Only adoption rules with no delay may use it (fl_ai/early_adopter).
@@ -106,6 +108,12 @@ struct ItemTags {
 	bool avoid = false; ///< fl_ai/avoid
 	bool early_adopter = false; ///< fl_ai/early_adopter
 	std::vector<std::string> problems; ///< Labels that could not be understood.
+
+	/* Shared badge classes from the NewGRF specification, which any NewGRF may use; read without fl_format. */
+	TechRoles community_roles{}; ///< Roles from known role/ badges, such as role/freight.
+	bool community_universal = false; ///< Has role/universal: suits every job.
+	bool community_role = false; ///< Has at least one role/ badge, known or not.
+	std::vector<std::string> power; ///< power/<source> badges.
 };
 
 /** Which part of a consist a query wants. */
@@ -162,6 +170,7 @@ std::optional<TechRole> ParseTechRole(std::string_view name);
 std::string FormatTechRoles(TechRoles roles);
 std::vector<std::string_view> SplitLabel(std::string_view label);
 ItemTags ParseItemTags(std::span<const std::string> labels);
+std::optional<TechRoles> CommunityRoleMeaning(std::string_view name);
 ItemTags ReadItemTags(std::span<const BadgeID> badges);
 std::map<std::string, TechRoles> ParseCargoRoles(std::span<const std::string> labels, std::vector<std::string> &problems);
 

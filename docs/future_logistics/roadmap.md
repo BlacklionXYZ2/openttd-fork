@@ -204,6 +204,12 @@ Completed afterwards in the same phase:
   particular NewGRF item by a stable name; `future_logistics_tech find`.
 - Built-in rivals gained rules for mail trains, mail trucks, air mail,
   ferries, freight ships and air freight, after their existing rules.
+- **Transfers** (`dock_pair+rail_line` mechanic): ships carry freight to a
+  port and leave it there; a freight railway with platforms joined to the port
+  takes it inland. Built from the existing ship and rail planners. The railway
+  is checked first, and the ships are removed if it still fails. Integrated
+  Logistics uses it after its other freight rules. Seen working: oil from an
+  oil rig, shipped to a port and taken by train to a refinery.
 
 Limits:
 
@@ -212,7 +218,10 @@ Limits:
 - In the base game there are no mail or freight aircraft, so air mail and air
   freight only happen with NewGRF aircraft.
 - Freight ships need industries near usable coast; in the test maps none was,
-  so freight shipping has not yet been seen to succeed. Ferries have.
+  so direct freight shipping has not yet been seen to succeed. Ferries and
+  ship-to-rail transfers have.
+- Transfers have two legs, ship then train. Other combinations (train to
+  truck, ship to truck) are further mechanics of the same shape.
 - Cargo types cannot carry badges, so their meaning is declared by label.
 
 ## Phase 6: rivals that keep up

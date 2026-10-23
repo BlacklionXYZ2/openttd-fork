@@ -36,7 +36,7 @@ def main():
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
             towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
-            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False):
+            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False, months=3):
         folder = output / name
         folder.mkdir(exist_ok=True)
         if grfs:
@@ -106,13 +106,13 @@ DayZeroMonopolies =
         startup = commands + "future_logistics_check\n"
         if service:
             startup += "schedule on-next-calendar-month scripts/month1.scr\n"
-            (scripts / "month1.scr").write_text("schedule on-next-calendar-month scripts/month2.scr\n")
-            (scripts / "month2.scr").write_text("schedule on-next-calendar-month scripts/month3.scr\n")
-            (scripts / "month3.scr").write_text("future_logistics_check\nsave " + str(folder / "snapshot") + "\nquit\n")
+            for month in range(1, months):
+                (scripts / f"month{month}.scr").write_text(f"schedule on-next-calendar-month scripts/month{month + 1}.scr\n")
+            (scripts / f"month{months}.scr").write_text("future_logistics_check\nsave " + str(folder / "snapshot") + "\nquit\n")
         else:
             startup += "save " + str(folder / "snapshot") + "\nquit\n"
         (scripts / "game_start.scr").write_text(startup)
-        driver = "null:ticks=9000" if service else ("null:ticks=1" if dedicated else "sdl")
+        driver = f"null:ticks={3000 * months}" if service else ("null:ticks=1" if dedicated else "sdl")
         cmd = [str(binary), "-X", "-x", "-c", str(cfg), "-v", driver,
                "-s", "null", "-m", "null", "-d", "misc=3,script=4", "-G", str(seed), "-t", str(year), "-g"]
         if load:
@@ -218,6 +218,16 @@ DayZeroMonopolies =
     require(vehicle_count(coast_run)[-1:] == [coast_vehicles] and len(set(coast_served)) == coast_vehicles,
             "not every vehicle in the coastal world visited an ordered station")
 
+    # Ship to a port, then train inland: the ships transfer and leave empty, the train loads at the joined port.
+    transfer, transfer_save = run("transfer-world", coastal=True, map_bits=9, seed=3)
+    leg = re.search(r"FL rail company=(\d+) kind=freight cargo=(\w+) track=\w+ vehicle=(\d+).*\n.*FL transfer company=\1 source=\d+ port=\d+ destination=\d+ cargo=\2 ", transfer)
+    require(leg, "no ship-to-rail transfer was built in a large coastal world")
+    require(re.search(r"FL service company=\d+ recipe=conventional/dock_pair\+rail_line/industry fallback=false result=success", transfer),
+            "the transfer recipe did not succeed")
+    transfer_run, _ = run("transfer-service", load=transfer_save, service=True, months=12)
+    train = re.findall(rf"FL check company={leg.group(1)} vehicle={leg.group(3)} type=rail connected=true served=true tile=\d+ profit=(-?\d+)", transfer_run)
+    require(train and int(train[-1]) > 0, "the transfer train did not earn by delivering what the ships left at the port")
+
     tiny, _ = run("tiny-world", map_bits=6, towns=2, industries=0)
     tiny_grant = int(re.search(r"FL market population=\d+ towns=2 industries=0 grant=(\d+)", tiny).group(1))
     require(tiny_grant < 500000, "two villages should not fund rivals with millions")
@@ -303,7 +313,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; ferries in a coastal world; NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; ferries in a coastal world; ship-to-rail transfers through a port; NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

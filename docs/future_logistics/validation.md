@@ -46,10 +46,11 @@ test was run for these phases.
 | Check | Result |
 | --- | --- |
 | Feature GUI Debug build | Passed, no compiler warnings/errors |
-| CTest suite | **107/107 passed** (98 upstream and phase 0, 9 Tech Library, scaling and format unit tests) |
-| Full-engine integration suite | **26 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 2 for a coastal world, 1 tiny world, 1 NewGRF tech tree) |
+| CTest suite | **107/107 passed** (98 upstream and phase 0, 9 Tech Library, scaling and format unit tests; 132 Future Logistics assertions) |
+| Full-engine integration suite | **28 scenarios passed** (16 updated phase 0 scenarios, 4 per-climate Tech Library snapshots, 2 for a 2026 start, 2 for a coastal world, 2 for a ship-to-rail transfer, 1 tiny world, 1 NewGRF tech tree) |
 | Mail, ships, air freight (1950) | Mail trains (National Rail) and mail trucks (Metro & Regional) built and checked; air mail and air freight correctly rejected (no base-game mail or freight aircraft) |
 | Coastal world, three seeds | A ferry was built in each; in the tested seed it reached both docks within three months. Freight ships were rejected because no industry had usable coast nearby |
+| Ship-to-rail transfer, 512×512 coastal world, six seeds | Integrated Logistics built a transfer in three: livestock twice, and oil from an oil rig (two ships to a port, then a train to a refinery 14 track tiles inland). In seed 3 over twelve simulated months the ships left oil at the port, the train loaded it (40 then 80 units aboard) and its profit went from −201,268 to +124,296 as it delivered to the refinery. The other three seeds had no usable port and rejected the recipe without building anything |
 | `fl_id` and the mechanic registry | The test NewGRF's `fl_id` lookups found the tagged vehicle, both items sharing a duplicate id, and `validate` reported the duplicate and a mechanic the game does not have |
 | NewGRF tech tree (`tests/future_logistics/grf/fl_test.grf`, five rivals) | TestCorp Airways, declared only by the NewGRF, built an airline with the NewGRF's "testjet" family; AeroLink adopted it through a NewGRF rule; mail vehicles took the declared parcel role; `validate` reported exactly the eight deliberate mistakes |
 | Without NewGRFs after the phase 5 rewrite | Same seven services and nine vehicles as phase 4; catalogue reports no problems |

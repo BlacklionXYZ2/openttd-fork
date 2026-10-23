@@ -193,9 +193,11 @@ bool InspectFutureLogistics()
 		const Company *company = Company::Get(vehicle->owner);
 		uint delivered = company->cur_economy.delivered_cargo.GetSum<uint>();
 		for (const auto &quarter : company->old_economy) delivered += quarter.delivered_cargo.GetSum<uint>();
-		Debug(Facility::Misc, Severity::Notice, "FL check company={} vehicle={} type={} connected={} served={} tile={} profit={} delivered={}",
+		uint carrying = 0;
+		for (const Vehicle *part = vehicle; part != nullptr; part = part->Next()) carrying += part->cargo.StoredCount();
+		Debug(Facility::Misc, Severity::Notice, "FL check company={} vehicle={} type={} connected={} served={} tile={} profit={} delivered={} carrying={}",
 			vehicle->owner, vehicle->index, vehicle->type == VehicleType::Train ? "rail" : (vehicle->type == VehicleType::Aircraft ? "air" : (vehicle->type == VehicleType::Ship ? "water" : "road")), connected, destinations.contains(vehicle->last_station_visited),
-			vehicle->tile, vehicle->profit_this_year, delivered);
+			vehicle->tile, vehicle->profit_this_year, delivered, carrying);
 	}
 	Debug(Facility::Misc, Severity::Notice, "FL check result={} companies={} vehicles={} human={}", valid, Company::GetNumItems(), checked, _local_company);
 	return valid;

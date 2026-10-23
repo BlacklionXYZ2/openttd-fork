@@ -55,6 +55,7 @@ struct Terminus {
 	TileIndex front = INVALID_TILE; ///< Platform tile next to the line.
 	DiagDirection exit = DiagDirection::NE; ///< Direction from the platforms towards the line.
 	int length = 2; ///< Platform length in tiles; the train is sized to fit.
+	StationID join = NEW_STATION; ///< Existing station the platforms join, such as a port where cargo is transferred.
 
 	TileIndex Exit() const { return Step(this->front, this->exit); }
 	TileIndex Platform(int i) const { return Step(this->front, this->exit, -i); }
@@ -235,7 +236,7 @@ CommandCost BuildTerminusStation(const Terminus &site, RailType railtype, DoComm
 {
 	const TileArea area = site.Area();
 	return Command<Commands::BuildRailStation>::Do(flags | CONSTRUCT, area.tile, railtype, DiagDirToAxis(site.exit), 1, site.length,
-		STAT_CLASS_DFLT, 0, NEW_STATION, true);
+		STAT_CLASS_DFLT, 0, site.join, true);
 }
 
 /**
@@ -265,9 +266,10 @@ struct Consist {
  * @param b Destination terminus.
  * @param path Line tiles.
  * @param consist Train to buy.
- * @return Whether preflight rejected, execution failed, or the service was built.
+ * @param execute Whether to build after a successful preflight; false only checks.
+ * @return Whether preflight rejected, execution failed, or the service was built (or would be, when not executing).
  */
-ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std::vector<TileIndex> &path, const Consist &consist)
+ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std::vector<TileIndex> &path, const Consist &consist, bool execute = true)
 {
 	const std::vector<Track> tracks = LineTracks(a, b, path);
 	Money cost = 0;
@@ -290,6 +292,7 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	if (cost * 2 + train * 2 > company->money) return ConstructionResult::Rejected;
 	/* Explicit demolition consumes clearing credits. Keep enough for a complete rollback. */
 	if ((company->clear_limit >> 16) < (path.size() + 2 * a.length + 1) * 3 + 8) return ConstructionResult::Rejected;
+	if (!execute) return ConstructionResult::Success;
 
 	std::vector<TileIndex> built;
 	std::vector<VehicleID> vehicles;
@@ -563,6 +566,48 @@ ConstructionResult BuildFreightRail(const TechLibrary &library, const ServiceSpe
 				pair.source->index, pair.destination->index, CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
 		}
 		return result;
+	}
+	return ConstructionResult::Rejected;
+}
+
+/**
+ * Build a freight railway that starts at an existing station, such as a port where ships transfer their
+ * cargo, and delivers to an industry that accepts it. The platforms join that station, so the train
+ * loads the cargo other vehicles left there.
+ * @param library Loaded transport technology.
+ * @param spec Family, limits and preferences of the service.
+ * @param hub_tile A tile of the station to start from; platforms are sought near it.
+ * @param hub The station to join, or NEW_STATION to check a layout before that station exists.
+ * @param destination Industry that accepts the cargo.
+ * @param cargo Cargo carried.
+ * @param execute Whether to build; false only checks that a railway could be built.
+ * @return Outcome.
+ */
+ConstructionResult BuildFreightRailFrom(const TechLibrary &library, const ServiceSpec &spec, TileIndex hub_tile, StationID hub,
+	const Industry *destination, CargoType cargo, bool execute)
+{
+	const TierLimits &limits = GetTierLimits(std::max(MarketTier::Town, spec.min_tier));
+	const Consist consist = ChooseConsist(library, spec, FreightRole(library, cargo), cargo, true, limits.track_rank);
+	if (consist.locomotive == nullptr) return ConstructionResult::Rejected;
+	const int length = limits.platform_length;
+	const int radius = _settings_game.station.modified_catchment ? CA_TRAIN : CA_UNMODIFIED;
+	/* Close enough to the hub for the platforms to join it. */
+	auto from = FindTermini(hub_tile, 6, length, [](const Terminus &) { return true; });
+	for (Terminus &site : from) site.join = hub;
+	auto centre = TileAddXY(destination->location.tile, destination->location.w / 2, destination->location.h / 2);
+	const int search = std::max<int>(destination->location.w, destination->location.h) / 2 + radius + length;
+	const auto to = FindTermini(centre, search, length, [&](const Terminus &site) {
+		if (!Catchment(site).Intersects(destination->location)) return false;
+		const TileArea area = site.Area();
+		return GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[cargo] >= 8;
+	});
+	for (const Terminus &a : from) {
+		for (const Terminus &b : to) {
+			const auto path = FindRailPath(a, b);
+			if (path.empty()) continue;
+			const auto result = BuildRailway(a, b, path, consist, execute);
+			if (result != ConstructionResult::Rejected) return result;
+		}
 	}
 	return ConstructionResult::Rejected;
 }

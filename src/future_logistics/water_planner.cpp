@@ -6,6 +6,7 @@
 #include "../stdafx.h"
 #include "water_planner.h"
 #include "catalogue.h"
+#include "rail_planner.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../cargotype.h"
@@ -200,16 +201,42 @@ struct ShipJob {
 	CargoType cargo; ///< Cargo to refit it to.
 	uint fleet; ///< Number of ships.
 	std::optional<VehicleOrderID> full_load_at; ///< Order with a full load, as for freight; the other order does not load.
+	std::optional<VehicleOrderID> transfer_at = std::nullopt; ///< Order that transfers and leaves empty, for a port where another vehicle takes over.
 };
+
+/** What a shipping service built, so it can be removed again. */
+struct BuiltShipping {
+	std::vector<TileIndex> tiles; ///< Docks and depot, in build order.
+	std::vector<VehicleID> vehicles; ///< Ships.
+};
+
+/**
+ * Remove a shipping service: sell its ships, then clear what it built in reverse order.
+ * @param built What was built.
+ */
+void Undo(const BuiltShipping &built)
+{
+	for (VehicleID vehicle : built.vehicles) {
+		if (Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid).Failed()) {
+			Debug(Facility::Misc, Severity::Error, "FL rollback failed selling vehicle={}; infrastructure retained", vehicle);
+			return;
+		}
+	}
+	for (auto it = built.tiles.rbegin(); it != built.tiles.rend(); ++it) {
+		auto result = Command<Commands::LandscapeClear>::Do(EXEC, *it);
+		if (result.Failed()) Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={} error={}", *it, result.GetErrorMessage());
+	}
+}
 
 /**
  * Preflight docks and a depot, then build them and the fleet through normal commands.
  * @param a Origin, near which the depot goes.
  * @param b Destination.
  * @param job Service to build.
+ * @param[out] result_built If given, receives what was built on success, so a caller can remove it again.
  * @return Whether preflight rejected, execution failed, or the service was built.
  */
-ConstructionResult BuildShipping(const DockEnd &a, const DockEnd &b, const ShipJob &job)
+ConstructionResult BuildShipping(const DockEnd &a, const DockEnd &b, const ShipJob &job, BuiltShipping *result_built = nullptr)
 {
 	std::set<TileIndex> avoid;
 	for (const DockEnd *end : {&a, &b}) {
@@ -236,23 +263,12 @@ ConstructionResult BuildShipping(const DockEnd &a, const DockEnd &b, const ShipJ
 	if (cost * 2 + job.ship->GetCost() * 2 * job.fleet > company->money) return ConstructionResult::Rejected;
 	if ((company->clear_limit >> 16) < 16) return ConstructionResult::Rejected;
 
-	std::vector<TileIndex> built;
-	std::vector<VehicleID> vehicles;
-	auto rollback = [&]() {
-		for (VehicleID vehicle : vehicles) {
-			if (Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid).Failed()) {
-				Debug(Facility::Misc, Severity::Error, "FL rollback failed selling vehicle={}; infrastructure retained", vehicle);
-				return;
-			}
-		}
-		for (auto it = built.rbegin(); it != built.rend(); ++it) {
-			auto result = Command<Commands::LandscapeClear>::Do(EXEC, *it);
-			if (result.Failed()) Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={} error={}", *it, result.GetErrorMessage());
-		}
-	};
+	BuiltShipping done;
+	std::vector<TileIndex> &built = done.tiles;
+	std::vector<VehicleID> &vehicles = done.vehicles;
 	auto fail = [&](std::string_view phase) {
 		Debug(Facility::Misc, Severity::Warning, "FL construction failed company={} phase={}; clearing new infrastructure", _current_company, phase);
-		rollback();
+		Undo(done);
 		return ConstructionResult::Failed;
 	};
 	for (const DockEnd *end : {&a, &b}) {
@@ -276,6 +292,11 @@ ConstructionResult BuildShipping(const DockEnd &a, const DockEnd &b, const ShipJ
 			/* Non-train orders must use the far end; the default near end is rejected. */
 			order.SetStopLocation(OrderStopLocation::FarEnd);
 			if (job.full_load_at.has_value()) order.SetLoadType(i == *job.full_load_at ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);
+			if (job.transfer_at == i) {
+				/* Transfer and leave empty: the cargo waits at the station for the next vehicle to take on. */
+				order.SetUnloadType(OrderUnloadType::Transfer);
+				order.SetLoadType(OrderLoadType::NoLoad);
+			}
 			if (Command<Commands::InsertOrder>::Do(EXEC, vehicle, i, order).Failed()) return fail("orders");
 		}
 		if (Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true).Failed()) return fail("start");
@@ -283,6 +304,7 @@ ConstructionResult BuildShipping(const DockEnd &a, const DockEnd &b, const ShipJ
 	Debug(Facility::Misc, Severity::Notice, "FL ship company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} balance={}",
 		_current_company, job.kind, CargoSpec::Get(job.cargo)->label.AsString(), job.fleet, vehicles.front(), from, to, depot_tile,
 		Company::Get(_current_company)->money);
+	if (result_built != nullptr) *result_built = std::move(done);
 	return ConstructionResult::Success;
 }
 
@@ -326,6 +348,80 @@ ConstructionResult TryDocks(const std::vector<DockEnd> &from, const std::vector<
 		}
 	}
 	return ConstructionResult::Rejected;
+}
+
+/** A freight route candidate: a cargo from a source industry to one that accepts it. */
+struct FreightPair {
+	size_t preference; ///< Rival's industry market preference; 0 is best.
+	uint distance; ///< Manhattan distance between the industries.
+	const Industry *source;
+	const Industry *destination;
+	CargoType cargo;
+};
+
+/**
+ * List freight routes, best first. Sources are unused primary industries, or secondary ones another
+ * freight service already supplies; destinations are unused industries that accept the cargo.
+ * @param spec Limits and preferences of the service.
+ * @param reserved Markets already taken.
+ * @param min_distance Shortest route.
+ * @param max_distance Longest route.
+ * @return Candidates in order of preference, then distance.
+ */
+std::vector<FreightPair> FreightPairs(const ServiceSpec &spec, const Reservations &reserved, uint min_distance, uint max_distance)
+{
+	std::vector<FreightPair> pairs;
+	for (const Industry *source : Industry::Iterate()) {
+		const bool chain = reserved.supplied.contains(source->index);
+		if (reserved.industries.contains(source->index) && !chain) continue;
+		for (const auto &produced : source->produced) {
+			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
+			/* Secondary industries produce nothing until supplied; ships would wait for a full load forever. */
+			if (produced.rate == 0 && !chain) continue;
+			if (TierForIndustry(source, produced.cargo) < spec.min_tier) continue;
+			for (const Industry *destination : Industry::Iterate()) {
+				if (destination == source || reserved.industries.contains(destination->index) || !destination->IsCargoAccepted(produced.cargo)) continue;
+				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
+				if (distance < min_distance || distance > max_distance) continue;
+				const size_t preference = std::min(IndustryPreference(source, spec.industry_markets), IndustryPreference(destination, spec.industry_markets));
+				pairs.push_back({preference, distance, source, destination, produced.cargo});
+			}
+		}
+	}
+	std::ranges::stable_sort(pairs, [](const FreightPair &a, const FreightPair &b) { return a.preference != b.preference ? a.preference < b.preference : a.distance < b.distance; });
+	return pairs;
+}
+
+/**
+ * Get the middle of an industry.
+ * @param industry Industry.
+ * @return Tile near its centre.
+ */
+TileIndex Centre(const Industry *industry)
+{
+	return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2);
+}
+
+/**
+ * Find docks that serve an industry. An industry with its own dock, such as an oil rig, needs nothing built.
+ * @param industry Industry to serve.
+ * @param cargo Cargo carried.
+ * @param destination Whether the cargo is delivered here, so the dock must accept it.
+ * @return Dock sites, or the industry's own dock.
+ */
+std::vector<DockEnd> IndustryDocks(const Industry *industry, CargoType cargo, bool destination)
+{
+	if (industry->neutral_station != nullptr && industry->neutral_station->facilities.Test(StationFacility::Dock)) {
+		return std::vector<DockEnd>{DockEnd{INVALID_TILE, DiagDirection::NE, industry->neutral_station}};
+	}
+	const int radius = DockCatchment();
+	const int search = std::max<int>(industry->location.w, industry->location.h) / 2 + radius + 2;
+	return FindDocks(Centre(industry), search, [&](const DockEnd &, const TileArea &area) {
+		TileArea catchment = area;
+		catchment.Expand(radius);
+		if (!catchment.Intersects(industry->location)) return false;
+		return !destination || GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[cargo] >= 8;
+	});
 }
 } // namespace
 
@@ -399,48 +495,14 @@ ConstructionResult BuildTownFerry(const TechLibrary &library, const ServiceSpec 
  */
 ConstructionResult BuildShipFreight(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved)
 {
-	struct Pair { size_t preference; uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
-	std::vector<Pair> pairs;
-	for (const Industry *source : Industry::Iterate()) {
-		const bool chain = reserved.supplied.contains(source->index);
-		if (reserved.industries.contains(source->index) && !chain) continue;
-		for (const auto &produced : source->produced) {
-			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
-			if (produced.rate == 0 && !chain) continue;
-			if (TierForIndustry(source, produced.cargo) < spec.min_tier) continue;
-			for (const Industry *destination : Industry::Iterate()) {
-				if (destination == source || reserved.industries.contains(destination->index) || !destination->IsCargoAccepted(produced.cargo)) continue;
-				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
-				if (distance < 16 || distance > 160) continue;
-				const size_t preference = std::min(IndustryPreference(source, spec.industry_markets), IndustryPreference(destination, spec.industry_markets));
-				pairs.push_back({preference, distance, source, destination, produced.cargo});
-			}
-		}
-	}
-	std::ranges::stable_sort(pairs, [](const Pair &a, const Pair &b) { return a.preference != b.preference ? a.preference < b.preference : a.distance < b.distance; });
-
-	const int radius = DockCatchment();
-	auto centre = [](const Industry *industry) { return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2); };
-	auto industry_docks = [&](const Industry *industry, CargoType cargo, bool destination) {
-		/* An industry with its own dock, such as an oil rig, needs nothing built. */
-		if (industry->neutral_station != nullptr && industry->neutral_station->facilities.Test(StationFacility::Dock)) {
-			return std::vector<DockEnd>{DockEnd{INVALID_TILE, DiagDirection::NE, industry->neutral_station}};
-		}
-		const int search = std::max<int>(industry->location.w, industry->location.h) / 2 + radius + 2;
-		return FindDocks(centre(industry), search, [&](const DockEnd &, const TileArea &area) {
-			TileArea catchment = area;
-			catchment.Expand(radius);
-			if (!catchment.Intersects(industry->location)) return false;
-			return !destination || GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[cargo] >= 8;
-		});
-	};
+	const auto pairs = FreightPairs(spec, reserved, 16, 160);
 	size_t tried = 0;
-	for (const Pair &pair : pairs) {
+	for (const FreightPair &pair : pairs) {
 		if (tried == MAX_SHIP_PAIRS) break;
 		const Engine *ship = ChooseShip(library, spec, FreightRole(library, pair.cargo), pair.cargo);
 		if (ship == nullptr) continue;
-		auto from = industry_docks(pair.source, pair.cargo, false);
-		auto to = industry_docks(pair.destination, pair.cargo, true);
+		auto from = IndustryDocks(pair.source, pair.cargo, false);
+		auto to = IndustryDocks(pair.destination, pair.cargo, true);
 		if (from.empty() || to.empty()) continue;
 		tried++;
 		const MarketTier tier = TierForIndustry(pair.source, pair.cargo);
@@ -465,6 +527,70 @@ ConstructionResult BuildShipFreight(const TechLibrary &library, const ServiceSpe
 				pair.source->index, pair.destination->index, CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
 		}
 		return result;
+	}
+	return ConstructionResult::Rejected;
+}
+
+/**
+ * Ship freight to a port, where it is transferred to a train that delivers it to an industry inland.
+ * The ship leg is the normal shipping service with "transfer and leave empty" at the port; the rail leg
+ * is the normal freight railway, with its platforms joined to the port so the train loads what the ships
+ * leave there. The railway is checked before anything is built, and the ship leg is removed again if the
+ * railway still cannot be built.
+ * @param library Loaded transport technology.
+ * @param spec Family, limits and preferences of the service.
+ * @param[in,out] reserved Markets already taken; the chosen industries are added on success.
+ * @return Outcome.
+ */
+ConstructionResult BuildShipToRail(const TechLibrary &library, const ServiceSpec &spec, Reservations &reserved)
+{
+	constexpr int PORT_SEARCH_RADIUS = 48; ///< How far from the destination a port may be.
+	const int radius = DockCatchment();
+	size_t tried = 0;
+	for (const FreightPair &pair : FreightPairs(spec, reserved, 24, 256)) {
+		if (tried == MAX_SHIP_PAIRS) break;
+		const Engine *ship = ChooseShip(library, spec, FreightRole(library, pair.cargo), pair.cargo);
+		if (ship == nullptr) continue;
+		const auto from = IndustryDocks(pair.source, pair.cargo, false);
+		if (from.empty()) continue;
+		/* Ports near the destination that do not accept the cargo themselves; where one does, a direct ship route serves it. */
+		const auto ports = FindDocks(Centre(pair.destination), PORT_SEARCH_RADIUS, [&](const DockEnd &, const TileArea &area) {
+			return GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[pair.cargo] < 8;
+		});
+		if (ports.empty()) continue;
+		tried++;
+		const MarketTier tier = TierForIndustry(pair.source, pair.cargo);
+		const uint fleet = GetTierLimits(tier).fleet;
+		for (const DockEnd &source : from) {
+			for (const DockEnd &port : ports) {
+				if (!Connected(source, port)) continue;
+				/* Check the railway first, so a ship leg is only built when the whole route can be. */
+				if (BuildFreightRailFrom(library, spec, port.land, NEW_STATION, pair.destination, pair.cargo, false) != ConstructionResult::Success) continue;
+				BuiltShipping ship_leg;
+				ConstructionResult result;
+				if (source.existing == nullptr) {
+					result = BuildShipping(source, port, {"transfer", ship, pair.cargo, fleet, VehicleOrderID{0}, VehicleOrderID{1}}, &ship_leg);
+				} else {
+					/* The depot goes beside the port, so the port comes first in the orders. */
+					result = BuildShipping(port, source, {"transfer", ship, pair.cargo, fleet, VehicleOrderID{1}, VehicleOrderID{0}}, &ship_leg);
+				}
+				if (result == ConstructionResult::Rejected) continue;
+				if (result == ConstructionResult::Failed) return result;
+				const StationID hub = GetStationIndex(port.land);
+				const auto rail = BuildFreightRailFrom(library, spec, port.land, hub, pair.destination, pair.cargo, true);
+				if (rail != ConstructionResult::Success) {
+					Debug(Facility::Misc, Severity::Warning, "FL transfer railway failed company={} port={}; removing the ship leg", _current_company, hub);
+					Undo(ship_leg);
+					return ConstructionResult::Failed;
+				}
+				reserved.industries.insert(pair.source->index);
+				reserved.industries.insert(pair.destination->index);
+				reserved.supplied.insert(pair.destination->index);
+				Debug(Facility::Misc, Severity::Notice, "FL transfer company={} source={} port={} destination={} cargo={} tier={}", _current_company,
+					pair.source->index, hub, pair.destination->index, CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
+				return ConstructionResult::Success;
+			}
+		}
 	}
 	return ConstructionResult::Rejected;
 }

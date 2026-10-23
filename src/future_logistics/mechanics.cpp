@@ -56,12 +56,19 @@ ConstructionResult BuildDockPair(const TechLibrary &library, const ServiceSpec &
 	return BuildTownFerry(library, spec, TownCargo(market), market == Market::Mail ? reserved.mail_towns : reserved.towns);
 }
 
+ConstructionResult BuildShipThenRail(const TechLibrary &library, const ServiceSpec &spec, Market, Reservations &reserved)
+{
+	return BuildShipToRail(library, spec, reserved);
+}
+
 /** Every mechanic this build of the game knows. The first one listed for a mode is that mode's default. */
 const std::vector<MechanicInfo> MECHANICS{
 	{"rail_line", TechMode::Rail, {Market::TownPair, Market::Mail, Market::Industry}, &BuildRailLine},
 	{"road_route", TechMode::Road, {Market::TownPair, Market::Mail, Market::Industry, Market::Feeder}, &BuildRoadRoute},
 	{"airport_pair", TechMode::Air, {Market::TownPair, Market::Mail, Market::Industry}, &BuildAirportPair},
 	{"dock_pair", TechMode::Water, {Market::TownPair, Market::Mail, Market::Industry}, &BuildDockPair},
+	/* Transfers: ships carry freight to a port, where trains take it on to an inland industry. */
+	{"dock_pair+rail_line", TechMode::Water, {Market::Industry}, &BuildShipThenRail},
 };
 } // namespace
 

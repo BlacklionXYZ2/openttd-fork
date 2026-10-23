@@ -51,6 +51,12 @@ content" below).
 | `road_route` | two drive-through stops, an owned road, a depot, a small fleet | road |
 | `airport_pair` | two airports and a small fleet | air |
 | `dock_pair` | two docks on the same water, a ship depot and a small fleet; an industry with its own dock, such as an oil rig, is used as it is | water |
+| `dock_pair+rail_line` | a transfer: ships carry freight from an industry to a port that does not accept it and leave it there ("transfer and leave empty"), and a freight railway joined to the port takes it on to an inland industry. Industry market only. The railway is checked before anything is built, and the ships are removed again if it still fails | water, then rail |
+
+A mechanic made of two others, such as `dock_pair+rail_line`, uses OpenTTD's
+own transfers: cargo left at a station waits there until a vehicle with an
+order to load it arrives. Nothing new is stored; the port is an ordinary
+station with a dock and railway platforms.
 
 A new kind of construction, such as pads on rooftops, needs a new mechanic in
 code.
@@ -189,6 +195,7 @@ fl_profile/integrated_logistics/adopt/any/road_route/industry/2
 fl_profile/integrated_logistics/adopt/any/rail_line/industry/5
 fl_profile/integrated_logistics/adopt/conventional/dock_pair/industry/0
 fl_profile/integrated_logistics/adopt/conventional/airport_pair/industry/0
+fl_profile/integrated_logistics/adopt/conventional/dock_pair+rail_line/industry/0
 ```
 
 A NewGRF can also add rules to a built-in rival, for example

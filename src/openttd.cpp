@@ -8,6 +8,7 @@
 /** @file openttd.cpp Functions related to starting OpenTTD. */
 
 #include "stdafx.h"
+#include "future_logistics/bootstrap.h"
 
 #include "blitter/factory.hpp"
 #include "sound/sound_driver.hpp"
@@ -854,8 +855,9 @@ static void MakeNewGameDone()
 		return;
 	}
 
-	/* Create a single company */
+	/* Reserve company 0 for the human before creating the pre-play competitors. */
 	DoStartupNewCompany(false);
+	BootstrapFutureLogistics();
 
 	Company *c = Company::Get(CompanyID::Begin());
 	c->settings = _settings_client.company;

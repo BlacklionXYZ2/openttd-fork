@@ -8,6 +8,7 @@
 /** @file console_cmds.cpp Implementation of the console hooks. */
 
 #include "stdafx.h"
+#include "future_logistics/bootstrap.h"
 #include "core/string_consumer.hpp"
 #include "console_internal.h"
 #include "debug.h"
@@ -1196,6 +1197,18 @@ static bool ConNetworkConnect(std::span<std::string_view> argv)
 /*********************************
  *  script file console commands
  *********************************/
+
+/** Read-only bootstrap diagnostics, including saved games. @copydoc IConsoleCmdProc */
+static bool ConFutureLogisticsCheck(std::span<std::string_view> argv)
+{
+	if (argv.empty()) {
+		IConsolePrint(CC_HELP, "Check Future Logistics company, road, station, depot and vehicle ownership/connectivity.");
+		return true;
+	}
+	if (argv.size() != 1 || _game_mode != GameMode::Normal) return false;
+	IConsolePrint(CC_DEFAULT, "Future Logistics validation: {} (details in misc debug log)", InspectFutureLogistics() ? "passed" : "failed");
+	return true;
+}
 
 /** Run a local script file. @copydoc IConsoleCmdProc */
 static bool ConExec(std::span<std::string_view> argv)
@@ -2963,6 +2976,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("debug_level",             ConDebugLevel);
 	IConsole::CmdRegister("echo",                    ConEcho);
 	IConsole::CmdRegister("echoc",                   ConEchoC);
+	IConsole::CmdRegister("future_logistics_check", ConFutureLogisticsCheck);
 	IConsole::CmdRegister("exec",                    ConExec);
 	IConsole::CmdRegister("schedule",                ConSchedule);
 	IConsole::CmdRegister("exit",                    ConExit);

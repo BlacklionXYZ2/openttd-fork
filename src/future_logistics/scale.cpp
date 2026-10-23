@@ -71,6 +71,23 @@ MarketTier TierForTowns(const Town *a, const Town *b)
 }
 
 /**
+ * Get how much of a cargo an industry produces, in the units of the fixed production rate.
+ * Industries whose NewGRF produces through a callback, such as FIRS, have no fixed rate;
+ * their production is taken from last month's history, which the game also fills in for
+ * new industries when the world is generated.
+ * @param industry Industry.
+ * @param cargo Cargo it produces.
+ * @return Production per 256 ticks; 0 if it produces none, such as a secondary industry nobody supplies.
+ */
+uint ProductionRate(const Industry *industry, CargoType cargo)
+{
+	auto it = industry->GetCargoProduced(cargo);
+	if (it == industry->produced.end()) return 0;
+	/* A month has about eight production rounds. */
+	return std::max<uint>(it->rate, it->history[LAST_MONTH].production / 8);
+}
+
+/**
  * Classify a freight service by how much its source industry produces.
  * @param industry Source industry.
  * @param cargo Cargo carried.
@@ -78,8 +95,7 @@ MarketTier TierForTowns(const Town *a, const Town *b)
  */
 MarketTier TierForIndustry(const Industry *industry, CargoType cargo)
 {
-	auto it = industry->GetCargoProduced(cargo);
-	const uint8_t rate = it == industry->produced.end() ? 0 : it->rate;
+	const uint rate = ProductionRate(industry, cargo);
 	MarketTier tier = MarketTier::Village;
 	for (uint8_t i = 0; i < TIERS.size(); i++) {
 		if (rate >= TIERS[i].min_production) tier = static_cast<MarketTier>(i);

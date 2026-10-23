@@ -5,6 +5,8 @@
 /** @file rail_planner.cpp Day-zero railways: two terminus stations, a single line, a depot and one train. */
 #include "../stdafx.h"
 #include "rail_planner.h"
+#include "catalogue.h"
+#include "freight_planner.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../cargotype.h"
@@ -21,6 +23,7 @@
 #include "../rail.h"
 #include "../rail_cmd.h"
 #include "../rail_map.h"
+#include "../road_map.h"
 #include "../settings_type.h"
 #include "../signal_func.h"
 #include "../station_cmd.h"
@@ -54,6 +57,7 @@ struct Terminus {
 	TileIndex front = INVALID_TILE; ///< Platform tile next to the line.
 	DiagDirection exit = DiagDirection::NE; ///< Direction from the platforms towards the line.
 	int length = 2; ///< Platform length in tiles; the train is sized to fit.
+	StationID join = NEW_STATION; ///< Existing station the platforms join, such as a port where cargo is transferred.
 
 	TileIndex Exit() const { return Step(this->front, this->exit); }
 	TileIndex Platform(int i) const { return Step(this->front, this->exit, -i); }
@@ -125,9 +129,10 @@ uint8_t TurnBetween(DiagDirection from, DiagDirection to)
  * @param radius Search radius in tiles.
  * @param length Platform length in tiles.
  * @param accept Extra check on a site, such as cargo acceptance.
- * @return Up to MAX_ENDPOINTS sites, nearest first.
+ * @param limit Most sites to return.
+ * @return Up to \a limit sites, nearest first.
  */
-std::vector<Terminus> FindTermini(TileIndex centre, int radius, int length, const std::function<bool(const Terminus &)> &accept)
+std::vector<Terminus> FindTermini(TileIndex centre, int radius, int length, const std::function<bool(const Terminus &)> &accept, size_t limit = MAX_ENDPOINTS)
 {
 	std::vector<Terminus> result;
 	for (int y = std::max(1, (int)TileY(centre) - radius); y <= std::min((int)Map::SizeY() - 2, (int)TileY(centre) + radius); y++) {
@@ -143,7 +148,7 @@ std::vector<Terminus> FindTermini(TileIndex centre, int radius, int length, cons
 		}
 	}
 	std::ranges::stable_sort(result, {}, [centre](const Terminus &t) { return DistanceManhattan(t.front, centre); });
-	if (result.size() > MAX_ENDPOINTS) result.resize(MAX_ENDPOINTS);
+	if (result.size() > limit) result.resize(limit);
 	return result;
 }
 
@@ -234,7 +239,7 @@ CommandCost BuildTerminusStation(const Terminus &site, RailType railtype, DoComm
 {
 	const TileArea area = site.Area();
 	return Command<Commands::BuildRailStation>::Do(flags | CONSTRUCT, area.tile, railtype, DiagDirToAxis(site.exit), 1, site.length,
-		STAT_CLASS_DFLT, 0, NEW_STATION, true);
+		STAT_CLASS_DFLT, 0, site.join, true);
 }
 
 /**
@@ -264,9 +269,13 @@ struct Consist {
  * @param b Destination terminus.
  * @param path Line tiles.
  * @param consist Train to buy.
- * @return Whether preflight rejected, execution failed, or the service was built.
+ * @param execute Whether to build after a successful preflight; false only checks.
+ * @param transfer Whether a freight train transfers and leaves empty at \a b instead of delivering.
+ * @param[out] result_built If given, receives what was built on success, so a caller can join onto it or remove it again.
+ * @return Whether preflight rejected, execution failed, or the service was built (or would be, when not executing).
  */
-ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std::vector<TileIndex> &path, const Consist &consist)
+ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std::vector<TileIndex> &path, const Consist &consist, bool execute = true,
+	bool transfer = false, BuiltLeg *result_built = nullptr)
 {
 	const std::vector<Track> tracks = LineTracks(a, b, path);
 	Money cost = 0;
@@ -289,6 +298,7 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	if (cost * 2 + train * 2 > company->money) return ConstructionResult::Rejected;
 	/* Explicit demolition consumes clearing credits. Keep enough for a complete rollback. */
 	if ((company->clear_limit >> 16) < (path.size() + 2 * a.length + 1) * 3 + 8) return ConstructionResult::Rejected;
+	if (!execute) return ConstructionResult::Success;
 
 	std::vector<TileIndex> built;
 	std::vector<VehicleID> vehicles;
@@ -344,15 +354,25 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 		Order order;
 		order.MakeGoToStation(GetStationIndex(i == 0 ? a.front : b.front));
 		if (consist.freight) order.SetLoadType(i == 0 ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);
+		/* Transfer and leave empty: the cargo waits at the station for the next leg's vehicles. */
+		if (transfer && i == 1) order.SetUnloadType(OrderUnloadType::Transfer);
 		if (ExecFailed(Command<Commands::InsertOrder>::Do(EXEC, head, i, order))) return fail("orders");
 	}
 	if (ExecFailed(Command<Commands::StartStopVehicle>::Do(EXEC, head, true))) return fail("start");
 
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={}",
-		_current_company, consist.freight ? "freight" : "passenger", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
-		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature);
+	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={}",
+		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
+		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon));
+	if (result_built != nullptr) {
+		result_built->from = GetStationIndex(a.front);
+		result_built->to = GetStationIndex(b.front);
+		result_built->from_tile = a.front;
+		result_built->to_tile = b.front;
+		result_built->tiles = std::move(built);
+		result_built->vehicles = {head};
+	}
 	return ConstructionResult::Success;
 }
 
@@ -381,14 +401,17 @@ ConstructionResult TrySites(const std::vector<Terminus> &from, const std::vector
  * order (plain rail first) and only those with a usable locomotive and wagon count. The market
  * tier limits how many of those may be considered; among them, the fastest locomotive wins and
  * ties go to the earlier track type. So small markets get plain rail, big ones better track.
+ * Only the service's family is used, on track that is untagged or tagged with that family.
+ * Wagons come from the same family where it has some, otherwise from conventional wagons.
  * @param library Loaded transport technology, including the track types.
+ * @param spec Family and preferences of the service.
  * @param role Job the train does.
  * @param cargo Cargo the wagons carry.
  * @param freight Whether this is a freight service.
  * @param track_rank How many usable track types may be considered.
  * @return Consist, with null engines if nothing suitable is available.
  */
-Consist ChooseConsist(const TechLibrary &library, TechRole role, CargoType cargo, bool freight, uint8_t track_rank)
+Consist ChooseConsist(const TechLibrary &library, const ServiceSpec &spec, TechRole role, CargoType cargo, bool freight, uint8_t track_rank)
 {
 	Consist best{nullptr, nullptr, cargo, freight, INVALID_RAILTYPE};
 	uint best_speed = 0;
@@ -397,13 +420,24 @@ Consist ChooseConsist(const TechLibrary &library, TechRole role, CargoType cargo
 		if (usable >= track_rank) break;
 		if (track.kind != InfraKind::RailType) continue;
 		const RailType railtype = static_cast<RailType>(track.index);
-		if (!HasRailTypeAvail(_current_company, railtype)) continue;
-		TechQuery query{.mode = TechMode::Rail, .role = role, .cargo = INVALID_CARGO, .company = _current_company, .railtype = railtype};
+		if (!spec.AllowsInfrastructure(track.tech) || !HasRailTypeAvail(_current_company, railtype)) continue;
+		TechQuery query;
+		query.mode = TechMode::Rail;
+		query.role = role;
+		query.company = _current_company;
+		query.railtype = railtype;
+		query.family = spec.family;
+		query.provides = track.provides;
+		query.early_adopters = spec.early_adopters;
 		query.part = TechPart::Locomotive;
 		const TechRecord *locomotive = library.FindBest(query);
 		query.part = TechPart::Wagon;
 		query.cargo = cargo;
 		const TechRecord *wagon = library.FindBest(query);
+		if (wagon == nullptr && spec.family != CONVENTIONAL) {
+			query.family = std::string{CONVENTIONAL};
+			wagon = library.FindBest(query);
+		}
 		if (locomotive == nullptr || wagon == nullptr) continue;
 		usable++;
 		if (locomotive->speed <= best_speed) continue;
@@ -427,15 +461,17 @@ TileArea Catchment(const Terminus &site)
 } // namespace
 
 /**
- * Build a passenger railway between two unused towns.
+ * Build a railway carrying passengers or mail between two unused towns.
  * @param library Loaded transport technology.
- * @param[in,out] used_towns Towns already served by rivals; the chosen towns are added on success.
+ * @param spec Family, limits and preferences of the service.
+ * @param cargo Passengers or mail.
+ * @param[in,out] used_towns Towns already served for this cargo; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildTownRail(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns)
 {
-	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
+	const TechRole role = TownRole(library, cargo, TechRole::PassengerIntercity);
 
 	struct Pair { uint distance; const Town *a; const Town *b; };
 	std::vector<const Town *> towns;
@@ -449,7 +485,8 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
 			if (a->index >= b->index) continue;
 			const uint distance = DistanceManhattan(a->xy, b->xy);
 			/* Villages do not get a railway. */
-			if (distance >= 24 && distance <= 120 && GetTierLimits(TierForTowns(a, b)).rail_passenger) pairs.push_back({distance, a, b});
+			const MarketTier tier = TierForTowns(a, b);
+			if (distance >= 24 && distance <= 120 && GetTierLimits(tier).rail_passenger && tier >= spec.min_tier) pairs.push_back({distance, a, b});
 		}
 	}
 	std::ranges::stable_sort(pairs, {}, &Pair::distance);
@@ -469,7 +506,7 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
 		const Pair &pair = pairs[i];
 		const MarketTier tier = TierForTowns(pair.a, pair.b);
 		const TierLimits &limits = GetTierLimits(tier);
-		const Consist consist = ChooseConsist(library, TechRole::PassengerIntercity, cargo, false, limits.track_rank);
+		const Consist consist = ChooseConsist(library, spec, role, cargo, false, limits.track_rank);
 		if (consist.locomotive == nullptr) continue;
 		const auto result = TrySites(town_sites(pair.a, limits.platform_length), town_sites(pair.b, limits.platform_length), consist);
 		if (result == ConstructionResult::Rejected) continue;
@@ -485,64 +522,55 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
 }
 
 /**
- * Build a freight railway from an unused producing industry to one that accepts its cargo.
- * @param library Loaded transport technology.
- * @param[in,out] reserved Markets already taken; the chosen industries are added on success, and the destination is marked as supplied.
- * @return Outcome.
+ * Find terminus sites for one end of a freight leg.
+ * @param place Industry or transfer station; railways do not deliver into towns.
+ * @param cargo Cargo carried.
+ * @param length Platform length.
+ * @param destination Whether the cargo is delivered here, so the station must accept it.
+ * @return Sites, nearest first.
  */
-ConstructionResult BuildFreightRail(const TechLibrary &library, Reservations &reserved)
+static std::vector<Terminus> FreightTermini(const Place &place, CargoType cargo, int length, bool destination)
 {
-	std::set<IndustryID> &used_industries = reserved.industries;
-	struct Pair { uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
-	std::vector<const Industry *> industries;
-	for (const Industry *industry : Industry::Iterate()) {
-		if (industries.size() == 256) break;
-		if (!used_industries.contains(industry->index)) industries.push_back(industry);
-	}
-	std::vector<Pair> pairs;
-	for (const Industry *source : industries) {
-		for (const auto &produced : source->produced) {
-			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
-			for (const Industry *destination : industries) {
-				if (destination == source || !destination->IsCargoAccepted(produced.cargo)) continue;
-				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
-				if (distance >= 20 && distance <= 100) pairs.push_back({distance, source, destination, produced.cargo});
-			}
-		}
-	}
-	std::ranges::stable_sort(pairs, {}, &Pair::distance);
-
-	auto centre = [](const Industry *industry) { return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2); };
 	const int radius = _settings_game.station.modified_catchment ? CA_TRAIN : CA_UNMODIFIED;
-	for (size_t i = 0; i < std::min(MAX_RAIL_PAIRS, pairs.size()); i++) {
-		const Pair &pair = pairs[i];
-		const CargoClasses classes = CargoSpec::Get(pair.cargo)->classes;
-		const TechRole role = classes.Any({CargoClass::Bulk, CargoClass::Liquid}) ? TechRole::FreightBulk : TechRole::FreightGeneral;
-		const MarketTier tier = TierForIndustry(pair.source, pair.cargo);
-		const TierLimits &limits = GetTierLimits(tier);
-		const Consist consist = ChooseConsist(library, role, pair.cargo, true, limits.track_rank);
-		if (consist.locomotive == nullptr) continue;
-		const int length = limits.platform_length;
-		const int search = std::max<int>(pair.source->location.w, pair.source->location.h) / 2 + radius + length;
-		const auto from = FindTermini(centre(pair.source), search, length, [&](const Terminus &site) {
-			return Catchment(site).Intersects(pair.source->location);
-		});
-		const int dest_search = std::max<int>(pair.destination->location.w, pair.destination->location.h) / 2 + radius + length;
-		const auto to = FindTermini(centre(pair.destination), dest_search, length, [&](const Terminus &site) {
-			if (!Catchment(site).Intersects(pair.destination->location)) return false;
-			const TileArea area = site.Area();
-			return GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[pair.cargo] >= 8;
-		});
-		const auto result = TrySites(from, to, consist);
-		if (result == ConstructionResult::Rejected) continue;
-		if (result == ConstructionResult::Success) {
-			used_industries.insert(pair.source->index);
-			used_industries.insert(pair.destination->index);
-			reserved.supplied.insert(pair.destination->index);
-			Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} destination={} cargo={} tier={}", _current_company,
-				pair.source->index, pair.destination->index, CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
+	if (place.town != nullptr) return {};
+	if (place.IsHub()) {
+		auto sites = FindTermini(place.hub, place.radius, length, [](const Terminus &) { return true; }, SIZE_MAX);
+		for (Terminus &site : sites) site.join = place.join;
+		KeepUsable(sites, place, [](const Terminus &site) { return site.front; }, MAX_ENDPOINTS);
+		return sites;
+	}
+	const Industry *industry = place.industry;
+	const int search = std::max<int>(industry->location.w, industry->location.h) / 2 + radius + length;
+	return FindTermini(Centre(industry), search, length, [&](const Terminus &site) {
+		if (!Catchment(site).Intersects(industry->location)) return false;
+		if (!destination) return true;
+		const TileArea area = site.Area();
+		return GetAcceptanceAroundTiles(area.tile, area.w, area.h, radius).first[cargo] >= 8;
+	});
+}
+
+/**
+ * Build, or check, a freight railway leg: a train that full-loads at one terminus and delivers or
+ * transfers at the other. The track type and platform length follow the market size.
+ * @copydoc LegBuild
+ */
+ConstructionResult RailLeg(const TechLibrary &library, const ServiceSpec &spec, const Place &from, const Place &to, const LegJob &job, bool execute, BuiltLeg &built)
+{
+	const TierLimits &limits = GetTierLimits(job.tier);
+	const Consist consist = ChooseConsist(library, spec, FreightRole(library, job.cargo), job.cargo, true, limits.track_rank);
+	if (consist.locomotive == nullptr) return ConstructionResult::Rejected;
+	const auto origins = FreightTermini(from, job.cargo, limits.platform_length, false);
+	if (origins.empty()) return ConstructionResult::Rejected;
+	const auto destinations = FreightTermini(to, job.cargo, limits.platform_length, true);
+	if (destinations.empty()) return ConstructionResult::Rejected;
+	built.sited = true;
+	for (const Terminus &a : origins) {
+		for (const Terminus &b : destinations) {
+			const auto path = FindRailPath(a, b);
+			if (path.empty()) continue;
+			const auto result = BuildRailway(a, b, path, consist, execute, job.transfer, &built);
+			if (result != ConstructionResult::Rejected) return result;
 		}
-		return result;
 	}
 	return ConstructionResult::Rejected;
 }
@@ -565,6 +593,11 @@ static std::vector<DiagDirection> RailSides(TileIndex tile)
 	}
 	if (IsTileType(tile, TileType::Station) && HasStationRail(tile)) {
 		if (GetRailStationAxis(tile) == Axis::X) return {DiagDirection::NE, DiagDirection::SW};
+		return {DiagDirection::SE, DiagDirection::NW};
+	}
+	/* Towns may later build roads across the line; the crossing's owner is the track's owner. */
+	if (IsLevelCrossingTile(tile)) {
+		if (GetCrossingRailAxis(tile) == Axis::X) return {DiagDirection::NE, DiagDirection::SW};
 		return {DiagDirection::SE, DiagDirection::NW};
 	}
 	return {};

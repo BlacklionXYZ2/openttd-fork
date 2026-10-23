@@ -6,12 +6,20 @@
 #ifndef FUTURE_LOGISTICS_PLANNER_COMMON_H
 #define FUTURE_LOGISTICS_PLANNER_COMMON_H
 
+#include "../cargo_type.h"
 #include "../command_type.h"
 #include "../direction_type.h"
 #include "../map_func.h"
 #include "../industry_type.h"
+#include "../station_type.h"
 #include "../tile_map.h"
 #include "../town_type.h"
+#include "../vehicle_type.h"
+#include "scale.h"
+
+class TechLibrary;
+struct Industry;
+struct Town;
 
 namespace FutureLogistics {
 
@@ -23,8 +31,33 @@ constexpr size_t MAX_PAIRS = 128; ///< Maximum town pairs considered per company
 /** Markets already taken by earlier rivals, so they do not compete for the same customers. */
 struct Reservations {
 	std::set<TownID> towns; ///< Towns served by passenger services.
+	std::set<TownID> mail_towns; ///< Towns served by mail services.
 	std::set<IndustryID> industries; ///< Industries served by freight services.
 	std::set<IndustryID> supplied; ///< Industries that receive freight, so secondary ones will produce.
+};
+
+/** Another way a rival carries freight, which a freight route may hand its cargo over to. */
+struct Partner {
+	std::string mechanic; ///< Registered mechanic, such as "rail_line".
+	std::string family{"conventional"}; ///< Tech family it uses.
+	MarketTier min_tier = MarketTier::Village; ///< Smallest market it may serve.
+	bool early_adopters = true; ///< Whether fl_ai/early_adopter vehicles may be used.
+};
+
+/** What a planner should build with: the recipe's family and limits, and the rival's preferences. */
+struct ServiceSpec {
+	std::string family{"conventional"}; ///< Tech family whose vehicles may be used.
+	MarketTier min_tier = MarketTier::Village; ///< Smallest market the service may serve.
+	bool early_adopters = true; ///< Whether fl_ai/early_adopter vehicles may be used.
+	std::vector<std::string> industry_markets; ///< Preferred fl_market groups for freight, in order.
+	std::vector<Partner> partners; ///< The rival's other freight mechanics, for routes that transfer cargo between them.
+
+	/**
+	 * Check whether a track type or airport may be used: untagged ones always, tagged ones only by their own family.
+	 * @param tech The infrastructure's fl_tech family.
+	 * @return Whether this service may build on it.
+	 */
+	bool AllowsInfrastructure(std::string_view tech) const { return tech == "conventional" || tech == this->family; }
 };
 
 /** Outcome controlling whether another candidate may safely be tried. */
@@ -33,6 +66,87 @@ enum class ConstructionResult {
 	Failed, ///< Execution failed and cleanup was attempted; stop this company.
 	Success, ///< An operational route and vehicle were constructed.
 };
+
+/**
+ * One end of a freight leg: an industry, a town that accepts the cargo, or a transfer station.
+ * At a transfer station the cargo is left by one leg's vehicles ("transfer and leave empty") and
+ * picked up by the next leg's, as in the base game; the second leg's station joins the first's.
+ */
+struct Place {
+	const Industry *industry = nullptr; ///< Industry the cargo comes from or goes to.
+	const Town *town = nullptr; ///< Town the cargo goes to; only legs that can reach town centres serve towns.
+	TileIndex hub = INVALID_TILE; ///< For a transfer station: a tile it should be near.
+	int radius = 0; ///< For a transfer station: how far from \a hub it may be.
+	StationID join = NEW_STATION; ///< For a transfer station: the station it joins, once that exists.
+	std::function<bool(TileIndex)> usable; ///< For a transfer station: an extra check on a site, such as whether the next leg can start there.
+
+	/** @return The place of an industry. */
+	static Place Of(const Industry *industry) { Place place; place.industry = industry; return place; }
+	/** @return The place of a town. */
+	static Place Of(const Town *town) { Place place; place.town = town; return place; }
+
+	/** @return Whether this is a transfer station rather than an industry or town. */
+	bool IsHub() const { return this->industry == nullptr && this->town == nullptr; }
+	TileIndex Centre() const;
+};
+
+/** What a freight leg carries. */
+struct LegJob {
+	CargoType cargo; ///< Cargo carried.
+	MarketTier tier; ///< Size of the market, which sets the fleet and the class of infrastructure.
+	bool transfer = false; ///< Transfer and leave empty at the end, for another leg to take on; otherwise deliver there.
+};
+
+/** What a freight leg built, so a route can be joined onto it or removed again. */
+struct BuiltLeg {
+	bool sited = false; ///< Set when a vehicle and sites at both ends were found, so the attempt counts as a real try.
+	StationID from = StationID::Invalid(); ///< Station at the start.
+	StationID to = StationID::Invalid(); ///< Station at the end.
+	TileIndex from_tile = INVALID_TILE; ///< A tile of the start station.
+	TileIndex to_tile = INVALID_TILE; ///< A tile of the end station.
+	std::vector<TileIndex> tiles; ///< Infrastructure, in build order.
+	std::vector<VehicleID> vehicles; ///< Vehicles, each sold with its whole consist.
+};
+
+/**
+ * Build, or only check, one freight leg for the current company: vehicles that full-load at \a from and
+ * deliver or transfer at \a to. Each mechanic that carries freight provides one.
+ * @param library Loaded transport technology.
+ * @param spec Family, limits and preferences of the service.
+ * @param from Where the cargo is loaded.
+ * @param to Where it is delivered or transferred.
+ * @param job Cargo, market size and what happens at the end.
+ * @param execute Whether to build; false only checks that the leg could be built.
+ * @param[out] built What was found and, when executing, built.
+ * @return Outcome.
+ */
+using LegBuild = ConstructionResult (*)(const TechLibrary &library, const ServiceSpec &spec, const Place &from, const Place &to, const LegJob &job, bool execute, BuiltLeg &built);
+
+constexpr size_t MAX_HUB_CHECKS = 6; ///< Transfer station sites checked with Place::usable per leg.
+
+/**
+ * Narrow a list of candidate sites, nearest first, to those a place's extra check allows.
+ * @param sites Candidates, nearest first; narrowed in place.
+ * @param place End of the leg.
+ * @param tile_of Gets a tile of a site.
+ * @param limit Most sites to keep.
+ */
+template <class Site, class TileOf>
+void KeepUsable(std::vector<Site> &sites, const Place &place, TileOf tile_of, size_t limit)
+{
+	if (!place.usable) {
+		if (sites.size() > limit) sites.resize(limit);
+		return;
+	}
+	std::vector<Site> kept;
+	for (size_t i = 0; i < sites.size() && i < MAX_HUB_CHECKS && kept.size() < limit; i++) {
+		if (place.usable(tile_of(sites[i]))) kept.push_back(sites[i]);
+	}
+	sites = std::move(kept);
+}
+
+TileIndex Centre(const Industry *industry);
+void Undo(const BuiltLeg &built);
 
 /**
  * Exclude houses, shared roads, water, bridges and slopes.

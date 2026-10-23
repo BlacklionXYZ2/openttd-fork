@@ -102,7 +102,12 @@ same way for two terminus stations, a single line, a depot and one train; freigh
 railways reserve their two industries. All engine command executions in the rail
 planner flush the track signal update buffer, as the normal command loop does.
 The air planner builds two airports of the type the market tier allows and a
-small fleet chosen by the Tech Library. The road planner builds buses, feeder
+small fleet chosen by the Tech Library, for passengers, mail or freight. The
+water planner builds two docks on the same water, a ship depot and a fleet, and
+uses an oil rig's own dock where there is one. The freight planner picks a
+cargo, source and destination and builds the route with one of these, or with
+two that meet at a joined station where the first leg's vehicles transfer and
+leave empty. The road planner builds buses, feeder
 buses that join the company's railway stations, and trucks that may continue a
 freight railway's cargo chain. No shared infrastructure is
 modified. All changes go through tested engine command interfaces and normal
@@ -133,8 +138,19 @@ and profit. This diagnostic is read-only and can be used after save/reload.
 The console command `future_logistics_tech list` prints the Tech Library: every
 loaded vehicle, rail type, road type and airport with the roles the planner
 sees. `future_logistics_tech best <mode> <role> [<cargo label>]` shows which
-vehicle a company would pick for a job. The format is described in
+vehicle a company would pick for a job. `future_logistics_tech badges`,
+`recipes` and `validate` show what loaded NewGRFs declare, each rival's plan,
+and any problems with the declarations.
+
+NewGRFs can add tech families, rivals and cargo meanings with `fl_` badges; see
+[`tech_format.md`](tech_format.md). NewGRF rivals come after the four built-in
+ones, so raise `max_no_competitors` to include them. The test NewGRF in
+`tests/future_logistics/grf/` is rebuilt with `nmlc -o fl_test.grf fl_test.nml`
+(NML 0.9.0). The format is described in
 [`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
+
+See [`compatibility.md`](compatibility.md) for how third-party NewGRFs (FIRS,
+Iron Horse, Unsinkable Sam) and the NewGRF specification fit with this format.
 
 See `tests/future_logistics/integration.py` for reproducible full-engine checks.
 Pass `--update-snapshots` after an intended change to the Tech Library to
@@ -144,9 +160,11 @@ multiplayer dedicated server. Test artifacts go in `work/`.
 
 ## Scope and remaining work
 
-No drones, multi-stage cargo chains, hyperloop, rocket freight,
-custom NewGRFs, signals, bridges, tunnels, terrain engineering, strategic AI
-expansion or AI vehicle adoption are implemented here. Difficult maps, disconnected heights, very early start dates,
+Freight routes have at most two legs (one transfer). No signals,
+bridges, tunnels, terrain engineering, strategic AI expansion or in-game AI
+vehicle adoption are implemented here. Drones, hyperloop and rockets are
+supported as NewGRF tech families, but the Future Logistics NewGRF itself
+does not exist yet; only the format test NewGRF does. Difficult maps, disconnected heights, very early start dates,
 NewGRFs that remove compatible standard-road buses, and town restrictions may
 prevent some or all initial networks. See `validation.md` for actual test results
 and limitations; CI configuration alone is not a completed Apple Silicon test.

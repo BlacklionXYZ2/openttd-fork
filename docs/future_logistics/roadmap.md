@@ -5,15 +5,18 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phases 0–4 are complete. The four rivals have
+**Status (October 2026):** phases 0–5 are complete. The four rivals have
 distinct profiles, and the starting market has an airline, passenger and
 freight trains, feeder buses into railway stations, and trucks that continue
-rail cargo chains, all scaled to the size of the world. See `validation.md` for the recorded test results.
+rail cargo chains, all scaled to the size of the world. NewGRFs can add whole
+tech families, rivals and cargo meanings through badges, with no code change.
+See `validation.md` for the recorded test results.
 
-The key design rule for everything below: **rivals ask the Tech Library for
-"the best tech for this job", never for a specific vehicle.** The library and
-its shared format are described in [`tech_format.md`](tech_format.md). That is
-what lets the GRF add technology without day-zero code changes.
+The key design rules for everything below: **rivals ask the Tech Library for
+"the best tech for this job", never for a specific vehicle**, and **what rivals
+build comes from recipes and adoption rules, never from code that names a
+technology.** The shared format is described in
+[`tech_format.md`](tech_format.md).
 
 ## Phase 0: bus bootstrap (done)
 
@@ -49,8 +52,9 @@ Goal: the existing bus planner chooses its bus through the library.
 
 Goal: the four rivals differ, and trains run on day one.
 
-- Profiles (`src/future_logistics/profiles.cpp`) list the services each rival
-  tries, in order. A rival that builds nothing gets a bus as a fallback.
+- Profiles list the services each rival tries, in order (since phase 5, as
+  adoption rules in `src/future_logistics/catalogue.cpp`). A rival that builds
+  nothing gets a bus as a fallback.
 
   | Rival | Services |
   |---|---|
@@ -155,43 +159,101 @@ The headstart stays in proportion to the world. The thresholds are one table in
 Known limits: road vehicles share a single-lane dead-end road with turning at
 the stops, which limits fleet size; no trams.
 
-## Phase 5: GRF tags (shared format live)
+## Phase 5: modular tech trees (done)
 
-Goal: the library reads `fl_` badges; a tagged GRF vehicle is treated exactly
-like its tags say.
+Goal: a NewGRF can add an entirely new tech tree, new industries and new rivals,
+and the day-zero rivals adopt them correctly, without code changes. This
+replaced the original "read GRF tags" phase and goes further.
 
-- Read `fl_` badges into tech records; check `fl_format`.
-- Pair `fl_needs/*` with `fl_provides/*`.
-- `future_logistics_tech validate` reports missing or conflicting tags and
-  vehicles that can never be used.
-- Add a tiny test GRF under `tests/future_logistics/` (one tagged vehicle) and
-  an integration scenario that proves the library picks it up.
-- Graphics side: B1 (NML skeleton that compiles and loads) can happen in
-  parallel and should carry real badges from the start.
+- **Format v2** ([`tech_format.md`](tech_format.md)): tags on items
+  (`fl_tech`, `fl_role`, `fl_needs`, `fl_provides`, `fl_industry`, `fl_market`
+  and others) plus declarations (`fl_family`, `fl_profile`, `fl_cargo`). Every
+  part is an OpenTTD badge, so the content is an ordinary NewGRF.
+- **Tech Library** reads the tags on vehicles, track types, road types and
+  airports, and cargo meanings. Queries now filter by family and by the sites
+  a vehicle needs.
+- **Catalogue** (`src/future_logistics/catalogue.cpp`) reads families and
+  profiles from declarations, fills in defaults from the loaded vehicles, and
+  builds **recipes** (family, mechanic, market).
+- **Mechanics:** the existing rail, road and air planners, now told which
+  family to use. They only build on infrastructure that is untagged or tagged
+  with that family, and pick vehicles whose needs the site provides.
+- **Profiles:** the four rivals are now written in the same declaration format,
+  as adoption rules, and parsed by the same code. NewGRF rivals come after them
+  (raise the competitor count to include them), and a NewGRF can add rules to
+  the built-in rivals. Freight services prefer the rival's preferred industry
+  markets.
+- **Console:** `future_logistics_tech badges`, `recipes` and `validate`.
+- **Proof:** `tests/future_logistics/grf/fl_test.nml` adds a "testjet" family,
+  a TestCorp rival, a rule for AeroLink, a cargo meaning and six deliberate
+  mistakes. The integration test checks that TestCorp builds with the new
+  family, AeroLink adopts it, the cargo meaning applies, and `validate` reports
+  exactly the six mistakes.
+
+Completed afterwards in the same phase:
+
+- **Mail** market for rail, road (mail trucks at truck stops), air and water.
+- **Freight by air** (`airport_pair/industry`), with airports placed so their
+  catchment reaches the industries.
+- **Ships** (`dock_pair` mechanic): docks on sloped coast facing open water, a
+  check that both docks share the same water, a ship depot, and a fleet.
+  Industries with their own dock, such as oil rigs, are used as they are.
+- **Mechanic registry** (`src/future_logistics/mechanics.cpp`): NewGRFs name
+  mechanics; code adds one with a planner and one table row.
+- **`fl_id` and lookups** (`src/future_logistics/tag_index.h`): code finds a
+  particular NewGRF item by a stable name; `future_logistics_tech find`.
+- Built-in rivals gained rules for mail trains, mail trucks, air mail,
+  ferries, freight ships and air freight, after their existing rules.
+- **One freight planner with transfers** (`src/future_logistics/freight_planner.cpp`):
+  each freight mechanic now builds a *leg* (deliver, or transfer and leave empty),
+  and the planner picks the cargo, source, destination and legs. A route goes
+  direct where one mechanic reaches; otherwise it hands over at a joined station
+  to another freight mechanic the rival has adopted. Seen working: ship then
+  train (oil rig → port → refinery), train then ship (oil field → port →
+  refinery), ship then truck. Secondary industries are only used as sources
+  once supplied, for every mode, which also stopped a railway waiting forever
+  at an unsupplied steel mill.
+
+Limits:
+
+- Any new kind of construction (rooftop pads, launch sequences) needs a new
+  mechanic in code.
+- In the base game there are no mail or freight aircraft, so air mail and air
+  freight only happen with NewGRF aircraft.
+- Freight ships need industries near usable coast; in the test maps none was,
+  so direct freight shipping has not yet been seen to succeed. Ferries and
+  routes with a ship leg have.
+- Routes have at most two legs, one transfer.
+- Cargo types cannot carry badges, so their meaning is declared by label.
 
 ## Phase 6: rivals that keep up
 
 Goal: after day zero, rivals renew and grow modestly, and adopt new tech.
 
-- Add a script API call so scripts can read badges, for example
-  `AIEngine.HasBadge(engine, "fl_tech/drone")`. Today the script API cannot see
-  badges at all. This makes `CorporateAI` fork-only, which is fine.
+- Recommended design (option A): give scripts access to the Tech Library and
+  catalogue through a script API, so `CorporateAI` asks the same recipes and
+  adoption rules that day zero uses. This makes `CorporateAI` fork-only, which
+  is fine.
 - `CorporateAI`: replace old vehicles, add vehicles to busy routes, open a small
-  number of new routes per year, all through library queries.
-- Adoption rules per profile: how many years after a tech's intro date to
-  consider it, and whether `fl_ai/early_adopter` items are allowed.
+  number of new routes per year, and adopt new families as their adoption
+  rules allow.
 - Aggression and expansion settings (low/medium/high).
 
 ## Phase 7: future tech arrives
 
 Each step needs the matching graphics milestone first.
 
-| Tech | Year | GRF provides | Day-zero work |
+Details of each tech and industry will be decided when it is developed. With
+the phase 5 format, most of each one is NewGRF content plus declarations; code
+is only needed where a new mechanic or market is.
+
+| Tech | Year | GRF provides | Code needed |
 |---|---|---|---|
-| Parcels | TBD | Parcel cargo, sorting hub, delivery van | Parcel role in profiles; cargo chain planner |
-| Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | Short-range parcel routes using drone pads |
-| Hyperloop | 2035 | Hyperloop rail type, pods, terminals | Rail planner reused on the hyperloop track type |
-| Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | Long-haul express routes between launchpads |
+| Parcels | TBD | Parcel cargo, sorting hub, delivery van, `fl_cargo` meaning | None expected (road and rail freight recipes) |
+| Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | None expected (airport pair mechanic, mail or industry market) |
+| Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | None expected (rail line mechanic) |
+| Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | None expected; a launch sequence would need a new mechanic |
+| Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | Depends on what carries their cargo |
 
 Underground hyperloop and true rocket flight behaviour need engine changes and
 are tracked separately; the first versions use rail-type and aircraft mechanics.
@@ -207,9 +269,12 @@ are tracked separately; the first versions use rail-type and aircraft mechanics.
 
 ## Adding new technology later (summary)
 
-1. Make the vehicle in the GRF with correct normal properties.
-2. Tag it with `fl_` badges per `tech_format.md`; tag its infrastructure.
-3. Run `future_logistics_tech validate` in-game.
-4. Only if it needs a new kind of route (a new site type or a new role) does
-   day-zero code change; otherwise rivals start using it on their own once its
-   intro date and their adoption delay have passed.
+1. Make the vehicles, infrastructure and industries in the NewGRF with correct
+   normal properties.
+2. Tag them and declare the family (and any new rivals or cargo meanings) per
+   `tech_format.md`.
+3. Load the NewGRF in a new game and run `future_logistics_tech validate`, then
+   `future_logistics_tech recipes` to see each rival's plan.
+4. Code only changes if the tech needs a mechanic or market that does not exist
+   yet; otherwise rivals adopt it on their own once its introduction date and
+   their adoption delay have passed.

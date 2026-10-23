@@ -5,6 +5,8 @@
 /** @file road_planner.cpp Day-zero road services: an owned road between two drive-through stops, a depot and a small fleet. */
 #include "../stdafx.h"
 #include "road_planner.h"
+#include "freight_planner.h"
+#include "catalogue.h"
 #include "scale.h"
 #include "tech_library.h"
 #include "../cargotype.h"
@@ -17,6 +19,7 @@
 #include "../order_base.h"
 #include "../order_cmd.h"
 #include "../road_cmd.h"
+#include "../road_func.h"
 #include "../road_map.h"
 #include "../roadveh.h"
 #include "../settings_type.h"
@@ -36,10 +39,7 @@
 namespace FutureLogistics {
 namespace {
 constexpr int TOWN_SEARCH_RADIUS = 12; ///< How far from a town centre a stop may go.
-constexpr size_t MAX_FREIGHT_PAIRS = 32; ///< Industry pairs tried per truck service.
 constexpr size_t MAX_FEEDER_TOWNS = 16; ///< Towns tried per feeder station.
-constexpr uint MIN_TRUCK_DISTANCE = 12; ///< Shortest truck route, in Manhattan tiles.
-constexpr uint MAX_TRUCK_DISTANCE = 96; ///< Longest truck route, in Manhattan tiles.
 
 /**
  * Convert a route direction to its road bit.
@@ -88,14 +88,24 @@ std::vector<TileIndex> FindStops(TileIndex centre, int radius, const std::functi
 }
 
 /**
- * Find stop tiles in a town that both send and accept passengers.
+ * Get the stop type that serves a cargo: buses for passengers, truck stops for everything else, including mail.
+ * @param cargo Cargo type.
+ * @return Stop type.
+ */
+RoadStopType StopFor(CargoType cargo)
+{
+	return CargoSpec::Get(cargo)->classes.Test(CargoClass::Passengers) ? RoadStopType::Bus : RoadStopType::Truck;
+}
+
+/**
+ * Find stop tiles in a town that both send and accept a town cargo.
  * @param town Town to serve.
- * @param cargo Passenger cargo type.
+ * @param cargo Passengers or mail.
  * @return Buildable candidate tiles belonging to this town's area.
  */
 std::vector<TileIndex> TownStops(const Town *town, CargoType cargo)
 {
-	const int radius = StopCatchment(RoadStopType::Bus);
+	const int radius = StopCatchment(StopFor(cargo));
 	return FindStops(town->xy, TOWN_SEARCH_RADIUS, [&](TileIndex tile) {
 		if (ClosestTownFromTile(tile, UINT_MAX)->index != town->index) return false;
 		return GetAcceptanceAroundTiles(tile, 1, 1, radius).first[cargo] >= 8 && GetProductionAroundTiles(tile, 1, 1, radius)[cargo] > 0;
@@ -182,6 +192,8 @@ struct RoadJob {
 	uint vehicles; ///< Fleet size.
 	bool full_load; ///< Full load at the first stop, as for freight.
 	StationID join_first = NEW_STATION; ///< Existing station the first stop joins, such as a railway station.
+	StationID join_last = NEW_STATION; ///< Existing station the last stop joins, such as a transfer station.
+	bool transfer = false; ///< Transfer and leave empty at the last stop, for another leg to take on.
 };
 
 /**
@@ -204,9 +216,11 @@ CommandCost Stop(TileIndex tile, DiagDirection direction, RoadType roadtype, con
  * Preflight the entire layout, then execute through accounting commands.
  * @param route Corridor and depot proposal.
  * @param job Service to build.
- * @return Whether preflight rejected, execution failed, or service was built.
+ * @param execute Whether to build after a successful preflight; false only checks.
+ * @param[out] result_built If given, receives what was built on success.
+ * @return Whether preflight rejected, execution failed, or service was built (or would be, when not executing).
  */
-ConstructionResult Build(const Route &route, const RoadJob &job)
+ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = true, BuiltLeg *result_built = nullptr)
 {
 	const RoadType rt = job.engine->VehInfo<RoadVehicleInfo>().roadtype;
 	Money cost = 0;
@@ -220,7 +234,7 @@ ConstructionResult Build(const Route &route, const RoadJob &job)
 	}
 	const auto first_dir = RouteDirection(route.path[0], route.path[1]);
 	const auto last_dir = RouteDirection(route.path.back(), route.path[route.path.size() - 2]);
-	for (const auto &[tile, direction, join] : {std::tuple{route.path.front(), first_dir, job.join_first}, {route.path.back(), last_dir, NEW_STATION}}) {
+	for (const auto &[tile, direction, join] : {std::tuple{route.path.front(), first_dir, job.join_first}, {route.path.back(), last_dir, job.join_last}}) {
 		auto result = Stop(tile, direction, rt, job, join, {});
 		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
@@ -234,6 +248,7 @@ ConstructionResult Build(const Route &route, const RoadJob &job)
 	if (cost * 2 + job.engine->GetCost() * 2 * job.vehicles > company->money) return ConstructionResult::Rejected;
 	/* Explicit demolition consumes clearing credits. Keep enough for a complete rollback. */
 	if ((company->clear_limit >> 16) < route.path.size() * 3 + 8) return ConstructionResult::Rejected;
+	if (!execute) return ConstructionResult::Success;
 
 	std::vector<TileIndex> built;
 	std::vector<VehicleID> vehicles;
@@ -260,7 +275,7 @@ ConstructionResult Build(const Route &route, const RoadJob &job)
 		if (Command<Commands::BuildRoad>::Do(EXEC | CONSTRUCT, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid()).Failed()) return fail("road");
 		built.push_back(route.path[i]);
 	}
-	if (Stop(route.path.front(), first_dir, rt, job, job.join_first, EXEC).Failed() || Stop(route.path.back(), last_dir, rt, job, NEW_STATION, EXEC).Failed()) return fail("stops");
+	if (Stop(route.path.front(), first_dir, rt, job, job.join_first, EXEC).Failed() || Stop(route.path.back(), last_dir, rt, job, job.join_last, EXEC).Failed()) return fail("stops");
 	if (Command<Commands::BuildRoadDepot>::Do(EXEC | CONSTRUCT, route.depot, rt, depot_dir).Failed()) return fail("depot");
 	built.push_back(route.depot);
 	for (uint n = 0; n < job.vehicles; n++) {
@@ -274,6 +289,8 @@ ConstructionResult Build(const Route &route, const RoadJob &job)
 			/* Non-train orders must use the far end; the default near end is rejected. */
 			order.SetStopLocation(OrderStopLocation::FarEnd);
 			if (job.full_load) order.SetLoadType(i == 0 ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);
+			/* Transfer and leave empty: the cargo waits at the station for the next leg's vehicles. */
+			if (job.transfer && i == 1) order.SetUnloadType(OrderUnloadType::Transfer);
 			if (Command<Commands::InsertOrder>::Do(EXEC, vehicle, i, order).Failed()) return fail("orders");
 		}
 		if (Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true).Failed()) return fail("start");
@@ -283,20 +300,47 @@ ConstructionResult Build(const Route &route, const RoadJob &job)
 	Debug(Facility::Misc, Severity::Notice, "FL route company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={}",
 		_current_company, job.kind, CargoSpec::Get(job.cargo)->label.AsString(), job.vehicles, vehicles.front(), route.path.front(), route.path.back(),
 		route.depot, route.path.size(), Company::Get(_current_company)->money, signature);
+	if (result_built != nullptr) {
+		result_built->from = GetStationIndex(route.path.front());
+		result_built->to = GetStationIndex(route.path.back());
+		result_built->from_tile = route.path.front();
+		result_built->to_tile = route.path.back();
+		/* The stops sit on the road tiles, so clearing the road clears them too. */
+		result_built->tiles = std::move(built);
+		result_built->vehicles = std::move(vehicles);
+	}
 	return ConstructionResult::Success;
 }
 
 /**
- * Pick the best road vehicle on plain road for a job.
- * @param library Loaded transport technology.
+ * Pick the best road vehicle for a job. Every road type the company can build that is untagged or
+ * tagged with the service's family is considered; the fastest suitable vehicle wins, and ties go
+ * to the road type listed first. The road is then built with that vehicle's road type.
+ * @param library Loaded transport technology, including the road types.
+ * @param spec Family and preferences of the service.
  * @param role Job the vehicle does.
  * @param cargo Cargo it carries.
  * @return Engine, or nullptr if none is available.
  */
-const Engine *ChooseRoadVehicle(const TechLibrary &library, TechRole role, CargoType cargo)
+const Engine *ChooseRoadVehicle(const TechLibrary &library, const ServiceSpec &spec, TechRole role, CargoType cargo)
 {
-	/* The planner only builds plain road, so ask for a vehicle that runs on it. */
-	const TechRecord *record = library.FindBest({.mode = TechMode::Road, .role = role, .cargo = cargo, .company = _current_company, .roadtype = ROADTYPE_ROAD});
+	const TechRecord *record = nullptr;
+	for (const InfraRecord &road : library.Infrastructure()) {
+		if (road.kind != InfraKind::RoadType || !spec.AllowsInfrastructure(road.tech)) continue;
+		const RoadType roadtype = static_cast<RoadType>(road.index);
+		if (!HasRoadTypeAvail(_current_company, roadtype)) continue;
+		TechQuery query;
+		query.mode = TechMode::Road;
+		query.role = role;
+		query.cargo = cargo;
+		query.company = _current_company;
+		query.roadtype = roadtype;
+		query.family = spec.family;
+		query.provides = road.provides;
+		query.early_adopters = spec.early_adopters;
+		const TechRecord *candidate = library.FindBest(query);
+		if (candidate != nullptr && (record == nullptr || candidate->speed > record->speed)) record = candidate;
+	}
 	if (record == nullptr) return nullptr;
 	Debug(Facility::Misc, Severity::Notice, "FL tech company={} role={} vehicle={}", _current_company, TechRoleName(role), record->id);
 	return Engine::Get(record->engine);
@@ -304,16 +348,18 @@ const Engine *ChooseRoadVehicle(const TechLibrary &library, TechRole role, Cargo
 } // namespace
 
 /**
- * Build a bus route between two unused towns.
+ * Build a road route carrying passengers (buses) or mail (mail trucks) between two unused towns.
  * @param library Loaded transport technology.
- * @param[in,out] used_towns Towns reserved by earlier rivals; the chosen towns are added on success.
+ * @param spec Family, limits and preferences of the service.
+ * @param cargo Passengers or mail.
+ * @param[in,out] used_towns Towns already served for this cargo; the chosen towns are added on success.
  * @return Outcome.
  */
-ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildTownRoad(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns)
 {
-	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
-	const Engine *bus = ChooseRoadVehicle(library, TechRole::PassengerFeeder, cargo);
+	const RoadStopType stop = StopFor(cargo);
+	const Engine *bus = ChooseRoadVehicle(library, spec, TownRole(library, cargo, TechRole::PassengerFeeder), cargo);
 	if (bus == nullptr) return ConstructionResult::Rejected;
 	struct Pair { uint distance; const Town *a; const Town *b; };
 	std::vector<Pair> pairs;
@@ -326,7 +372,7 @@ ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> 
 		for (const Town *b : towns) {
 			if (a->index >= b->index || used_towns.contains(a->index) || used_towns.contains(b->index)) continue;
 			uint distance = DistanceManhattan(a->xy, b->xy);
-			if (distance >= 16 && distance <= 96) pairs.push_back({distance, a, b});
+			if (distance >= 16 && distance <= 96 && TierForTowns(a, b) >= spec.min_tier) pairs.push_back({distance, a, b});
 		}
 	}
 	std::stable_sort(pairs.begin(), pairs.end(), [](const Pair &a, const Pair &b) { return a.distance < b.distance; });
@@ -339,7 +385,7 @@ ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> 
 		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index));
 		if (route.depot == INVALID_TILE) continue;
 		const MarketTier tier = TierForTowns(pair.a, pair.b);
-		auto result = Build(route, {"bus", RoadStopType::Bus, bus, cargo, GetTierLimits(tier).fleet, false});
+		auto result = Build(route, {stop == RoadStopType::Bus ? "bus" : "mail", stop, bus, cargo, GetTierLimits(tier).fleet, false});
 		if (result == ConstructionResult::Failed) return ConstructionResult::Failed;
 		if (result == ConstructionResult::Success) {
 			used_towns.insert(pair.a->index);
@@ -359,11 +405,11 @@ ConstructionResult BuildBusService(const TechLibrary &library, std::set<TownID> 
  * @param[in,out] used_towns Towns reserved by earlier rivals; the fed town is added on success.
  * @return Outcome; Rejected if the company has no railway station yet.
  */
-ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &used_towns)
+ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec &spec, std::set<TownID> &used_towns)
 {
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
-	const Engine *bus = ChooseRoadVehicle(library, TechRole::PassengerFeeder, cargo);
+	const Engine *bus = ChooseRoadVehicle(library, spec, TechRole::PassengerFeeder, cargo);
 	if (bus == nullptr) return ConstructionResult::Rejected;
 	for (const Station *station : Station::Iterate()) {
 		if (station->owner != _current_company || !station->facilities.Test(StationFacility::Train) || station->town == nullptr) continue;
@@ -380,7 +426,7 @@ ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &
 		for (const Town *town : Town::Iterate()) {
 			if (town == station->town || used_towns.contains(town->index)) continue;
 			const uint distance = DistanceManhattan(town->xy, station->xy);
-			if (distance >= 16 && distance <= 64) towns.push_back({distance, town});
+			if (distance >= 16 && distance <= 64 && TierForTowns(station->town, town) >= spec.min_tier) towns.push_back({distance, town});
 		}
 		std::ranges::stable_sort(towns, {}, &Candidate::distance);
 		if (towns.size() > MAX_FEEDER_TOWNS) towns.resize(MAX_FEEDER_TOWNS);
@@ -402,94 +448,54 @@ ConstructionResult BuildFeederBus(const TechLibrary &library, std::set<TownID> &
 }
 
 /**
- * Build a truck service from a producing industry to an industry or town that accepts its cargo.
- * Towns are included so that goods and food can be distributed. A source is either an unused
- * primary industry that produces by itself, or a secondary industry another freight service
- * already supplies, which turns the two services into a cargo chain; chains are preferred.
- * Trucks full-load at the source, and the fleet size follows the source's production.
- * @param library Loaded transport technology.
- * @param[in,out] reserved Markets already taken; the chosen industries are added on success.
- * @return Outcome.
+ * Find truck stop tiles for one end of a freight leg.
+ * @param place Industry, town or transfer station.
+ * @param cargo Cargo carried.
+ * @param destination Whether the cargo is delivered here, so the stop must accept it.
+ * @return Candidate tiles.
  */
-ConstructionResult BuildTruckFreight(const TechLibrary &library, Reservations &reserved)
+static std::vector<TileIndex> FreightStops(const Place &place, CargoType cargo, bool destination)
 {
-	std::set<IndustryID> &used_industries = reserved.industries;
-	/* The destination is an industry or, for distribution, a town. */
-	struct Pair { bool chain; uint distance; const Industry *source; const Industry *industry; const Town *town; CargoType cargo; };
-	std::vector<const Industry *> industries;
-	std::vector<const Industry *> sources;
-	for (const Industry *industry : Industry::Iterate()) {
-		if (industries.size() == 256) break;
-		const bool used = used_industries.contains(industry->index);
-		if (!used) industries.push_back(industry);
-		if (!used || reserved.supplied.contains(industry->index)) sources.push_back(industry);
-	}
 	const int radius = StopCatchment(RoadStopType::Truck);
-	std::vector<Pair> pairs;
-	for (const Industry *source : sources) {
-		const bool chain = reserved.supplied.contains(source->index);
-		for (const auto &produced : source->produced) {
-			if (!IsValidCargoType(produced.cargo) || CargoSpec::Get(produced.cargo)->classes.Any({CargoClass::Passengers, CargoClass::Mail})) continue;
-			/* Secondary industries produce nothing until supplied; trucks would wait for a full load forever. */
-			if (produced.rate == 0 && !chain) continue;
-			for (const Industry *destination : industries) {
-				if (destination == source || !destination->IsCargoAccepted(produced.cargo)) continue;
-				const uint distance = DistanceManhattan(source->location.tile, destination->location.tile);
-				if (distance >= MIN_TRUCK_DISTANCE && distance <= MAX_TRUCK_DISTANCE) pairs.push_back({chain, distance, source, destination, nullptr, produced.cargo});
-			}
-			for (const Town *town : Town::Iterate()) {
-				const uint distance = DistanceManhattan(source->location.tile, town->xy);
-				if (distance < MIN_TRUCK_DISTANCE || distance > MAX_TRUCK_DISTANCE) continue;
-				if (GetAcceptanceAroundTiles(town->xy, 1, 1, radius).first[produced.cargo] < 8) continue;
-				pairs.push_back({chain, distance, source, nullptr, town, produced.cargo});
-			}
-		}
+	auto accepts = [&](TileIndex tile) { return !destination || GetAcceptanceAroundTiles(tile, 1, 1, radius).first[cargo] >= 8; };
+	if (place.IsHub()) {
+		auto stops = FindStops(place.hub, place.radius, [](TileIndex) { return true; });
+		std::ranges::stable_sort(stops, {}, [&](TileIndex tile) { return DistanceManhattan(tile, place.hub); });
+		KeepUsable(stops, place, [](TileIndex tile) { return tile; }, place.usable ? 2 : SIZE_MAX);
+		return stops;
 	}
-	std::ranges::stable_sort(pairs, [](const Pair &a, const Pair &b) { return a.chain != b.chain ? a.chain : a.distance < b.distance; });
-
-	auto near = [&](const Industry *industry, TileIndex tile) {
+	if (place.town != nullptr) {
+		return FindStops(place.town->xy, TOWN_SEARCH_RADIUS, [&](TileIndex tile) {
+			return ClosestTownFromTile(tile, UINT_MAX) == place.town && accepts(tile);
+		});
+	}
+	const Industry *industry = place.industry;
+	const int search = std::max<int>(industry->location.w, industry->location.h) / 2 + radius;
+	return FindStops(Centre(industry), search, [&](TileIndex tile) {
 		TileArea area(tile, 1, 1);
 		area.Expand(radius);
-		return area.Intersects(industry->location);
-	};
-	auto centre = [](const Industry *industry) { return TileAddXY(industry->location.tile, industry->location.w / 2, industry->location.h / 2); };
-	for (size_t i = 0; i < std::min(MAX_FREIGHT_PAIRS, pairs.size()); i++) {
-		const Pair &pair = pairs[i];
-		const CargoClasses classes = CargoSpec::Get(pair.cargo)->classes;
-		const TechRole role = classes.Any({CargoClass::Bulk, CargoClass::Liquid}) ? TechRole::FreightBulk : TechRole::FreightGeneral;
-		const Engine *truck = ChooseRoadVehicle(library, role, pair.cargo);
-		if (truck == nullptr) continue;
-		const int search_from = std::max<int>(pair.source->location.w, pair.source->location.h) / 2 + radius;
-		const auto from = FindStops(centre(pair.source), search_from, [&](TileIndex tile) { return near(pair.source, tile); });
-		std::vector<TileIndex> to;
-		if (pair.industry != nullptr) {
-			const int search_to = std::max<int>(pair.industry->location.w, pair.industry->location.h) / 2 + radius;
-			to = FindStops(centre(pair.industry), search_to, [&](TileIndex tile) {
-				return near(pair.industry, tile) && GetAcceptanceAroundTiles(tile, 1, 1, radius).first[pair.cargo] >= 8;
-			});
-		} else {
-			to = FindStops(pair.town->xy, TOWN_SEARCH_RADIUS, [&](TileIndex tile) {
-				return ClosestTownFromTile(tile, UINT_MAX) == pair.town && GetAcceptanceAroundTiles(tile, 1, 1, radius).first[pair.cargo] >= 8;
-			});
-		}
-		auto route = FindRoute(from, to);
-		if (route.depot == INVALID_TILE) continue;
-		const MarketTier tier = TierForIndustry(pair.source, pair.cargo);
-		const auto result = Build(route, {"truck", RoadStopType::Truck, truck, pair.cargo, GetTierLimits(tier).fleet, true});
-		if (result == ConstructionResult::Rejected) continue;
-		if (result == ConstructionResult::Success) {
-			used_industries.insert(pair.source->index);
-			if (pair.industry != nullptr) {
-				used_industries.insert(pair.industry->index);
-				reserved.supplied.insert(pair.industry->index);
-			}
-			Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} chain={} destination={}{} cargo={} tier={}", _current_company, pair.source->index, pair.chain,
-				pair.industry != nullptr ? "industry:" : "town:", pair.industry != nullptr ? pair.industry->index.base() : pair.town->index.base(),
-				CargoSpec::Get(pair.cargo)->label.AsString(), TierName(tier));
-		}
-		return result;
-	}
-	return ConstructionResult::Rejected;
+		return area.Intersects(industry->location) && accepts(tile);
+	});
+}
+
+/**
+ * Build, or check, a truck leg: trucks that full-load at one stop and deliver or transfer at the other.
+ * Trucks also deliver to towns, so goods and food can be distributed. The fleet follows the market size.
+ * @copydoc LegBuild
+ */
+ConstructionResult RoadLeg(const TechLibrary &library, const ServiceSpec &spec, const Place &from, const Place &to, const LegJob &job, bool execute, BuiltLeg &built)
+{
+	const Engine *truck = ChooseRoadVehicle(library, spec, FreightRole(library, job.cargo), job.cargo);
+	if (truck == nullptr) return ConstructionResult::Rejected;
+	const auto origins = FreightStops(from, job.cargo, false);
+	if (origins.empty()) return ConstructionResult::Rejected;
+	const auto destinations = FreightStops(to, job.cargo, true);
+	if (destinations.empty()) return ConstructionResult::Rejected;
+	built.sited = true;
+	const auto route = FindRoute(origins, destinations);
+	if (route.depot == INVALID_TILE) return ConstructionResult::Rejected;
+	const RoadJob road_job{"truck", RoadStopType::Truck, truck, job.cargo, GetTierLimits(job.tier).fleet, true, from.join, to.join, job.transfer};
+	return Build(route, road_job, execute, &built);
 }
 
 /**

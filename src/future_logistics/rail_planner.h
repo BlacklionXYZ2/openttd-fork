@@ -7,6 +7,7 @@
 #define FUTURE_LOGISTICS_RAIL_PLANNER_H
 
 #include "planner_common.h"
+#include "../cargo_type.h"
 #include "../industry_type.h"
 #include "../station_type.h"
 #include "../town_type.h"
@@ -16,8 +17,7 @@ class TechLibrary;
 
 namespace FutureLogistics {
 
-ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownID> &used_towns);
-ConstructionResult BuildFreightRail(const TechLibrary &library, Reservations &reserved);
+ConstructionResult BuildTownRail(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns);
 std::set<StationID> RailStationsReachable(const Vehicle *train);
 
 } // namespace FutureLogistics

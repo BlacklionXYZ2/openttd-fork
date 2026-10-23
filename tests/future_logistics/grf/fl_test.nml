@@ -1,0 +1,76 @@
+/*
+ * Test NewGRF for docs/future_logistics/tech_format.md. It only adds badges to
+ * base-game vehicles, so it needs no graphics. Rebuild with NML 0.9.0:
+ *   nmlc -o fl_test.grf fl_test.nml
+ */
+grf {
+    grfid: "FL\00\02";
+    name: string(STR_GRF_NAME);
+    desc: string(STR_GRF_DESC);
+    version: 1;
+    min_compatible_version: 1;
+}
+
+badgetable {
+    "fl_format/2",
+    /* A new tech family, built with the existing airport mechanic. */
+    "fl_family/testjet",
+    "fl_family/testjet/mechanic/airport_pair",
+    "fl_family/testjet/market/town_pair",
+    "fl_family/testjet/min_tier/town",
+    "fl_tech/testjet",
+    "fl_role/passenger_intercity",
+    /* A family whose vehicles need a site nobody provides, an unsupported market and a missing mechanic. */
+    "fl_family/testrocket",
+    "fl_family/testrocket/market/feeder",
+    "fl_family/testrocket/mechanic/launch_site",
+    "fl_tech/testrocket",
+    "fl_needs/testpad",
+    /* A new rival that adopts the new family at once. */
+    "fl_profile/testcorp",
+    "fl_profile/testcorp/adopt/testjet/any/any/0",
+    /* An extra rule for a built-in rival. */
+    "fl_profile/aerolink/adopt/testjet/airport_pair/town_pair/0",
+    /* A cargo meaning. */
+    "fl_cargo/MAIL/role/parcel",
+    /* Mistakes that future_logistics_tech validate must report. */
+    "fl_profile/testcorp/adopt/nosuchfamily/any/any/0",
+    "fl_profile/testcorp/adopt/testjet/teleporter/any/0",
+    "fl_tier/high",
+    /* Stable names code can find items by; test_airliner is given to two vehicles on purpose. */
+    "fl_id/test_airliner",
+    "fl_id/test_rocket",
+    /* Shared badge classes from the NewGRF specification, which other NewGRFs and AIs read too. */
+    "role/passenger",
+    "role/freight",
+    "power/steam",
+}
+
+item(FEAT_BADGES, family_testjet, 0)    { property { label: "fl_family/testjet";    name: string(STR_FAMILY_TESTJET); } }
+item(FEAT_BADGES, family_testrocket, 1) { property { label: "fl_family/testrocket"; name: string(STR_FAMILY_TESTROCKET); } }
+item(FEAT_BADGES, profile_testcorp, 2)  { property { label: "fl_profile/testcorp";  name: string(STR_PROFILE_TESTCORP); } }
+
+/* Base aircraft 1 (Coleman Count) joins the test jet family. */
+item(FEAT_AIRCRAFT, coleman_testjet, 1) {
+    property { badges: ["fl_format/2", "fl_id/test_airliner", "fl_tech/testjet", "fl_role/passenger_intercity", "role/passenger"]; }
+}
+
+/* Base aircraft 2 (FFP Dart) joins the test rocket family and needs a test pad. */
+item(FEAT_AIRCRAFT, dart_testrocket, 2) {
+    property { badges: ["fl_format/2", "fl_id/test_rocket", "fl_tech/testrocket", "fl_needs/testpad", "role/passenger"]; }
+}
+
+/* Base aircraft 4 reuses test_airliner, which validate must report. It stays conventional. */
+item(FEAT_AIRCRAFT, duplicate_id, 4) {
+    property { badges: ["fl_format/2", "fl_id/test_airliner", "role/passenger"]; }
+}
+
+/* Base aircraft 3 has a tag but no fl_format, so its tags must be ignored and reported. */
+item(FEAT_AIRCRAFT, unformatted, 3) {
+    property { badges: ["fl_tier/high"]; }
+}
+
+/* Base train 0 (Kirby Paul Tank) has only shared badges, as a third-party set would: no fl_ tags are needed. */
+item(FEAT_TRAINS, kirby_freight, 0) {
+    property { badges: ["role/freight", "power/steam"]; }
+}

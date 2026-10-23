@@ -10,6 +10,7 @@
 #include "../debug.h"
 #include "../engine_base.h"
 #include "../engine_func.h"
+#include "../newgrf_badge.h"
 #include "../strings_func.h"
 
 #include "table/strings.h"
@@ -78,6 +79,24 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 		for (const TechRecord &record : library.Vehicles()) Report("FL tech vehicle " + FormatVehicle(record));
 		for (const InfraRecord &record : library.Infrastructure()) Report(FormatInfra(record));
 		Report(fmt::format("FL tech summary vehicles={} infrastructure={}", library.Vehicles().size(), library.Infrastructure().size()));
+		return true;
+	}
+	if (argv.size() == 1 && argv[0] == "badges") {
+		/* Every fl_ badge any loaded NewGRF declared, whether or not an item uses it. */
+		for (const Badge &badge : GetBadges()) {
+			if (!badge.label.starts_with("fl_")) continue;
+			Report(fmt::format("FL tech badge label={} name={}", badge.label, badge.name == StringID{} ? std::string{"-"} : GetString(badge.name)));
+		}
+		for (const Engine *engine : Engine::Iterate()) {
+			std::string labels;
+			for (BadgeID id : engine->badges) {
+				const Badge *badge = GetBadge(id);
+				if (badge == nullptr || !badge->label.starts_with("fl_")) continue;
+				if (!labels.empty()) labels += ',';
+				labels += badge->label;
+			}
+			if (!labels.empty()) Report(fmt::format("FL tech tagged engine={} badges={} name={}", engine->index, labels, GetString(STR_ENGINE_NAME, engine->index)));
+		}
 		return true;
 	}
 	if ((argv.size() == 3 || argv.size() == 4) && argv[0] == "best") {

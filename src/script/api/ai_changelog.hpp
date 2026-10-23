@@ -21,6 +21,7 @@
  *
  * API additions:
  * \li AIRail::RemoveRailDepot
+ * \li AIFutureLogistics (Future Logistics fork only)
  *
  * \b 15.0
  *

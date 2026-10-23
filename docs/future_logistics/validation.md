@@ -117,8 +117,8 @@ or settings without enough suitable pairs may retain funded rivals without a
 starter network, with an explicit failure log. Cleanup removes new infrastructure
 but does not refund construction/demolition costs or restore cleared trees.
 
-CorporateAI preserves the initial fleet; strategic expansion and technology
-adoption are not implemented. Other user-selected AIs may change the supplied
+CorporateAI grows the network only in single-player games (see phase 6 in the
+roadmap); in multiplayer it only looks after its fleet. Other user-selected AIs may change the supplied
 network after startup. The GS milestone messages describe planned content and do
 not unlock vehicles. Native compilation and automated tests passed; a manual Mac play test remains
 outstanding. The 16 full-game integration scenarios were run on Linux.

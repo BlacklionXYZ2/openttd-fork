@@ -501,9 +501,10 @@ ConstructionResult RoadLeg(const TechLibrary &library, const ServiceSpec &spec, 
 /**
  * Follow a road vehicle's owned road from where it is now.
  * @param vehicle Road vehicle to inspect.
+ * @param[out] depot If given, receives the first of the owner's road depots found on that road, or INVALID_TILE.
  * @return Road stops the vehicle can reach over its owner's connected road.
  */
-std::set<StationID> RoadStationsReachable(const Vehicle *vehicle)
+std::set<StationID> RoadStationsReachable(const Vehicle *vehicle, TileIndex *depot)
 {
 	std::set<TileIndex> seen{vehicle->tile};
 	std::set<StationID> reached;
@@ -512,6 +513,7 @@ std::set<StationID> RoadStationsReachable(const Vehicle *vehicle)
 	while (!queue.empty() && seen.size() <= MAX_SEARCH) {
 		TileIndex tile = queue.front(); queue.pop();
 		if (IsStationRoadStopTile(tile) && GetTileOwner(tile) == vehicle->owner) reached.insert(GetStationIndex(tile));
+		if (depot != nullptr && *depot == INVALID_TILE && IsRoadDepotTile(tile) && GetTileOwner(tile) == vehicle->owner) *depot = tile;
 		for (TileIndex next : Neighbours(tile)) {
 			if (seen.contains(next) || GetAnyRoadBits(next, RoadTramType::Road).None()) continue;
 			if (GetRoadOwner(next, RoadTramType::Road) != vehicle->owner) continue;

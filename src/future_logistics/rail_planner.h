@@ -18,7 +18,7 @@ class TechLibrary;
 namespace FutureLogistics {
 
 ConstructionResult BuildTownRail(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, std::set<TownID> &used_towns);
-std::set<StationID> RailStationsReachable(const Vehicle *train);
+std::set<StationID> RailStationsReachable(const Vehicle *train, TileIndex *depot = nullptr);
 
 } // namespace FutureLogistics
 

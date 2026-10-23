@@ -169,6 +169,7 @@ add_files(
     script_event.hpp
     script_event_types.hpp
     script_execmode.hpp
+    script_futurelogistics.hpp
     script_game.hpp
     script_gamesettings.hpp
     script_goal.hpp
@@ -244,6 +245,7 @@ add_files(
     script_event.cpp
     script_event_types.cpp
     script_execmode.cpp
+    script_futurelogistics.cpp
     script_game.cpp
     script_gamesettings.cpp
     script_goal.cpp

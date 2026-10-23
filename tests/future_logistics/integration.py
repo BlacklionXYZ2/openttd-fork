@@ -134,6 +134,9 @@ DayZeroMonopolies =
     fleet = lambda text: (len(re.findall(r"FL rail company=", text))
                           + sum(int(n) for n in re.findall(r"FL (?:route|air|ship) company=\d+ (?:kind=\w+ cargo=\w+ |airport=\d+ )vehicles=(\d+)", text)))
     vehicle_count = lambda text: [int(n) for n in re.findall(r"FL check result=true companies=5 vehicles=(\d+) human=0", text)]
+    # Rivals grow after day zero, so later checks need the day-zero vehicles to keep working and the fleet not to shrink.
+    vehicle_ids = lambda text: set(re.findall(r"FL check company=\d+ vehicle=(\d+) ", text))
+    served_ids = lambda text: set(re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", text))
     profiles = re.findall(r"FL profile company=([1-4]) profile=(\w+)", first)
     require(profiles == [("1", "national_rail"), ("2", "aerolink"), ("3", "metro_regional"), ("4", "integrated_logistics")],
             "each rival should get its own profile, in order")
@@ -176,22 +179,32 @@ DayZeroMonopolies =
 
     restored, served_save = run("service-and-reload", load=snapshot, service=True)
     require("FL begin" not in restored and "FL funded" not in restored, "bootstrap ran on load")
-    require(restored.count("CorporateAI operating the engine-built starter network") == 4,
-            "not every AI resumed its controller")
+    require(restored.count("CorporateAI profile") == 4, "not every AI resumed its controller")
     require(sorted(re.findall(r"CorporateAI profile ([1-4])", restored)) == ["1", "2", "3", "4"],
             "CorporateAI did not see its saved profile")
     require("Companies visible after startup: 5" in restored, "Game Script did not inspect the initialized companies")
-    require(vehicle_count(restored) == [vehicles, vehicles], "initial or three-month saved-game connectivity check failed")
-    served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", restored)
-    require(len(set(served)) == vehicles, "not every rival vehicle visited an ordered station")
+    counts = vehicle_count(restored)
+    require(len(counts) == 2 and counts[0] == vehicles and counts[1] >= vehicles, "initial or three-month saved-game connectivity check failed")
+    require(vehicle_ids(first) <= served_ids(restored), "not every day-zero rival vehicle visited an ordered station")
     deliveries = re.findall(r"FL check company=(\d+).*delivered=([1-9]\d*)", restored)
     require(len({company for company, count in deliveries}) == 4, "not every rival delivered cargo")
     funds = lambda text: re.findall(r"FL check funds company=(\d+) balance=(-?\d+) loan=(\d+)", text)[:5]
     require(funds(first) == funds(restored), "funds changed across initial save/reload")
     require(served_save.exists(), "service snapshot missing")
     again, _ = run("served-save-reload", load=served_save)
-    require("FL begin" not in again and vehicle_count(again) == [vehicles],
+    require("FL begin" not in again and vehicle_count(again) == counts[-1:],
             "served network failed save/reload")
+
+    # Phase 6: CorporateAI keeps the rivals going with the day-zero planners through AIFutureLogistics.
+    grown, _ = run("rivals-grow", load=snapshot, service=True, months=13)
+    require(re.search(r"FL grow company=\d+ profile=\w+ recipe=\S+ result=success", grown), "no rival opened a new route after day zero")
+    require(re.search(r"Opened a new \S+ route", grown), "CorporateAI did not report its new route")
+    require(re.search(r"Added a vehicle to .* \(\d+ on the route\)", grown), "no rival added a vehicle to a busy route")
+    grown_counts = vehicle_count(grown)
+    require(len(grown_counts) == 2 and grown_counts[-1] > vehicles, "the rivals' fleets did not grow, or a vehicle failed the check")
+    require(vehicle_ids(first) <= served_ids(grown), "a day-zero vehicle stopped serving its stations as the rivals grew")
+    largest = max(int(n) for n in re.findall(r"\((\d+) on the route\)", grown))
+    require(largest <= 5, "a route grew past the medium aggression limit of five vehicles")
 
     modern, modern_save = run("modern-start", year=2026)
     require("FL complete companies=5 operational=4" in modern, "2026 start did not give four operational rivals")
@@ -201,7 +214,7 @@ DayZeroMonopolies =
     modern_vehicles = fleet(modern)
     modern_run, _ = run("modern-service", load=modern_save, service=True)
     modern_served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", modern_run)
-    require(vehicle_count(modern_run)[-1:] == [modern_vehicles] and len(set(modern_served)) == modern_vehicles,
+    require(vehicle_count(modern_run)[-1] >= modern_vehicles and vehicle_ids(modern) <= set(modern_served),
             "not every 2026 vehicle visited an ordered station")
 
     mail = re.findall(r"FL service company=\d+ recipe=conventional/(rail_line|road_route)/mail fallback=false result=success", first)
@@ -215,7 +228,7 @@ DayZeroMonopolies =
     coast_run, _ = run("coastal-service", load=coast_save, service=True)
     coast_served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", coast_run)
     require(re.search(r"FL check company=\d+ vehicle=\d+ type=water connected=true served=true", coast_run), "the ferry did not reach its docks")
-    require(vehicle_count(coast_run)[-1:] == [coast_vehicles] and len(set(coast_served)) == coast_vehicles,
+    require(vehicle_count(coast_run)[-1] >= coast_vehicles and vehicle_ids(coast) <= set(coast_served),
             "not every vehicle in the coastal world visited an ordered station")
 
     # Freight that no single mode reaches goes in two legs: here ships to a port, where they transfer and
@@ -317,7 +330,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

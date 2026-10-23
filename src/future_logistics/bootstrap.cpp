@@ -8,6 +8,7 @@
 #include "air_planner.h"
 #include "planner_common.h"
 #include "catalogue.h"
+#include "growth.h"
 #include "rail_planner.h"
 #include "road_planner.h"
 #include "water_planner.h"
@@ -51,29 +52,6 @@ using namespace FutureLogistics;
 extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
 
 namespace {
-/**
- * Build one starter service for the current company with the mechanic its recipe names.
- * @param recipe Family, mechanic and market.
- * @param profile The rival, for its preferences.
- * @param plan All of the rival's recipes; its other freight recipes are the ways a freight route may hand cargo over to.
- * @param library Loaded transport technology.
- * @param[in,out] reserved Markets already taken.
- * @return Outcome; Rejected for a mechanic or market this build does not support.
- */
-ConstructionResult BuildService(const Recipe &recipe, const Profile &profile, std::span<const Recipe> plan, const TechLibrary &library, Reservations &reserved)
-{
-	if (!IsSupported(recipe.mechanic, recipe.market)) return ConstructionResult::Rejected;
-	ServiceSpec spec{recipe.family, recipe.min_tier, recipe.early_adopters, profile.industry_markets, {}};
-	if (recipe.market == Market::Industry) {
-		for (const Recipe &other : plan) {
-			if (other.market != Market::Industry || other.mechanic == recipe.mechanic) continue;
-			if (std::ranges::find(spec.partners, other.mechanic, &Partner::mechanic) != spec.partners.end()) continue;
-			spec.partners.push_back({other.mechanic, other.family, other.min_tier, other.early_adopters});
-		}
-	}
-	return FindMechanic(recipe.mechanic)->build(library, spec, recipe.market, reserved);
-}
-
 /**
  * Name a new rival after its profile and tell its CorporateAI which profile it has.
  * Both are stored in the save game.
@@ -207,9 +185,9 @@ bool InspectFutureLogistics()
 		for (const auto &quarter : company->old_economy) delivered += quarter.delivered_cargo.GetSum<uint>();
 		uint carrying = 0;
 		for (const Vehicle *part = vehicle; part != nullptr; part = part->Next()) carrying += part->cargo.StoredCount();
-		Debug(Facility::Misc, Severity::Notice, "FL check company={} vehicle={} type={} connected={} served={} tile={} profit={} delivered={} carrying={}",
+		Debug(Facility::Misc, Severity::Notice, "FL check company={} vehicle={} type={} connected={} served={} tile={} profit={} delivered={} carrying={} engine={} age={}",
 			vehicle->owner, vehicle->index, vehicle->type == VehicleType::Train ? "rail" : (vehicle->type == VehicleType::Aircraft ? "air" : (vehicle->type == VehicleType::Ship ? "water" : "road")), connected, destinations.contains(vehicle->last_station_visited),
-			vehicle->tile, vehicle->profit_this_year, delivered, carrying);
+			vehicle->tile, vehicle->profit_this_year, delivered, carrying, TechId(Engine::Get(vehicle->engine_type)), vehicle->age.base() / 366);
 	}
 	Debug(Facility::Misc, Severity::Notice, "FL check result={} companies={} vehicles={} human={}", valid, Company::GetNumItems(), checked, _local_company);
 	return valid;

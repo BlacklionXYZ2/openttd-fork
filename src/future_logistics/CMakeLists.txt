@@ -7,6 +7,8 @@ add_files(
     catalogue.h
     freight_planner.cpp
     freight_planner.h
+    growth.cpp
+    growth.h
     mechanics.cpp
     mechanics.h
     planner_common.h

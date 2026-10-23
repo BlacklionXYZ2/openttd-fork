@@ -606,9 +606,10 @@ static std::vector<DiagDirection> RailSides(TileIndex tile)
 /**
  * Follow a train's owned track from where it is now.
  * @param train Train to inspect.
+ * @param[out] depot If given, receives the first of the owner's rail depots found on that track, or INVALID_TILE.
  * @return Stations the train can reach over its owner's connected track.
  */
-std::set<StationID> RailStationsReachable(const Vehicle *train)
+std::set<StationID> RailStationsReachable(const Vehicle *train, TileIndex *depot)
 {
 	std::set<StationID> reached;
 	std::set<TileIndex> seen{train->tile};
@@ -618,6 +619,7 @@ std::set<StationID> RailStationsReachable(const Vehicle *train)
 		const TileIndex tile = queue.front();
 		queue.pop();
 		if (IsTileType(tile, TileType::Station) && HasStationRail(tile)) reached.insert(GetStationIndex(tile));
+		if (depot != nullptr && *depot == INVALID_TILE && IsRailDepotTile(tile) && GetTileOwner(tile) == train->owner) *depot = tile;
 		for (DiagDirection side : RailSides(tile)) {
 			const TileIndex next = Step(tile, side);
 			if (next == INVALID_TILE || seen.contains(next)) continue;

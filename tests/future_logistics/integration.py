@@ -37,7 +37,7 @@ def main():
         for src, dst in [(baseset, folder / "baseset"),
                          (ROOT / "mods/ai", folder / "ai"),
                          (ROOT / "mods/gamescripts", folder / "game")]:
-            shutil.copytree(src, dst, dirs_exist_ok=True)
+            shutil.copytree(src, dst, dirs_exist_ok=True, ignore_dangling_symlinks=True)
         cfg = folder / "openttd.cfg"
         cfg.write_text(f"""[game_creation]
 bootstrap_enabled = {str(enabled).lower()}

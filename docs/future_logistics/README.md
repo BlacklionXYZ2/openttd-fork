@@ -81,7 +81,9 @@ scoped funding/construction operation; `OnStartGame` selects human company 0.
 
 The planner considers the first 128 towns, up to 128 nearest town pairs (distance
 16–96), and explores at most 8192 tiles per pair in a fixed neighbour order.
-Candidate stops must both accept and produce passengers. The first implementation
+Candidate stops must both accept and produce passengers and belong to the selected
+town's area. Each completed network reserves its two towns during bootstrap so
+initial rivals do not starve one another of passengers at overlapping stops. The first implementation
 uses available standard-road passenger buses and flat clear/tree tiles at one
 height. It builds an owned route, two distinct drive-through stops, an attached
 depot and one started bus with two station orders. No shared infrastructure is

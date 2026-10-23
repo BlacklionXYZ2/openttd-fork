@@ -86,7 +86,7 @@ std::vector<TileIndex> Stops(const Town *town, CargoType cargo)
 	for (int y = std::max(1, (int)TileY(town->xy) - 12); y <= std::min((int)Map::SizeY() - 2, (int)TileY(town->xy) + 12); y++) {
 		for (int x = std::max(1, (int)TileX(town->xy) - 12); x <= std::min((int)Map::SizeX() - 2, (int)TileX(town->xy) + 12); x++) {
 			TileIndex tile = TileXY(x, y);
-			if (!Buildable(tile)) continue;
+			if (!Buildable(tile) || ClosestTownFromTile(tile, UINT_MAX)->index != town->index) continue;
 			if (GetAcceptanceAroundTiles(tile, 1, 1, radius).first[cargo] < 8 || GetProductionAroundTiles(tile, 1, 1, radius)[cargo] == 0) continue;
 			result.push_back(tile);
 		}
@@ -227,7 +227,7 @@ bool Build(const Route &route, const Engine *engine)
 	return true;
 }
 
-bool Network(CargoType cargo)
+bool Network(CargoType cargo, std::set<TownID> &used_towns)
 {
 	const Engine *bus = nullptr;
 	for (const Engine *engine : Engine::IterateType(VehicleType::Road)) {
@@ -246,7 +246,7 @@ bool Network(CargoType cargo)
 	}
 	for (const Town *a : towns) {
 		for (const Town *b : towns) {
-			if (a->index >= b->index) continue;
+			if (a->index >= b->index || used_towns.contains(a->index) || used_towns.contains(b->index)) continue;
 			uint distance = DistanceManhattan(a->xy, b->xy);
 			if (distance >= 16 && distance <= 96) pairs.push_back({distance, a, b});
 		}
@@ -259,7 +259,12 @@ bool Network(CargoType cargo)
 			if (!candidates.contains(town->index)) candidates.emplace(town->index, Stops(town, cargo));
 		}
 		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index));
-		if (route.depot != INVALID_TILE && Build(route, bus)) return true;
+		if (route.depot != INVALID_TILE && Build(route, bus)) {
+			used_towns.insert(pair.a->index);
+			used_towns.insert(pair.b->index);
+			Debug(Facility::Misc, Severity::Notice, "FL towns company={} a={} b={}", _current_company, pair.a->index, pair.b->index);
+			return true;
+		}
 	}
 	return false;
 }
@@ -277,6 +282,7 @@ void BootstrapFutureLogistics()
 	Debug(Facility::Misc, Severity::Notice, "FL begin seed={} rivals={}", _settings_game.game_creation.generation_seed, count);
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	uint operational = 0;
+	std::set<TownID> used_towns;
 	for (uint i = 1; i <= count; i++) {
 		Company *company = DoStartupNewCompany(true, CompanyID{static_cast<uint8_t>(i)});
 		if (company == nullptr) { Debug(Facility::Misc, Severity::Warning, "FL company allocation failed slot={}", i); break; }
@@ -295,7 +301,7 @@ void BootstrapFutureLogistics()
 			_settings_game.game_creation.bootstrap_capital, company->money, company->current_loan);
 		{
 			AutoRestoreBackup owner(_current_company, company->index);
-			if (cargo != INVALID_CARGO && Network(cargo)) {
+			if (cargo != INVALID_CARGO && Network(cargo, used_towns)) {
 				operational++;
 			} else {
 				Debug(Facility::Misc, Severity::Warning, "FL no usable bus route company={} (terrain, towns, funds or vehicle availability); funded company retained", company->index);

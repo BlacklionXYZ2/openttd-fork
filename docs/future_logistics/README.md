@@ -94,8 +94,12 @@ reproducibility.
 
 Failures are bounded and logged with `FL` prefixes. Before construction, every
 road/stop/depot command is tested and the estimated layout plus vehicle reserve
-must fit company funds. If execution fails, the stopped vehicle is sold and newly
-built infrastructure is cleared in reverse order. Cleanup failures are logged.
+must fit company funds. The planner also reserves demolition credits and funds
+for cleanup, and uses the same auto-construction/no-water flags as the normal
+construction commands. A bus station order explicitly uses `FarEnd`, as required
+by the current non-train order command. If execution fails, the stopped vehicle is sold and newly
+built infrastructure is cleared in reverse order. Cleanup failures are logged. The company stops attempting construction after
+an execution failure; rejected preflight candidates may still be tried safely.
 Cleared trees and incurred construction/demolition costs are not transactionally
 restored. A funded company remains if no usable route can be built. This is a
 reported bootstrap failure, never counted as an operational network.

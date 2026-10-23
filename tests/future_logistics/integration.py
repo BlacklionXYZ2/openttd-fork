@@ -31,7 +31,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
-            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500):
+            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False):
         folder = output / name
         folder.mkdir(exist_ok=True)
         for src, dst in [(baseset, folder / "baseset"),
@@ -56,6 +56,8 @@ terrain_type = 0
 quantity_sea_lakes = 4
 industry_density = 0
 vehicle_breakdowns = 0
+[construction]
+clear_frame_burst = {clear_limit}
 [vehicle]
 max_roadveh = {vehicle_limit}
 [economy]
@@ -76,6 +78,11 @@ CorporateAI =
 [game_scripts]
 DayZeroMonopolies =
 """)
+        if default_world:
+            text = cfg.read_text().replace("land_generator = 0", "land_generator = 1")
+            text = text.replace("tree_placer = 0", "tree_placer = 2").replace("number_towns = 4", "number_towns = 2")
+            text = text.replace("terrain_type = 0", "terrain_type = 1").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 0")
+            cfg.write_text(text)
         scripts = folder / "scripts"
         scripts.mkdir(exist_ok=True)
         startup = "future_logistics_check\n"
@@ -136,6 +143,11 @@ DayZeroMonopolies =
     require("FL begin" not in again and "FL check result=true companies=5 vehicles=4 human=0" in again,
             "served network failed save/reload")
 
+    default_world, _ = run("default-world", default_world=True)
+    require("FL complete companies=5 operational=4" in default_world, "default terrain/tree/town settings failed")
+    no_clearance, _ = run("no-cleanup-capacity", clear_limit=0)
+    require("FL complete companies=5 operational=0" in no_clearance and "FL construction failed" not in no_clearance,
+            "bootstrap constructed a route without rollback capacity")
     disabled, old_save = run("disabled", enabled=False)
     require("FL begin" not in disabled and "FL check result=true companies=1 vehicles=0 human=0" in disabled,
             "disabled bootstrap modified the game")
@@ -165,7 +177,7 @@ DayZeroMonopolies =
     multiplayer, _ = run("dedicated-multiplayer", dedicated=True)
     require("FL begin" not in multiplayer and "FL funded" not in multiplayer,
             "multiplayer executed bootstrap")
-    summary = "PASS: company ownership/count; funding/loan accounting; four connected started bus networks; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: company ownership/count; funding/loan accounting; four connected started bus networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

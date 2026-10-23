@@ -38,6 +38,7 @@ extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
 
 namespace {
 constexpr DoCommandFlags EXEC{DoCommandFlag::Execute};
+constexpr DoCommandFlags CONSTRUCT{DoCommandFlag::Auto, DoCommandFlag::NoWater};
 constexpr size_t MAX_SEARCH = 8192;
 constexpr size_t MAX_PAIRS = 128;
 
@@ -155,20 +156,22 @@ RoadBits Pieces(const Route &route, size_t i)
 
 CommandCost Stop(TileIndex tile, DiagDirection direction, RoadType roadtype, DoCommandFlags flags)
 {
-	return Command<Commands::BuildRoadStop>::Do(flags, tile, 1, 1, RoadStopType::Bus, true, direction,
+	return Command<Commands::BuildRoadStop>::Do(flags | CONSTRUCT, tile, 1, 1, RoadStopType::Bus, true, direction,
 		roadtype, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, true);
 }
 
+enum class ConstructionResult { Rejected, Failed, Success };
+
 /** Preflight the entire layout, then execute through the engine's accounting command interface. */
-bool Build(const Route &route, const Engine *engine)
+ConstructionResult Build(const Route &route, const Engine *engine)
 {
 	const RoadType rt = engine->VehInfo<RoadVehicleInfo>().roadtype;
 	Money cost = 0;
 	for (size_t i = 0; i < route.path.size(); i++) {
-		auto result = Command<Commands::BuildRoad>::Do({}, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid());
+		auto result = Command<Commands::BuildRoad>::Do(CONSTRUCT, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid());
 		if (result.Failed()) {
 			Debug(Facility::Misc, Severity::Debug1, "FL road preflight rejected tile={} error={}", route.path[i], result.GetErrorMessage());
-			return false;
+			return ConstructionResult::Rejected;
 		}
 		cost += result.GetCost();
 	}
@@ -176,15 +179,18 @@ bool Build(const Route &route, const Engine *engine)
 	const auto last_dir = RouteDirection(route.path.back(), route.path[route.path.size() - 2]);
 	for (const auto &[tile, direction] : {std::pair{route.path.front(), first_dir}, {route.path.back(), last_dir}}) {
 		auto result = Stop(tile, direction, rt, {});
-		if (result.Failed()) return false;
+		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
 	}
 	const auto depot_dir = RouteDirection(route.depot, route.path[route.junction]);
-	auto depot_test = Command<Commands::BuildRoadDepot>::Do({}, route.depot, rt, depot_dir);
-	if (depot_test.Failed()) return false;
+	auto depot_test = Command<Commands::BuildRoadDepot>::Do(CONSTRUCT, route.depot, rt, depot_dir);
+	if (depot_test.Failed()) return ConstructionResult::Rejected;
 	cost += depot_test.GetCost();
 	/* Reserve extra capital for the vehicle and any command-cost changes after construction. */
-	if (cost + engine->GetCost() * 2 > Company::Get(_current_company)->money) return false;
+	const Company *company = Company::Get(_current_company);
+	if (cost * 2 + engine->GetCost() * 2 > company->money) return ConstructionResult::Rejected;
+	/* Explicit demolition consumes clearing credits. Keep enough for a complete rollback. */
+	if ((company->clear_limit >> 16) < route.path.size() * 3 + 8) return ConstructionResult::Rejected;
 
 	std::vector<TileIndex> built;
 	VehicleID vehicle = VehicleID::Invalid();
@@ -194,22 +200,23 @@ bool Build(const Route &route, const Engine *engine)
 			return;
 		}
 		for (auto it = built.rbegin(); it != built.rend(); ++it) {
-			if (Command<Commands::LandscapeClear>::Do(EXEC, *it).Failed()) {
-				Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={}", *it);
+			auto result = Command<Commands::LandscapeClear>::Do(EXEC, *it);
+			if (result.Failed()) {
+				Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={} error={}", *it, result.GetErrorMessage());
 			}
 		}
 	};
 	auto fail = [&](std::string_view phase) {
 		Debug(Facility::Misc, Severity::Warning, "FL construction failed company={} phase={}; clearing new infrastructure", _current_company, phase);
 		rollback();
-		return false;
+		return ConstructionResult::Failed;
 	};
 	for (size_t i = 0; i < route.path.size(); i++) {
-		if (Command<Commands::BuildRoad>::Do(EXEC, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid()).Failed()) return fail("road");
+		if (Command<Commands::BuildRoad>::Do(EXEC | CONSTRUCT, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid()).Failed()) return fail("road");
 		built.push_back(route.path[i]);
 	}
 	if (Stop(route.path.front(), first_dir, rt, EXEC).Failed() || Stop(route.path.back(), last_dir, rt, EXEC).Failed()) return fail("stops");
-	if (Command<Commands::BuildRoadDepot>::Do(EXEC, route.depot, rt, depot_dir).Failed()) return fail("depot");
+	if (Command<Commands::BuildRoadDepot>::Do(EXEC | CONSTRUCT, route.depot, rt, depot_dir).Failed()) return fail("depot");
 	built.push_back(route.depot);
 	auto result = Command<Commands::BuildVehicle>::Do(EXEC, route.depot, engine->index, false, engine->GetDefaultCargoType(), ClientID::Invalid);
 	if (ExtractCommandCost(result).Failed()) return fail("vehicle");
@@ -217,6 +224,7 @@ bool Build(const Route &route, const Engine *engine)
 	for (VehicleOrderID i = 0; i < 2; i++) {
 		Order order;
 		order.MakeGoToStation(GetStationIndex(i == 0 ? route.path.front() : route.path.back()));
+		order.SetStopLocation(OrderStopLocation::FarEnd);
 		if (Command<Commands::InsertOrder>::Do(EXEC, vehicle, i, order).Failed()) return fail("orders");
 	}
 	if (Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true).Failed()) return fail("start");
@@ -224,7 +232,7 @@ bool Build(const Route &route, const Engine *engine)
 	for (TileIndex tile : route.path) signature = (signature ^ tile.base()) * 1099511628211ULL;
 	Debug(Facility::Misc, Severity::Notice, "FL route company={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={}",
 		_current_company, vehicle, route.path.front(), route.path.back(), route.depot, route.path.size(), Company::Get(_current_company)->money, signature);
-	return true;
+	return ConstructionResult::Success;
 }
 
 bool Network(CargoType cargo, std::set<TownID> &used_towns)
@@ -259,7 +267,10 @@ bool Network(CargoType cargo, std::set<TownID> &used_towns)
 			if (!candidates.contains(town->index)) candidates.emplace(town->index, Stops(town, cargo));
 		}
 		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index));
-		if (route.depot != INVALID_TILE && Build(route, bus)) {
+		if (route.depot == INVALID_TILE) continue;
+		auto result = Build(route, bus);
+		if (result == ConstructionResult::Failed) return false;
+		if (result == ConstructionResult::Success) {
 			used_towns.insert(pair.a->index);
 			used_towns.insert(pair.b->index);
 			Debug(Facility::Misc, Severity::Notice, "FL towns company={} a={} b={}", _current_company, pair.a->index, pair.b->index);

@@ -67,6 +67,7 @@ clear_frame_burst = {clear_limit}
 [vehicle]
 max_roadveh = {vehicle_limit}
 max_trains = {vehicle_limit}
+max_aircraft = {vehicle_limit}
 [economy]
 town_layout = 1
 [gui]
@@ -124,9 +125,10 @@ DayZeroMonopolies =
     require(profiles == [("1", "national_rail"), ("2", "aerolink"), ("3", "metro_regional"), ("4", "integrated_logistics")],
             "each rival should get its own profile, in order")
     built = set(re.findall(r"FL service company=\d+ type=(\w+) fallback=\w+ result=success", first))
-    require({"rail_passenger", "rail_freight", "bus"} <= built,
-            "the starting market should contain passenger rail, freight rail and buses")
-    freight = re.findall(r"FL rail company=\d+ kind=freight cargo=(\w+) vehicle=\d+ wagons=([1-9])", first)
+    require({"air_passenger", "rail_passenger", "rail_freight", "bus"} <= built,
+            "the starting market should contain an airline, passenger rail, freight rail and buses")
+    require(re.search(r"FL air company=2 airport=\d+ vehicle=\d+", first), "AeroLink did not open an airline")
+    freight = re.findall(r"FL rail company=\d+ kind=freight cargo=(\w+) track=\w+ vehicle=\d+ wagons=([1-9])", first)
     require(freight, "no freight train with wagons was built")
     chosen = re.findall(r"FL tech company=([1-4]) role=passenger_feeder vehicle=(\S+)", first)
     require(chosen and len({vehicle for _, vehicle in chosen}) == 1,
@@ -165,6 +167,17 @@ DayZeroMonopolies =
     again, _ = run("served-save-reload", load=served_save)
     require("FL begin" not in again and vehicle_count(again) == [services],
             "served network failed save/reload")
+
+    modern, modern_save = run("modern-start", year=2026)
+    require("FL complete companies=5 operational=4" in modern, "2026 start did not give four operational rivals")
+    modern_built = set(re.findall(r"FL service company=\d+ type=(\w+) fallback=false result=success", modern))
+    require({"air_passenger", "rail_passenger", "rail_freight"} <= modern_built,
+            "2026 start should still get airlines and railways on modern track types")
+    modern_services = int(re.search(r"FL complete companies=5 operational=4 services=(\d+)", modern).group(1))
+    modern_run, _ = run("modern-service", load=modern_save, service=True)
+    modern_served = re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", modern_run)
+    require(vehicle_count(modern_run)[-1:] == [modern_services] and len(set(modern_served)) == modern_services,
+            "not every 2026 vehicle visited an ordered station")
 
     default_world, _ = run("default-world", default_world=True)
     require("FL complete companies=5 operational=4" in default_world, "default terrain/tree/town settings failed")
@@ -220,7 +233,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: four distinct company profiles with passenger rail, freight rail and buses; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: four distinct company profiles with an airline, passenger rail, freight rail and buses; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

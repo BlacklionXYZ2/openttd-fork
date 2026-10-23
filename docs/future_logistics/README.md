@@ -97,7 +97,9 @@ height. It builds an owned route, two distinct drive-through stops, an attached
 depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
 railways reserve their two industries. All engine command executions in the rail
-planner flush the track signal update buffer, as the normal command loop does. No shared infrastructure is
+planner flush the track signal update buffer, as the normal command loop does.
+The air planner builds two airports of the largest available type and one
+passenger aircraft chosen by the Tech Library. No shared infrastructure is
 modified. All changes go through tested engine command interfaces and normal
 cost accounting. No map tiles are changed directly. No interactive RNG is used.
 Equivalent map seed, game settings, installed scripts and NewGRFs are required for
@@ -137,7 +139,7 @@ multiplayer dedicated server. Test artifacts go in `work/`.
 
 ## Scope and remaining work
 
-No airports, trucks, drones, multi-stage cargo chains, hyperloop, rocket freight,
+No trucks, drones, multi-stage cargo chains, hyperloop, rocket freight,
 custom NewGRFs, signals, bridges, tunnels, terrain engineering, strategic AI
 expansion or AI vehicle adoption are implemented here. Difficult maps, disconnected heights, very early start dates,
 NewGRFs that remove compatible standard-road buses, and town restrictions may

@@ -78,6 +78,7 @@ TechRecord Describe(const Engine *engine)
 			break;
 		case VehicleType::Aircraft:
 			record.helicopter = (engine->VehInfo<AircraftVehicleInfo>().subtype & AIR_CTOL) == 0;
+			record.fast = (engine->VehInfo<AircraftVehicleInfo>().subtype & AIR_FAST) != 0;
 			record.range = engine->GetRange();
 			break;
 		default:
@@ -184,6 +185,8 @@ bool TechLibrary::IsUsable(const TechRecord &record, const TechQuery &query) con
 	/* Special infrastructure is matched in phase 5; until then never offer such vehicles. */
 	if (!record.needs.empty()) return false;
 	if (query.roadtype != INVALID_ROADTYPE && record.roadtype != query.roadtype) return false;
+	if (query.short_strip && record.fast) return false;
+	if (query.distance > 0 && record.range > 0 && record.range < query.distance) return false;
 	if (IsValidCargoType(query.cargo) && !record.traction && (record.capacity == 0 || !record.refits.Test(query.cargo))) return false;
 	const Engine *engine = Engine::Get(record.engine);
 	VehicleType type = engine->type;

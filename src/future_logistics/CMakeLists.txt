@@ -1,4 +1,6 @@
 add_files(
+    air_planner.cpp
+    air_planner.h
     bootstrap.cpp
     bootstrap.h
     planner_common.h

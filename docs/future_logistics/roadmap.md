@@ -5,9 +5,9 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phases 0–2 are complete. The four rivals have
-distinct profiles, and the starting market has passenger trains, freight
-trains and buses. See `validation.md` for the recorded test results.
+**Status (October 2026):** phases 0–3 are complete. The four rivals have
+distinct profiles, and the starting market has an airline, passenger trains,
+freight trains and buses. See `validation.md` for the recorded test results.
 
 The key design rule for everything below: **rivals ask the Tech Library for
 "the best tech for this job", never for a specific vehicle.** The library and
@@ -54,7 +54,7 @@ Goal: the four rivals differ, and trains run on day one.
   | Rival | Services |
   |---|---|
   | National Rail & Freight | freight railway, passenger railway |
-  | AeroLink | bus until phase 3 adds airlines |
+  | AeroLink | passenger airline (phase 3) |
   | Metro & Regional | passenger railway, bus |
   | Integrated Logistics | freight railway, trucks from phase 4 |
 
@@ -67,7 +67,9 @@ Goal: the four rivals differ, and trains run on day one.
   same-direction turns next to each other, so lines have no forbidden 90
   degree bends.
 - The locomotive (by pulling power) and the wagons come from the Tech Library;
-  wagons are added until the train fills the platform.
+  wagons are added until the train fills the platform. Every track type the
+  company can build is considered, and the one with the fastest locomotive
+  wins: plain rail in 1950, maglev by 2026 in the base game.
 - Passenger railways link two unused towns 24–120 tiles apart. Freight railways
   link an unused producing industry to one 20–100 tiles away that accepts its
   cargo; the train full-loads at the source.
@@ -84,11 +86,24 @@ Known limits, for later phases:
 - Freight trains make large profits in the first months (tested with a 25
   million starting grant). Balance is a phase 8 task.
 
-## Phase 3: air (A2)
+## Phase 3: air (A2) (done)
 
-- Airport placement against town limits and noise, footprint and terrain checks.
-- Aircraft chosen by the library, respecting airport size and order range.
-- At least two airports with an operating passenger route.
+- Air planner (`src/future_logistics/air_planner.cpp`): an airport in each of
+  two unused towns 48–256 tiles apart, and one passenger aircraft between them.
+- Airport types come from the Tech Library's infrastructure list. The largest
+  available type that takes planes is tried first, falling back to smaller
+  ones: small airports in 1950, intercontinental airports by 2026.
+- Sites are flat, clear land at one height near the town centre, where the
+  airport's catchment accepts passengers. Town authority and noise rules are
+  enforced by the normal build command during preflight.
+- The aircraft comes from the Tech Library. Fast aircraft are excluded from
+  airports with a short strip (they could crash), and the aircraft's range
+  must cover the route.
+- `future_logistics_check` checks aircraft too: both ordered stations must be
+  the owner's airports.
+
+Known limits: one aircraft per airline, no helicopters or heliports, and no
+mail.
 
 ## Phase 4: trucks and multimodal (A3)
 

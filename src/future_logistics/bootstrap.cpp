@@ -5,6 +5,7 @@
 /** @file bootstrap.cpp Bounded, deterministic town-to-town bus network bootstrap. */
 #include "../stdafx.h"
 #include "bootstrap.h"
+#include "air_planner.h"
 #include "planner_common.h"
 #include "profiles.h"
 #include "rail_planner.h"
@@ -318,6 +319,7 @@ ConstructionResult BuildService(ServiceType type, const TechLibrary &library, Re
 		}
 		case ServiceType::RailPassenger: return BuildPassengerRail(library, reserved.towns);
 		case ServiceType::RailFreight: return BuildFreightRail(library, reserved.industries);
+		case ServiceType::AirPassenger: return BuildPassengerAirline(library, reserved.towns);
 	}
 	NOT_REACHED();
 }
@@ -440,14 +442,19 @@ bool InspectFutureLogistics()
 		Debug(Facility::Misc, Severity::Notice, "FL check funds company={} balance={} loan={} road_bits={} station_tiles={} rail_bits={} other_expense={} ai={}", company->index, company->money, company->current_loan, company->infrastructure.GetRoadTotal(), company->infrastructure.station, company->infrastructure.GetRailTotal(), company->yearly_expenses[0][ExpensesType::Other], company->is_ai);
 	}
 	for (const Vehicle *vehicle : Vehicle::Iterate()) {
-		if ((vehicle->type != VehicleType::Road && vehicle->type != VehicleType::Train) || !vehicle->IsPrimaryVehicle() || vehicle->owner == CompanyID{0}) continue;
+		if ((vehicle->type != VehicleType::Road && vehicle->type != VehicleType::Train && vehicle->type != VehicleType::Aircraft) || !vehicle->IsPrimaryVehicle() || vehicle->owner == CompanyID{0}) continue;
 		bool connected = Company::IsValidAiID(vehicle->owner) && vehicle->GetNumOrders() == 2 && !vehicle->vehstatus.Test(VehState::Stopped);
 		std::set<StationID> destinations;
 		for (const Order &order : vehicle->Orders()) {
 			if (!order.IsType(OT_GOTO_STATION)) { connected = false; continue; }
 			destinations.insert(order.GetDestination().ToStationID());
 		}
-		const std::set<StationID> reached = vehicle->type == VehicleType::Train ? RailStationsReachable(vehicle) : RoadStationsReachable(vehicle);
+		std::set<StationID> reached;
+		switch (vehicle->type) {
+			case VehicleType::Train: reached = RailStationsReachable(vehicle); break;
+			case VehicleType::Aircraft: reached = AirportsReachable(vehicle); break;
+			default: reached = RoadStationsReachable(vehicle); break;
+		}
 		connected &= destinations.size() == 2 && std::ranges::includes(reached, destinations);
 		valid &= connected;
 		checked++;
@@ -456,7 +463,7 @@ bool InspectFutureLogistics()
 		uint delivered = company->cur_economy.delivered_cargo.GetSum<uint>();
 		for (const auto &quarter : company->old_economy) delivered += quarter.delivered_cargo.GetSum<uint>();
 		Debug(Facility::Misc, Severity::Notice, "FL check company={} vehicle={} type={} connected={} served={} tile={} profit={} delivered={}",
-			vehicle->owner, vehicle->index, vehicle->type == VehicleType::Train ? "rail" : "road", connected, destinations.contains(vehicle->last_station_visited),
+			vehicle->owner, vehicle->index, vehicle->type == VehicleType::Train ? "rail" : (vehicle->type == VehicleType::Aircraft ? "air" : "road"), connected, destinations.contains(vehicle->last_station_visited),
 			vehicle->tile, vehicle->profit_this_year, delivered);
 	}
 	Debug(Facility::Misc, Severity::Notice, "FL check result={} companies={} vehicles={} human={}", valid, Company::GetNumItems(), checked, _local_company);

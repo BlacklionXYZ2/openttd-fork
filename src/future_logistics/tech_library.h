@@ -53,6 +53,7 @@ struct TechRecord {
 	bool traction = false; ///< Rail locomotive that carries no cargo itself.
 	bool wagon = false; ///< Rail wagon, which cannot run on its own.
 	bool helicopter = false; ///< Aircraft that only needs a helipad.
+	bool fast = false; ///< Aircraft at risk of crashing on airports with a short strip.
 	CargoType cargo = INVALID_CARGO; ///< Default cargo.
 	CargoTypes refits{}; ///< All cargo the vehicle can be refitted to, including its default.
 	uint capacity = 0; ///< Default capacity.
@@ -102,6 +103,8 @@ struct TechQuery {
 	Money budget = INT64_MAX; ///< Maximum purchase price.
 	TechPart part = TechPart::Vehicle; ///< Which part of a consist.
 	RailType railtype = INVALID_RAILTYPE; ///< Track the vehicle must run on, or INVALID_RAILTYPE for any.
+	bool short_strip = false; ///< The airports have a short strip, so fast aircraft are unsafe.
+	uint distance = 0; ///< Route length in tiles that an aircraft's range must cover; 0 to ignore.
 };
 
 /** Snapshot of all loaded transport technology. Derived data: build it when needed, never save it. */

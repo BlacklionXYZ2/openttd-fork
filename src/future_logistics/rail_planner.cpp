@@ -224,13 +224,14 @@ std::vector<Track> LineTracks(const Terminus &a, const Terminus &b, const std::v
 /**
  * Test or build a terminus station.
  * @param site Terminus.
+ * @param railtype Track type.
  * @param flags Command flags.
  * @return Cost or error.
  */
-CommandCost BuildTerminusStation(const Terminus &site, DoCommandFlags flags)
+CommandCost BuildTerminusStation(const Terminus &site, RailType railtype, DoCommandFlags flags)
 {
 	const TileArea area = site.Area();
-	return Command<Commands::BuildRailStation>::Do(flags | CONSTRUCT, area.tile, RAILTYPE_RAIL, DiagDirToAxis(site.exit), 1, PLATFORM_LENGTH,
+	return Command<Commands::BuildRailStation>::Do(flags | CONSTRUCT, area.tile, railtype, DiagDirToAxis(site.exit), 1, PLATFORM_LENGTH,
 		STAT_CLASS_DFLT, 0, NEW_STATION, true);
 }
 
@@ -252,6 +253,7 @@ struct Consist {
 	const Engine *wagon; ///< Wagon type, repeated to fill the platform.
 	CargoType cargo; ///< Cargo the wagons are refitted to.
 	bool freight; ///< Full load at the origin, unload at the destination.
+	RailType railtype; ///< Track to build.
 };
 
 /**
@@ -267,16 +269,16 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	const std::vector<Track> tracks = LineTracks(a, b, path);
 	Money cost = 0;
 	for (size_t i = 0; i < path.size(); i++) {
-		auto result = Command<Commands::BuildRail>::Do(CONSTRUCT, path[i], RAILTYPE_RAIL, tracks[i], false);
+		auto result = Command<Commands::BuildRail>::Do(CONSTRUCT, path[i], consist.railtype, tracks[i], false);
 		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
 	}
 	for (const Terminus *site : {&a, &b}) {
-		auto result = BuildTerminusStation(*site, {});
+		auto result = BuildTerminusStation(*site, consist.railtype, {});
 		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
 	}
-	auto depot_test = Command<Commands::BuildRailDepot>::Do(CONSTRUCT, a.Depot(), RAILTYPE_RAIL, a.exit);
+	auto depot_test = Command<Commands::BuildRailDepot>::Do(CONSTRUCT, a.Depot(), consist.railtype, a.exit);
 	if (depot_test.Failed()) return ConstructionResult::Rejected;
 	cost += depot_test.GetCost();
 	/* Reserve capital for the train and any command-cost changes after construction. */
@@ -306,14 +308,14 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 		return ConstructionResult::Failed;
 	};
 	for (size_t i = 0; i < path.size(); i++) {
-		if (ExecFailed(Command<Commands::BuildRail>::Do(EXEC | CONSTRUCT, path[i], RAILTYPE_RAIL, tracks[i], false))) return fail("rail");
+		if (ExecFailed(Command<Commands::BuildRail>::Do(EXEC | CONSTRUCT, path[i], consist.railtype, tracks[i], false))) return fail("rail");
 		built.push_back(path[i]);
 	}
 	for (const Terminus *site : {&a, &b}) {
-		if (ExecFailed(BuildTerminusStation(*site, EXEC))) return fail("station");
+		if (ExecFailed(BuildTerminusStation(*site, consist.railtype, EXEC))) return fail("station");
 		for (int i = 0; i < PLATFORM_LENGTH; i++) built.push_back(site->Platform(i));
 	}
-	if (ExecFailed(Command<Commands::BuildRailDepot>::Do(EXEC | CONSTRUCT, a.Depot(), RAILTYPE_RAIL, a.exit))) return fail("depot");
+	if (ExecFailed(Command<Commands::BuildRailDepot>::Do(EXEC | CONSTRUCT, a.Depot(), consist.railtype, a.exit))) return fail("depot");
 	built.push_back(a.Depot());
 
 	auto loco = Command<Commands::BuildVehicle>::Do(EXEC, a.Depot(), consist.locomotive->index, false, INVALID_CARGO, ClientID::Invalid);
@@ -346,8 +348,8 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={}",
-		_current_company, consist.freight ? "freight" : "passenger", CargoSpec::Get(consist.cargo)->label.AsString(), head, wagons,
+	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={}",
+		_current_company, consist.freight ? "freight" : "passenger", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
 		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature);
 	return ConstructionResult::Success;
 }
@@ -373,8 +375,10 @@ ConstructionResult TrySites(const std::vector<Terminus> &from, const std::vector
 }
 
 /**
- * Pick a locomotive and wagon for a job on plain rail.
- * @param library Loaded transport technology.
+ * Pick a track type, locomotive and wagon for a job. Every track type the company can build is
+ * considered, and the one with the fastest locomotive that has matching wagons wins; ties go to
+ * the track type listed first. Early games get plain rail, late games electrified track or better.
+ * @param library Loaded transport technology, including the track types.
  * @param role Job the train does.
  * @param cargo Cargo the wagons carry.
  * @param freight Whether this is a freight service.
@@ -382,14 +386,23 @@ ConstructionResult TrySites(const std::vector<Terminus> &from, const std::vector
  */
 Consist ChooseConsist(const TechLibrary &library, TechRole role, CargoType cargo, bool freight)
 {
-	TechQuery query{.mode = TechMode::Rail, .role = role, .cargo = INVALID_CARGO, .company = _current_company, .railtype = RAILTYPE_RAIL};
-	query.part = TechPart::Locomotive;
-	const TechRecord *locomotive = library.FindBest(query);
-	query.part = TechPart::Wagon;
-	query.cargo = cargo;
-	const TechRecord *wagon = library.FindBest(query);
-	if (locomotive == nullptr || wagon == nullptr) return {nullptr, nullptr, cargo, freight};
-	return {Engine::Get(locomotive->engine), Engine::Get(wagon->engine), cargo, freight};
+	Consist best{nullptr, nullptr, cargo, freight, INVALID_RAILTYPE};
+	uint best_speed = 0;
+	for (const InfraRecord &track : library.Infrastructure()) {
+		if (track.kind != InfraKind::RailType) continue;
+		const RailType railtype = static_cast<RailType>(track.index);
+		if (!HasRailTypeAvail(_current_company, railtype)) continue;
+		TechQuery query{.mode = TechMode::Rail, .role = role, .cargo = INVALID_CARGO, .company = _current_company, .railtype = railtype};
+		query.part = TechPart::Locomotive;
+		const TechRecord *locomotive = library.FindBest(query);
+		query.part = TechPart::Wagon;
+		query.cargo = cargo;
+		const TechRecord *wagon = library.FindBest(query);
+		if (locomotive == nullptr || wagon == nullptr || locomotive->speed <= best_speed) continue;
+		best = {Engine::Get(locomotive->engine), Engine::Get(wagon->engine), cargo, freight, railtype};
+		best_speed = locomotive->speed;
+	}
+	return best;
 }
 
 /**
@@ -414,7 +427,7 @@ TileArea Catchment(const Terminus &site)
 ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownID> &used_towns)
 {
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
-	if (!IsValidCargoType(cargo) || !HasRailTypeAvail(_current_company, RAILTYPE_RAIL)) return ConstructionResult::Rejected;
+	if (!IsValidCargoType(cargo)) return ConstructionResult::Rejected;
 	const Consist consist = ChooseConsist(library, TechRole::PassengerIntercity, cargo, false);
 	if (consist.locomotive == nullptr) return ConstructionResult::Rejected;
 
@@ -467,7 +480,6 @@ ConstructionResult BuildPassengerRail(const TechLibrary &library, std::set<TownI
  */
 ConstructionResult BuildFreightRail(const TechLibrary &library, std::set<IndustryID> &used_industries)
 {
-	if (!HasRailTypeAvail(_current_company, RAILTYPE_RAIL)) return ConstructionResult::Rejected;
 	struct Pair { uint distance; const Industry *source; const Industry *destination; CargoType cargo; };
 	std::vector<const Industry *> industries;
 	for (const Industry *industry : Industry::Iterate()) {

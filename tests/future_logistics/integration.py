@@ -14,6 +14,8 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
+SNAPSHOTS = ROOT / "tests/future_logistics/tech_snapshots"
+CLIMATES = ["temperate", "arctic", "tropic", "toyland"]
 
 
 def require(condition, message):
@@ -26,12 +28,15 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--baseset", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=ROOT / "work/integration")
+    parser.add_argument("--update-snapshots", action="store_true",
+                        help="rewrite the Tech Library snapshots instead of comparing against them")
     args = parser.parse_args()
     binary, baseset, output = args.binary.resolve(), args.baseset.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
-            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False):
+            towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
+            climate="temperate", commands=""):
         folder = output / name
         folder.mkdir(exist_ok=True)
         for src, dst in [(baseset, folder / "baseset"),
@@ -42,6 +47,7 @@ def main():
         cfg.write_text(f"""[game_creation]
 bootstrap_enabled = {str(enabled).lower()}
 bootstrap_capital = {capital}
+landscape = {climate}
 map_x = 8
 map_y = 8
 land_generator = 0
@@ -85,7 +91,7 @@ DayZeroMonopolies =
             cfg.write_text(text)
         scripts = folder / "scripts"
         scripts.mkdir(exist_ok=True)
-        startup = "future_logistics_check\n"
+        startup = commands + "future_logistics_check\n"
         if service:
             startup += "schedule on-next-calendar-month scripts/month1.scr\n"
             (scripts / "month1.scr").write_text("schedule on-next-calendar-month scripts/month2.scr\n")
@@ -111,7 +117,12 @@ DayZeroMonopolies =
         require("Your script made an error" not in text and "is not a valid index" not in text, f"{name}: Squirrel runtime error")
         return text, folder / "snapshot.sav"
 
-    first, snapshot = run("new-game")
+    first, snapshot = run("new-game", commands="future_logistics_tech best road passenger_feeder PASS\n")
+    chosen = re.findall(r"FL tech company=([1-4]) role=passenger_feeder vehicle=(\S+)", first)
+    require(len(chosen) == 4 and len({vehicle for _, vehicle in chosen}) == 1,
+            "every rival should get its bus from the Tech Library")
+    best = re.search(r"FL tech best id=(\S+) mode=road", first)
+    require(best and best.group(1) == chosen[0][1], "console best-vehicle query disagrees with the planner")
     require("FL complete companies=5 operational=4" in first, "expected four operational rivals; see new-game/process.log")
     require("FL check result=true companies=5 vehicles=4 human=0" in first, "initial ownership/connectivity failed")
     grants = re.findall(r"FL funded company=(\d+) grant=(\d+) balance=(\d+) loan=(\d+)", first)
@@ -177,7 +188,27 @@ DayZeroMonopolies =
     multiplayer, _ = run("dedicated-multiplayer", dedicated=True)
     require("FL begin" not in multiplayer and "FL funded" not in multiplayer,
             "multiplayer executed bootstrap")
-    summary = "PASS: company ownership/count; funding/loan accounting; four connected started bus networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    for climate in CLIMATES:
+        listing, _ = run(f"tech-{climate}", enabled=False, limit=0, towns=1, climate=climate,
+                         commands="future_logistics_tech list\n")
+        lines = re.findall(r"FL tech (?:vehicle|infra|summary)[^\n]*", listing)
+        require(lines and lines[-1].startswith("FL tech summary"), f"{climate}: library listing missing")
+        vehicles = [line for line in lines if line.startswith("FL tech vehicle")]
+        require(not [line for line in vehicles if "roles=-" in line and " capacity=0 " not in line],
+                f"{climate}: a vehicle that carries cargo has no inferred role")
+        require(any("mode=road" in line and "passenger_feeder" in line and "buildable=true" in line for line in vehicles),
+                f"{climate}: no buildable bus in 1950")
+        snapshot_file = SNAPSHOTS / f"{climate}.txt"
+        text = "\n".join(lines) + "\n"
+        if args.update_snapshots:
+            SNAPSHOTS.mkdir(parents=True, exist_ok=True)
+            snapshot_file.write_text(text)
+        else:
+            require(snapshot_file.exists() and snapshot_file.read_text() == text,
+                    f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
+                    "rerun with --update-snapshots if the change is intended")
+
+    summary = "PASS: Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected started bus networks with controlled and default world settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

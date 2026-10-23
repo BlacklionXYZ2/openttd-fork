@@ -1,0 +1,105 @@
+FL tech vehicle id=base:rail:2 mode=rail track=RAIL cargo=- capacity=0 speed=72 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=true name=Ploddyphut Choo-Choo
+FL tech vehicle id=base:rail:3 mode=rail track=RAIL cargo=- capacity=0 speed=96 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Powernaut Choo-Choo
+FL tech vehicle id=base:rail:4 mode=rail track=RAIL cargo=- capacity=0 speed=112 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=MightyMover Choo-Choo
+FL tech vehicle id=base:rail:5 mode=rail track=RAIL cargo=- capacity=0 speed=120 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Ploddyphut Diesel
+FL tech vehicle id=base:rail:6 mode=rail track=RAIL cargo=- capacity=0 speed=152 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Powernaut Diesel
+FL tech vehicle id=base:rail:27 mode=rail track=RAIL cargo=PASS capacity=40 speed=0 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=true buildable=true name=Passenger Carriage
+FL tech vehicle id=base:rail:28 mode=rail track=RAIL cargo=MAIL capacity=30 speed=0 roles=express tech=conventional tier=0 wagon=true buildable=true name=Mail Van
+FL tech vehicle id=base:rail:44 mode=rail track=RAIL cargo=SUGR capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Sugar Truck
+FL tech vehicle id=base:rail:45 mode=rail track=RAIL cargo=CTCD capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Candyfloss Hopper
+FL tech vehicle id=base:rail:46 mode=rail track=RAIL cargo=TOFF capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Toffee Hopper
+FL tech vehicle id=base:rail:47 mode=rail track=RAIL cargo=BUBL capacity=20 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Bubble Van
+FL tech vehicle id=base:rail:48 mode=rail track=RAIL cargo=COLA capacity=25 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Cola Tanker
+FL tech vehicle id=base:rail:49 mode=rail track=RAIL cargo=SWET capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Sweet Van
+FL tech vehicle id=base:rail:50 mode=rail track=RAIL cargo=TOYS capacity=20 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Toy Van
+FL tech vehicle id=base:rail:51 mode=rail track=RAIL cargo=BATT capacity=22 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Battery Truck
+FL tech vehicle id=base:rail:52 mode=rail track=RAIL cargo=FZDR capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Fizzy Drink Truck
+FL tech vehicle id=base:rail:53 mode=rail track=RAIL cargo=PLST capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Plastic Truck
+FL tech vehicle id=base:rail:56 mode=rail track=MONO cargo=- capacity=0 speed=320 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Z99
+FL tech vehicle id=base:rail:57 mode=rail track=MONO cargo=PASS capacity=45 speed=0 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=true buildable=false name=Passenger Carriage
+FL tech vehicle id=base:rail:58 mode=rail track=MONO cargo=MAIL capacity=35 speed=0 roles=express tech=conventional tier=0 wagon=true buildable=false name=Mail Van
+FL tech vehicle id=base:rail:74 mode=rail track=MONO cargo=SUGR capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Sugar Truck
+FL tech vehicle id=base:rail:75 mode=rail track=MONO cargo=CTCD capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Candyfloss Hopper
+FL tech vehicle id=base:rail:76 mode=rail track=MONO cargo=TOFF capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Toffee Hopper
+FL tech vehicle id=base:rail:77 mode=rail track=MONO cargo=BUBL capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Bubble Van
+FL tech vehicle id=base:rail:78 mode=rail track=MONO cargo=COLA capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Cola Tanker
+FL tech vehicle id=base:rail:79 mode=rail track=MONO cargo=SWET capacity=30 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Sweet Van
+FL tech vehicle id=base:rail:80 mode=rail track=MONO cargo=TOYS capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Toy Van
+FL tech vehicle id=base:rail:81 mode=rail track=MONO cargo=BATT capacity=27 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Battery Truck
+FL tech vehicle id=base:rail:82 mode=rail track=MONO cargo=FZDR capacity=30 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Fizzy Drink Truck
+FL tech vehicle id=base:rail:83 mode=rail track=MONO cargo=PLST capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Plastic Truck
+FL tech vehicle id=base:rail:88 mode=rail track=MGLV cargo=- capacity=0 speed=480 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Rocketeer
+FL tech vehicle id=base:rail:89 mode=rail track=MGLV cargo=PASS capacity=47 speed=0 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=true buildable=false name=Passenger Carriage
+FL tech vehicle id=base:rail:90 mode=rail track=MGLV cargo=MAIL capacity=37 speed=0 roles=express tech=conventional tier=0 wagon=true buildable=false name=Mail Van
+FL tech vehicle id=base:rail:106 mode=rail track=MGLV cargo=SUGR capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Sugar Truck
+FL tech vehicle id=base:rail:107 mode=rail track=MGLV cargo=CTCD capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Candyfloss Hopper
+FL tech vehicle id=base:rail:108 mode=rail track=MGLV cargo=TOFF capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Toffee Hopper
+FL tech vehicle id=base:rail:109 mode=rail track=MGLV cargo=BUBL capacity=27 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Bubble Van
+FL tech vehicle id=base:rail:110 mode=rail track=MGLV cargo=COLA capacity=32 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Cola Tanker
+FL tech vehicle id=base:rail:111 mode=rail track=MGLV cargo=SWET capacity=32 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Sweet Van
+FL tech vehicle id=base:rail:112 mode=rail track=MGLV cargo=TOYS capacity=27 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Toy Van
+FL tech vehicle id=base:rail:113 mode=rail track=MGLV cargo=BATT capacity=29 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Battery Truck
+FL tech vehicle id=base:rail:114 mode=rail track=MGLV cargo=FZDR capacity=32 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Fizzy Drink Truck
+FL tech vehicle id=base:rail:115 mode=rail track=MGLV cargo=PLST capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Plastic Truck
+FL tech vehicle id=base:road:4 mode=road track=ROAD cargo=PASS capacity=30 speed=56 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=true name=Ploddyphut MkI Bus
+FL tech vehicle id=base:road:5 mode=road track=ROAD cargo=PASS capacity=35 speed=96 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=false name=Ploddyphut MkII Bus
+FL tech vehicle id=base:road:6 mode=road track=ROAD cargo=PASS capacity=38 speed=120 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=false name=Ploddyphut MkIII Bus
+FL tech vehicle id=base:road:13 mode=road track=ROAD cargo=MAIL capacity=22 speed=48 roles=express tech=conventional tier=0 wagon=false buildable=true name=MightyMover Mail Truck
+FL tech vehicle id=base:road:14 mode=road track=ROAD cargo=MAIL capacity=28 speed=88 roles=express tech=conventional tier=0 wagon=false buildable=false name=Powernaught Mail Truck
+FL tech vehicle id=base:road:15 mode=road track=ROAD cargo=MAIL capacity=30 speed=112 roles=express tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Mail Truck
+FL tech vehicle id=base:road:58 mode=road track=ROAD cargo=SUGR capacity=17 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MightyMover Sugar Truck
+FL tech vehicle id=base:road:59 mode=road track=ROAD cargo=SUGR capacity=19 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Powernaught Sugar Truck
+FL tech vehicle id=base:road:60 mode=road track=ROAD cargo=SUGR capacity=22 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Sugar Truck
+FL tech vehicle id=base:road:61 mode=road track=ROAD cargo=COLA capacity=17 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MightyMover Cola Truck
+FL tech vehicle id=base:road:62 mode=road track=ROAD cargo=COLA capacity=19 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Powernaught Cola Truck
+FL tech vehicle id=base:road:63 mode=road track=ROAD cargo=COLA capacity=22 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Cola Truck
+FL tech vehicle id=base:road:64 mode=road track=ROAD cargo=CTCD capacity=17 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MightyMover Candyfloss Truck
+FL tech vehicle id=base:road:65 mode=road track=ROAD cargo=CTCD capacity=19 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Powernaught Candyfloss Truck
+FL tech vehicle id=base:road:66 mode=road track=ROAD cargo=CTCD capacity=22 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Candyfloss Truck
+FL tech vehicle id=base:road:67 mode=road track=ROAD cargo=TOFF capacity=17 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MightyMover Toffee Truck
+FL tech vehicle id=base:road:68 mode=road track=ROAD cargo=TOFF capacity=19 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Powernaught Toffee Truck
+FL tech vehicle id=base:road:69 mode=road track=ROAD cargo=TOFF capacity=22 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Toffee Truck
+FL tech vehicle id=base:road:70 mode=road track=ROAD cargo=TOYS capacity=17 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=MightyMover Toy Van
+FL tech vehicle id=base:road:71 mode=road track=ROAD cargo=TOYS capacity=19 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Powernaught Toy Van
+FL tech vehicle id=base:road:72 mode=road track=ROAD cargo=TOYS capacity=22 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Toy Van
+FL tech vehicle id=base:road:73 mode=road track=ROAD cargo=SWET capacity=17 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=MightyMover Sweet Truck
+FL tech vehicle id=base:road:74 mode=road track=ROAD cargo=SWET capacity=19 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Powernaught Sweet Truck
+FL tech vehicle id=base:road:75 mode=road track=ROAD cargo=SWET capacity=22 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Sweet Truck
+FL tech vehicle id=base:road:76 mode=road track=ROAD cargo=BATT capacity=17 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=MightyMover Battery Truck
+FL tech vehicle id=base:road:77 mode=road track=ROAD cargo=BATT capacity=19 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Powernaught Battery Truck
+FL tech vehicle id=base:road:78 mode=road track=ROAD cargo=BATT capacity=22 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Battery Truck
+FL tech vehicle id=base:road:79 mode=road track=ROAD cargo=FZDR capacity=17 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=MightyMover Fizzy Drink Truck
+FL tech vehicle id=base:road:80 mode=road track=ROAD cargo=FZDR capacity=19 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Powernaught Fizzy Drink Truck
+FL tech vehicle id=base:road:81 mode=road track=ROAD cargo=FZDR capacity=22 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Fizzy Drink Truck
+FL tech vehicle id=base:road:82 mode=road track=ROAD cargo=PLST capacity=17 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MightyMover Plastic Truck
+FL tech vehicle id=base:road:83 mode=road track=ROAD cargo=PLST capacity=19 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Powernaught Plastic Truck
+FL tech vehicle id=base:road:84 mode=road track=ROAD cargo=PLST capacity=22 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Plastic Truck
+FL tech vehicle id=base:road:85 mode=road track=ROAD cargo=BUBL capacity=17 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=MightyMover Bubble Truck
+FL tech vehicle id=base:road:86 mode=road track=ROAD cargo=BUBL capacity=19 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Powernaught Bubble Truck
+FL tech vehicle id=base:road:87 mode=road track=ROAD cargo=BUBL capacity=22 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Wizzowow Bubble Truck
+FL tech vehicle id=base:water:5 mode=water track=- cargo=PASS capacity=100 speed=32 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=true name=Chugger-Chug Passenger Ferry
+FL tech vehicle id=base:water:6 mode=water track=- cargo=PASS capacity=130 speed=64 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=false name=Shivershake Passenger Ferry
+FL tech vehicle id=base:water:9 mode=water track=- cargo=SUGR capacity=160 speed=24 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MightyMover Cargo Ship
+FL tech vehicle id=base:water:10 mode=water track=- cargo=SUGR capacity=190 speed=40 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Powernaut Cargo Ship
+FL tech vehicle id=base:air:33 mode=air track=- cargo=PASS capacity=25 speed=473 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=true name=Ploddyphut 100
+FL tech vehicle id=base:air:34 mode=air track=- cargo=PASS capacity=60 speed=473 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Ploddyphut 500
+FL tech vehicle id=base:air:35 mode=air track=- cargo=PASS capacity=90 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Flashbang X1
+FL tech vehicle id=base:air:36 mode=air track=- cargo=PASS capacity=200 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Juggerplane M1
+FL tech vehicle id=base:air:37 mode=air track=- cargo=PASS capacity=100 speed=2316 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Flashbang Wizzer
+FL tech vehicle id=base:air:40 mode=air track=- cargo=PASS capacity=40 speed=320 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=false name=Powernaut Helicopter
+FL tech infra kind=railtype id=RAIL speed=0 size=0x0
+FL tech infra kind=railtype id=ELRL speed=0 size=0x0
+FL tech infra kind=railtype id=MONO speed=0 size=0x0
+FL tech infra kind=railtype id=MGLV speed=0 size=0x0
+FL tech infra kind=roadtype id=ROAD speed=0 size=0x0
+FL tech infra kind=tramtype id=ELRL speed=0 size=0x0
+FL tech infra kind=airport id=airport:0 speed=0 size=4x3
+FL tech infra kind=airport id=airport:1 speed=0 size=6x6
+FL tech infra kind=airport id=airport:2 speed=0 size=1x1
+FL tech infra kind=airport id=airport:3 speed=0 size=6x6
+FL tech infra kind=airport id=airport:4 speed=0 size=7x7
+FL tech infra kind=airport id=airport:5 speed=0 size=5x4
+FL tech infra kind=airport id=airport:6 speed=0 size=2x2
+FL tech infra kind=airport id=airport:7 speed=0 size=9x11
+FL tech infra kind=airport id=airport:8 speed=0 size=4x2
+FL tech summary vehicles=89 infrastructure=15

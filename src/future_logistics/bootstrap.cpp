@@ -5,6 +5,7 @@
 /** @file bootstrap.cpp Bounded, deterministic town-to-town bus network bootstrap. */
 #include "../stdafx.h"
 #include "bootstrap.h"
+#include "tech_library.h"
 #include "../ai/ai.hpp"
 #include "../cargotype.h"
 #include "../command_func.h"
@@ -217,9 +218,10 @@ enum class ConstructionResult {
  * Preflight the entire layout, then execute through accounting commands.
  * @param route Corridor and depot proposal.
  * @param engine Compatible passenger bus engine.
+ * @param cargo Cargo to refit the bus to.
  * @return Whether preflight rejected, execution failed, or service was built.
  */
-ConstructionResult Build(const Route &route, const Engine *engine)
+ConstructionResult Build(const Route &route, const Engine *engine, CargoType cargo)
 {
 	const RoadType rt = engine->VehInfo<RoadVehicleInfo>().roadtype;
 	Money cost = 0;
@@ -274,7 +276,7 @@ ConstructionResult Build(const Route &route, const Engine *engine)
 	if (Stop(route.path.front(), first_dir, rt, EXEC).Failed() || Stop(route.path.back(), last_dir, rt, EXEC).Failed()) return fail("stops");
 	if (Command<Commands::BuildRoadDepot>::Do(EXEC | CONSTRUCT, route.depot, rt, depot_dir).Failed()) return fail("depot");
 	built.push_back(route.depot);
-	auto result = Command<Commands::BuildVehicle>::Do(EXEC, route.depot, engine->index, false, engine->GetDefaultCargoType(), ClientID::Invalid);
+	auto result = Command<Commands::BuildVehicle>::Do(EXEC, route.depot, engine->index, false, cargo, ClientID::Invalid);
 	if (ExtractCommandCost(result).Failed()) return fail("vehicle");
 	vehicle = std::get<1>(result);
 	for (VehicleOrderID i = 0; i < 2; i++) {
@@ -293,20 +295,18 @@ ConstructionResult Build(const Route &route, const Engine *engine)
 
 /**
  * Build one starter network in an unused town market.
+ * @param library Loaded transport technology.
  * @param cargo Passenger cargo type.
  * @param[in,out] used_towns Towns reserved by successfully completed rivals.
  * @return Whether an operational network was completed.
  */
-bool Network(CargoType cargo, std::set<TownID> &used_towns)
+bool Network(const TechLibrary &library, CargoType cargo, std::set<TownID> &used_towns)
 {
-	const Engine *bus = nullptr;
-	for (const Engine *engine : Engine::IterateType(VehicleType::Road)) {
-		if (engine->GetDefaultCargoType() == cargo && engine->CanCarryCargo() && engine->VehInfo<RoadVehicleInfo>().roadtype == ROADTYPE_ROAD && IsEngineBuildable(engine->index, VehicleType::Road, _current_company)) {
-			bus = engine;
-			break;
-		}
-	}
-	if (bus == nullptr) return false;
+	/* The planner only builds plain road, so ask for a bus that runs on it. */
+	const TechRecord *record = library.FindBest({.mode = TechMode::Road, .role = TechRole::PassengerFeeder, .cargo = cargo, .company = _current_company, .roadtype = ROADTYPE_ROAD});
+	if (record == nullptr) return false;
+	const Engine *bus = Engine::Get(record->engine);
+	Debug(Facility::Misc, Severity::Notice, "FL tech company={} role={} vehicle={}", _current_company, TechRoleName(TechRole::PassengerFeeder), record->id);
 	struct Pair { uint distance; const Town *a; const Town *b; };
 	std::vector<Pair> pairs;
 	std::vector<const Town *> towns;
@@ -330,7 +330,7 @@ bool Network(CargoType cargo, std::set<TownID> &used_towns)
 		}
 		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index));
 		if (route.depot == INVALID_TILE) continue;
-		auto result = Build(route, bus);
+		auto result = Build(route, bus, cargo);
 		if (result == ConstructionResult::Failed) return false;
 		if (result == ConstructionResult::Success) {
 			used_towns.insert(pair.a->index);
@@ -356,6 +356,7 @@ void BootstrapFutureLogistics()
 	const CargoType cargo = GetCargoTypeByLabel(CT_PASSENGERS);
 	uint operational = 0;
 	std::set<TownID> used_towns;
+	const TechLibrary library = TechLibrary::Build();
 	for (uint i = 1; i <= count; i++) {
 		Company *company = DoStartupNewCompany(true, CompanyID{static_cast<uint8_t>(i)});
 		if (company == nullptr) { Debug(Facility::Misc, Severity::Warning, "FL company allocation failed slot={}", i); break; }
@@ -374,7 +375,7 @@ void BootstrapFutureLogistics()
 			_settings_game.game_creation.bootstrap_capital, company->money, company->current_loan);
 		{
 			AutoRestoreBackup owner(_current_company, company->index);
-			if (cargo != INVALID_CARGO && Network(cargo, used_towns)) {
+			if (cargo != INVALID_CARGO && Network(library, cargo, used_towns)) {
 				operational++;
 			} else {
 				Debug(Facility::Misc, Severity::Warning, "FL no usable bus route company={} (terrain, towns, funds or vehicle availability); funded company retained", company->index);

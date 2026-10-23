@@ -24,6 +24,11 @@ ctest --test-dir build --output-on-failure
 file build/openttd.app/Contents/MacOS/openttd
 ```
 
+On an Intel Mac (for example a 2015 MacBook Pro on macOS 12 Monterey), use the
+same steps with `-DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0`.
+The manual "Mac Intel x86_64 build artifact" workflow builds a packaged app for
+that target.
+
 Follow upstream's [build documentation](https://github.com/OpenTTD/OpenTTD/wiki/Compiling-on-macOS)
 for optional audio dependencies. Install a compatible OpenGFX baseset before
 running the game. The CI workflow checks the host architecture on `macos-15`
@@ -112,7 +117,15 @@ vehicle orders, started vehicles and ownership/road-bit connectivity from depot
 to both stops. It logs whether each bus has visited an ordered station, its tile
 and profit. This diagnostic is read-only and can be used after save/reload.
 
+The console command `future_logistics_tech list` prints the Tech Library: every
+loaded vehicle, rail type, road type and airport with the roles the planner
+sees. `future_logistics_tech best <mode> <role> [<cargo label>]` shows which
+vehicle a company would pick for a job. The format is described in
+[`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
+
 See `tests/future_logistics/integration.py` for reproducible full-engine checks.
+Pass `--update-snapshots` after an intended change to the Tech Library to
+rewrite `tests/future_logistics/tech_snapshots/`.
 The tests use a real GUI-capable SDL driver with SDL's dummy display, not a
 multiplayer dedicated server. Test artifacts go in `work/`.
 

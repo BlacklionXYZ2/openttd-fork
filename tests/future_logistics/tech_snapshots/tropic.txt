@@ -1,0 +1,145 @@
+FL tech vehicle id=base:rail:1 mode=rail track=RAIL cargo=- capacity=0 speed=80 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=MJS 250 (Diesel)
+FL tech vehicle id=base:rail:7 mode=rail track=RAIL cargo=- capacity=0 speed=88 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=true name=Wills 2-8-0 (Steam)
+FL tech vehicle id=base:rail:16 mode=rail track=RAIL cargo=- capacity=0 speed=96 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=CS 4000 (Diesel)
+FL tech vehicle id=base:rail:17 mode=rail track=RAIL cargo=- capacity=0 speed=112 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=CS 2400 (Diesel)
+FL tech vehicle id=base:rail:18 mode=rail track=RAIL cargo=- capacity=0 speed=112 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Centennial (Diesel)
+FL tech vehicle id=base:rail:19 mode=rail track=RAIL cargo=- capacity=0 speed=104 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Kelling 3100 (Diesel)
+FL tech vehicle id=base:rail:20 mode=rail track=RAIL cargo=- capacity=0 speed=160 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Turner Turbo (Diesel)
+FL tech vehicle id=base:rail:21 mode=rail track=RAIL cargo=- capacity=0 speed=104 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=MJS 1000 (Diesel)
+FL tech vehicle id=base:rail:27 mode=rail track=RAIL cargo=PASS capacity=40 speed=0 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=true buildable=true name=Passenger Carriage
+FL tech vehicle id=base:rail:28 mode=rail track=RAIL cargo=MAIL capacity=30 speed=0 roles=express tech=conventional tier=0 wagon=true buildable=true name=Mail Van
+FL tech vehicle id=base:rail:30 mode=rail track=RAIL cargo=OIL_ capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Oil Tanker
+FL tech vehicle id=base:rail:32 mode=rail track=RAIL cargo=GOOD capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Goods Van
+FL tech vehicle id=base:rail:33 mode=rail track=RAIL cargo=MAIZ capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Grain Hopper
+FL tech vehicle id=base:rail:34 mode=rail track=RAIL cargo=WOOD capacity=30 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Wood Truck
+FL tech vehicle id=base:rail:37 mode=rail track=RAIL cargo=DIAM capacity=20 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Armoured Van
+FL tech vehicle id=base:rail:38 mode=rail track=RAIL cargo=FOOD capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=true name=Food Van
+FL tech vehicle id=base:rail:40 mode=rail track=RAIL cargo=CORE capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Copper Ore Hopper
+FL tech vehicle id=base:rail:41 mode=rail track=RAIL cargo=WATR capacity=25 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Water Tanker
+FL tech vehicle id=base:rail:42 mode=rail track=RAIL cargo=FRUT capacity=25 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Fruit Truck
+FL tech vehicle id=base:rail:43 mode=rail track=RAIL cargo=RUBR capacity=21 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=true name=Rubber Truck
+FL tech vehicle id=base:rail:54 mode=rail track=MONO cargo=- capacity=0 speed=304 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name='X2001' (Electric)
+FL tech vehicle id=base:rail:55 mode=rail track=MONO cargo=PASS capacity=50 speed=336 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=false buildable=false name='Millennium Z1' (Electric)
+FL tech vehicle id=base:rail:57 mode=rail track=MONO cargo=PASS capacity=45 speed=0 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=true buildable=false name=Passenger Carriage
+FL tech vehicle id=base:rail:58 mode=rail track=MONO cargo=MAIL capacity=35 speed=0 roles=express tech=conventional tier=0 wagon=true buildable=false name=Mail Van
+FL tech vehicle id=base:rail:60 mode=rail track=MONO cargo=OIL_ capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Oil Tanker
+FL tech vehicle id=base:rail:62 mode=rail track=MONO cargo=GOOD capacity=30 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Goods Van
+FL tech vehicle id=base:rail:63 mode=rail track=MONO cargo=MAIZ capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Grain Hopper
+FL tech vehicle id=base:rail:64 mode=rail track=MONO cargo=WOOD capacity=35 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Wood Truck
+FL tech vehicle id=base:rail:67 mode=rail track=MONO cargo=DIAM capacity=25 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Armoured Van
+FL tech vehicle id=base:rail:68 mode=rail track=MONO cargo=FOOD capacity=30 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Food Van
+FL tech vehicle id=base:rail:70 mode=rail track=MONO cargo=CORE capacity=35 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Copper Ore Hopper
+FL tech vehicle id=base:rail:71 mode=rail track=MONO cargo=WATR capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Water Tanker
+FL tech vehicle id=base:rail:72 mode=rail track=MONO cargo=FRUT capacity=30 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Fruit Truck
+FL tech vehicle id=base:rail:73 mode=rail track=MONO cargo=RUBR capacity=26 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Rubber Truck
+FL tech vehicle id=base:rail:84 mode=rail track=MGLV cargo=- capacity=0 speed=400 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Lev1 'Leviathan' (Electric)
+FL tech vehicle id=base:rail:85 mode=rail track=MGLV cargo=- capacity=0 speed=448 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Lev2 'Cyclops' (Electric)
+FL tech vehicle id=base:rail:86 mode=rail track=MGLV cargo=- capacity=0 speed=480 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Lev3 'Pegasus' (Electric)
+FL tech vehicle id=base:rail:87 mode=rail track=MGLV cargo=- capacity=0 speed=640 roles=passenger_intercity,passenger_commuter,freight_bulk,freight_general,express tech=conventional tier=0 wagon=false buildable=false name=Lev4 'Chimaera' (Electric)
+FL tech vehicle id=base:rail:89 mode=rail track=MGLV cargo=PASS capacity=47 speed=0 roles=passenger_intercity,passenger_commuter tech=conventional tier=0 wagon=true buildable=false name=Passenger Carriage
+FL tech vehicle id=base:rail:90 mode=rail track=MGLV cargo=MAIL capacity=37 speed=0 roles=express tech=conventional tier=0 wagon=true buildable=false name=Mail Van
+FL tech vehicle id=base:rail:92 mode=rail track=MGLV cargo=OIL_ capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Oil Tanker
+FL tech vehicle id=base:rail:94 mode=rail track=MGLV cargo=GOOD capacity=32 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Goods Van
+FL tech vehicle id=base:rail:95 mode=rail track=MGLV cargo=MAIZ capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Grain Hopper
+FL tech vehicle id=base:rail:96 mode=rail track=MGLV cargo=WOOD capacity=37 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Wood Truck
+FL tech vehicle id=base:rail:99 mode=rail track=MGLV cargo=DIAM capacity=27 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Armoured Van
+FL tech vehicle id=base:rail:100 mode=rail track=MGLV cargo=FOOD capacity=32 speed=0 roles=freight_general tech=conventional tier=0 wagon=true buildable=false name=Food Van
+FL tech vehicle id=base:rail:102 mode=rail track=MGLV cargo=CORE capacity=37 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Copper Ore Hopper
+FL tech vehicle id=base:rail:103 mode=rail track=MGLV cargo=WATR capacity=32 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Water Tanker
+FL tech vehicle id=base:rail:104 mode=rail track=MGLV cargo=FRUT capacity=32 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Fruit Truck
+FL tech vehicle id=base:rail:105 mode=rail track=MGLV cargo=RUBR capacity=28 speed=0 roles=freight_bulk tech=conventional tier=0 wagon=true buildable=false name=Rubber Truck
+FL tech vehicle id=base:road:0 mode=road track=ROAD cargo=PASS capacity=31 speed=56 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=true name=MPS Regal Bus
+FL tech vehicle id=base:road:1 mode=road track=ROAD cargo=PASS capacity=35 speed=88 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=false name=Hereford Leopard Bus
+FL tech vehicle id=base:road:2 mode=road track=ROAD cargo=PASS capacity=37 speed=112 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=false name=Foster Bus
+FL tech vehicle id=base:road:3 mode=road track=ROAD cargo=PASS capacity=40 speed=127 roles=passenger_commuter,passenger_feeder tech=conventional tier=0 wagon=false buildable=false name=Foster MkII Superbus
+FL tech vehicle id=base:road:10 mode=road track=ROAD cargo=MAIL capacity=22 speed=48 roles=express tech=conventional tier=0 wagon=false buildable=true name=MPS Mail Truck
+FL tech vehicle id=base:road:11 mode=road track=ROAD cargo=MAIL capacity=28 speed=88 roles=express tech=conventional tier=0 wagon=false buildable=false name=Reynard Mail Truck
+FL tech vehicle id=base:road:12 mode=road track=ROAD cargo=MAIL capacity=30 speed=112 roles=express tech=conventional tier=0 wagon=false buildable=false name=Perry Mail Truck
+FL tech vehicle id=base:road:16 mode=road track=ROAD cargo=OIL_ capacity=21 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=Witcombe Oil Tanker
+FL tech vehicle id=base:road:17 mode=road track=ROAD cargo=OIL_ capacity=25 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Foster Oil Tanker
+FL tech vehicle id=base:road:18 mode=road track=ROAD cargo=OIL_ capacity=27 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Perry Oil Tanker
+FL tech vehicle id=base:road:22 mode=road track=ROAD cargo=GOOD capacity=14 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=Balogh Goods Truck
+FL tech vehicle id=base:road:23 mode=road track=ROAD cargo=GOOD capacity=16 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Craighead Goods Truck
+FL tech vehicle id=base:road:24 mode=road track=ROAD cargo=GOOD capacity=18 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Goss Goods Truck
+FL tech vehicle id=base:road:25 mode=road track=ROAD cargo=MAIZ capacity=20 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=Hereford Grain Truck
+FL tech vehicle id=base:road:26 mode=road track=ROAD cargo=MAIZ capacity=25 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Thomas Grain Truck
+FL tech vehicle id=base:road:27 mode=road track=ROAD cargo=MAIZ capacity=30 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Goss Grain Truck
+FL tech vehicle id=base:road:28 mode=road track=ROAD cargo=WOOD capacity=20 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=Witcombe Wood Truck
+FL tech vehicle id=base:road:29 mode=road track=ROAD cargo=WOOD capacity=22 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Foster Wood Truck
+FL tech vehicle id=base:road:30 mode=road track=ROAD cargo=WOOD capacity=24 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Moreland Wood Truck
+FL tech vehicle id=base:road:37 mode=road track=ROAD cargo=DIAM capacity=12 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=Balogh Armoured Truck
+FL tech vehicle id=base:road:38 mode=road track=ROAD cargo=DIAM capacity=15 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Uhl Armoured Truck
+FL tech vehicle id=base:road:39 mode=road track=ROAD cargo=DIAM capacity=16 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Foster Armoured Truck
+FL tech vehicle id=base:road:40 mode=road track=ROAD cargo=FOOD capacity=17 speed=48 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=Foster Food Van
+FL tech vehicle id=base:road:41 mode=road track=ROAD cargo=FOOD capacity=20 speed=88 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Perry Food Van
+FL tech vehicle id=base:road:42 mode=road track=ROAD cargo=FOOD capacity=22 speed=112 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Chippy Food Van
+FL tech vehicle id=base:road:46 mode=road track=ROAD cargo=CORE capacity=22 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MPS Copper Ore Truck
+FL tech vehicle id=base:road:47 mode=road track=ROAD cargo=CORE capacity=25 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Uhl Copper Ore Truck
+FL tech vehicle id=base:road:48 mode=road track=ROAD cargo=CORE capacity=27 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Goss Copper Ore Truck
+FL tech vehicle id=base:road:49 mode=road track=ROAD cargo=WATR capacity=21 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=Uhl Water Tanker
+FL tech vehicle id=base:road:50 mode=road track=ROAD cargo=WATR capacity=25 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Balogh Water Tanker
+FL tech vehicle id=base:road:51 mode=road track=ROAD cargo=WATR capacity=27 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=MPS Water Tanker
+FL tech vehicle id=base:road:52 mode=road track=ROAD cargo=FRUT capacity=18 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=Balogh Fruit Truck
+FL tech vehicle id=base:road:53 mode=road track=ROAD cargo=FRUT capacity=20 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Uhl Fruit Truck
+FL tech vehicle id=base:road:54 mode=road track=ROAD cargo=FRUT capacity=23 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Kelling Fruit Truck
+FL tech vehicle id=base:road:55 mode=road track=ROAD cargo=RUBR capacity=17 speed=48 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=Balogh Rubber Truck
+FL tech vehicle id=base:road:56 mode=road track=ROAD cargo=RUBR capacity=19 speed=88 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=Uhl Rubber Truck
+FL tech vehicle id=base:road:57 mode=road track=ROAD cargo=RUBR capacity=22 speed=112 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=RMT Rubber Truck
+FL tech vehicle id=base:water:0 mode=water track=- cargo=OIL_ capacity=220 speed=24 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=true name=MPS Oil Tanker
+FL tech vehicle id=base:water:1 mode=water track=- cargo=OIL_ capacity=350 speed=40 roles=freight_bulk tech=conventional tier=0 wagon=false buildable=false name=CS-Inc. Oil Tanker
+FL tech vehicle id=base:water:2 mode=water track=- cargo=PASS capacity=100 speed=32 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=true name=MPS Passenger Ferry
+FL tech vehicle id=base:water:3 mode=water track=- cargo=PASS capacity=130 speed=64 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=false name=FFP Passenger Ferry
+FL tech vehicle id=base:water:4 mode=water track=- cargo=PASS capacity=100 speed=112 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=false name=Bakewell 300 Hovercraft
+FL tech vehicle id=base:water:7 mode=water track=- cargo=GOOD capacity=160 speed=24 roles=freight_general tech=conventional tier=0 wagon=false buildable=true name=Yate Cargo Ship
+FL tech vehicle id=base:water:8 mode=water track=- cargo=GOOD capacity=190 speed=40 roles=freight_general tech=conventional tier=0 wagon=false buildable=false name=Bakewell Cargo Ship
+FL tech vehicle id=base:air:0 mode=air track=- cargo=PASS capacity=25 speed=473 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=true name=Sampson U52
+FL tech vehicle id=base:air:1 mode=air track=- cargo=PASS capacity=65 speed=473 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=true name=Coleman Count
+FL tech vehicle id=base:air:2 mode=air track=- cargo=PASS capacity=90 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=FFP Dart
+FL tech vehicle id=base:air:3 mode=air track=- cargo=PASS capacity=100 speed=2316 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Yate Haugan
+FL tech vehicle id=base:air:4 mode=air track=- cargo=PASS capacity=30 speed=473 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=true name=Bakewell Cotswald LB-3
+FL tech vehicle id=base:air:5 mode=air track=- cargo=PASS capacity=200 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Bakewell Luckett LB-8
+FL tech vehicle id=base:air:6 mode=air track=- cargo=PASS capacity=100 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Bakewell Luckett LB-9
+FL tech vehicle id=base:air:7 mode=air track=- cargo=PASS capacity=150 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Bakewell Luckett LB80
+FL tech vehicle id=base:air:8 mode=air track=- cargo=PASS capacity=220 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Bakewell Luckett LB-10
+FL tech vehicle id=base:air:9 mode=air track=- cargo=PASS capacity=230 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Bakewell Luckett LB-11
+FL tech vehicle id=base:air:10 mode=air track=- cargo=PASS capacity=95 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Yate Aerospace YAC 1-11
+FL tech vehicle id=base:air:11 mode=air track=- cargo=PASS capacity=170 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 100
+FL tech vehicle id=base:air:12 mode=air track=- cargo=PASS capacity=110 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 200
+FL tech vehicle id=base:air:13 mode=air track=- cargo=PASS capacity=300 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 300
+FL tech vehicle id=base:air:14 mode=air track=- cargo=PASS capacity=200 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 400
+FL tech vehicle id=base:air:15 mode=air track=- cargo=PASS capacity=240 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 500
+FL tech vehicle id=base:air:16 mode=air track=- cargo=PASS capacity=260 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 600
+FL tech vehicle id=base:air:17 mode=air track=- cargo=PASS capacity=240 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Guru Galaxy
+FL tech vehicle id=base:air:18 mode=air track=- cargo=PASS capacity=260 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Airtaxi A21
+FL tech vehicle id=base:air:19 mode=air track=- cargo=PASS capacity=210 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Airtaxi A31
+FL tech vehicle id=base:air:20 mode=air track=- cargo=PASS capacity=160 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Airtaxi A32
+FL tech vehicle id=base:air:21 mode=air track=- cargo=PASS capacity=220 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Airtaxi A33
+FL tech vehicle id=base:air:22 mode=air track=- cargo=PASS capacity=80 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Yate Aerospace YAe46
+FL tech vehicle id=base:air:23 mode=air track=- cargo=PASS capacity=85 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Dinger 100
+FL tech vehicle id=base:air:24 mode=air track=- cargo=PASS capacity=75 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=AirTaxi A34-1000
+FL tech vehicle id=base:air:25 mode=air track=- cargo=PASS capacity=85 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Yate Z-Shuttle
+FL tech vehicle id=base:air:26 mode=air track=- cargo=PASS capacity=65 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Kelling K1
+FL tech vehicle id=base:air:27 mode=air track=- cargo=PASS capacity=110 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Kelling K6
+FL tech vehicle id=base:air:28 mode=air track=- cargo=PASS capacity=180 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Kelling K7
+FL tech vehicle id=base:air:29 mode=air track=- cargo=PASS capacity=150 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Darwin 700
+FL tech vehicle id=base:air:30 mode=air track=- cargo=PASS capacity=85 speed=2316 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=FFP Hyperdart 2
+FL tech vehicle id=base:air:31 mode=air track=- cargo=PASS capacity=400 speed=947 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Dinger 200
+FL tech vehicle id=base:air:32 mode=air track=- cargo=PASS capacity=130 speed=2316 roles=passenger_intercity tech=conventional tier=0 wagon=false buildable=false name=Dinger 1000
+FL tech vehicle id=base:air:38 mode=air track=- cargo=PASS capacity=40 speed=320 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=false name=Tricario Helicopter
+FL tech vehicle id=base:air:39 mode=air track=- cargo=PASS capacity=55 speed=512 roles=passenger_commuter tech=conventional tier=0 wagon=false buildable=false name=Guru X2 Helicopter
+FL tech infra kind=railtype id=RAIL speed=0 size=0x0
+FL tech infra kind=railtype id=ELRL speed=0 size=0x0
+FL tech infra kind=railtype id=MONO speed=0 size=0x0
+FL tech infra kind=railtype id=MGLV speed=0 size=0x0
+FL tech infra kind=roadtype id=ROAD speed=0 size=0x0
+FL tech infra kind=tramtype id=ELRL speed=0 size=0x0
+FL tech infra kind=airport id=airport:0 speed=0 size=4x3
+FL tech infra kind=airport id=airport:1 speed=0 size=6x6
+FL tech infra kind=airport id=airport:2 speed=0 size=1x1
+FL tech infra kind=airport id=airport:3 speed=0 size=6x6
+FL tech infra kind=airport id=airport:4 speed=0 size=7x7
+FL tech infra kind=airport id=airport:5 speed=0 size=5x4
+FL tech infra kind=airport id=airport:6 speed=0 size=2x2
+FL tech infra kind=airport id=airport:7 speed=0 size=9x11
+FL tech infra kind=airport id=airport:8 speed=0 size=4x2
+FL tech summary vehicles=129 infrastructure=15

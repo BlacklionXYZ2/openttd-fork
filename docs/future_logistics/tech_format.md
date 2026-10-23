@@ -33,8 +33,8 @@ stations, objects and industries can all carry badges. This means:
 
 | Field | Source | Notes |
 |---|---|---|
-| `id` | game | GRF ID + local ID; base vehicles use `base:<engine id>` |
-| `kind` | game | `vehicle`, `railtype`, `roadtype`, `airport`, `station` |
+| `id` | game | `<GRF ID>:<mode>:<local ID>`; base vehicles use `base`, e.g. `base:road:0` |
+| `kind` | game | `vehicle`, `railtype`, `roadtype`, `tramtype`, `airport` (stations later) |
 | `mode` | game | `road`, `rail`, `air`, `water` (from vehicle type) |
 | `name`, `intro_date`, `buildable` | game | Normal engine availability rules apply |
 | `cargo`, `refits`, `capacity` | game | From cargo and refit properties |
@@ -97,10 +97,21 @@ needs `fl_format/2`.
 Untagged vehicles still enter the library with inferred values:
 
 - `tech = conventional`, `tier = 0`, no `needs`.
-- `roles` from cargo: passengers by vehicle type and speed (bus becomes
-  `passenger_feeder`, fast train becomes `passenger_intercity`, and so on), mail
-  becomes `express`, bulk cargo classes become `freight_bulk`, and other cargo
-  becomes `freight_general`.
+- `roles` from the default cargo and vehicle type
+  (`src/future_logistics/tech_library.cpp`, `InferTechRoles`):
+
+  | Vehicle | Roles |
+  |---|---|
+  | Bus or tram carrying passengers | `passenger_feeder`, `passenger_commuter` |
+  | Train or rail wagon carrying passengers | `passenger_intercity`, `passenger_commuter` |
+  | Plane carrying passengers | `passenger_intercity` |
+  | Helicopter or ferry carrying passengers | `passenger_commuter` |
+  | Anything carrying mail | `express` |
+  | Bulk or liquid cargo | `freight_bulk` |
+  | Any other cargo | `freight_general` |
+  | Locomotive with no cargo space | every rail role except `passenger_feeder` and `parcel` |
+
+  `parcel` is never inferred; only tagged vehicles get it.
 
 So the day-zero mod works with no GRF at all, and the GRF only has to tag the
 things that are actually new.
@@ -114,8 +125,11 @@ things that are actually new.
    `fl_role/*`, and any `fl_needs/*`.
 3. Tag any matching infrastructure with `fl_provides/*` (and `fl_tech/*` for
    rail or road types).
-4. Load it in-game and run `future_logistics_tech validate` (planned, see the
-   roadmap) to confirm the library reads it the way you intended.
+4. Load it in a new game, open the console and run `future_logistics_tech list`
+   to see how the library reads it. `future_logistics_tech best <mode> <role>
+   [<cargo label>]` shows what a company would pick for a job, for example
+   `future_logistics_tech best road passenger_feeder PASS`. A stricter
+   `validate` command is planned for phase 5.
 
 Illustrative NML (check the exact badge syntax against the installed NML
 version before relying on it):

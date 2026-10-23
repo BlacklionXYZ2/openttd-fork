@@ -5,8 +5,9 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phase 0 is complete. Each rival runs one bus line.
-See `validation.md` for the recorded test results.
+**Status (October 2026):** phases 0 and 1 are complete. Each rival runs one bus
+line, chosen through the Tech Library. See `validation.md` for the recorded
+test results.
 
 The key design rule for everything below: **rivals ask the Tech Library for
 "the best tech for this job", never for a specific vehicle.** The library and
@@ -20,22 +21,28 @@ what lets the GRF add technology without day-zero code changes.
 - Rollback on failure, single funding grant, save/load, reproducible seeds.
 - `CorporateAI` keeps the starter network running; it does not expand.
 
-## Phase 1: Tech Library core
+## Phase 1: Tech Library core (done)
 
-Goal: the existing bus planner chooses its bus through the library, with
-identical results.
+Goal: the existing bus planner chooses its bus through the library.
 
-- Add `src/future_logistics/tech_library.{h,cpp}`: build tech records from all
-  loaded engines, rail types, road types and airports; infer roles for untagged
-  items as described in the format spec.
-- Rebuild the library on new game and on load; never save it.
-- Query function: best record for mode + role + cargo + date + budget +
-  distance, scored on capacity × speed against cost and reliability, filtered by
-  normal buildability for that company.
-- Replace the planner's own bus search with a library query.
-- Console command `future_logistics_tech list` to print the library.
-- Tests: library snapshot for each climate with no NewGRFs; the existing 16
-  integration scenarios must still pass unchanged.
+- `src/future_logistics/tech_library.{h,cpp}` builds tech records from all
+  loaded engines, rail types, road types and airports, and infers roles for
+  untagged vehicles as described in the format spec.
+- The library is a snapshot built when needed (at bootstrap, or per console
+  command), so it always matches the loaded game and is never saved.
+- `FindBest` picks the usable vehicle with the most transport work (capacity ×
+  speed × reliability) per yearly cost (running cost plus purchase price spread
+  over its life). Usable means right mode and role, carries or refits to the
+  cargo, and buildable by that company today. Ties go to the lowest engine
+  index. Distance and range checks wait for the air planner (phase 3).
+- The bus planner now asks for the best `passenger_feeder` on plain road. In a
+  1950 start this is the same bus as before, because only one is available; in
+  later starts it can now pick a better bus than the first one in the list.
+- Console: `future_logistics_tech list` and
+  `future_logistics_tech best <mode> <role> [<cargo label>]`.
+- Tests: unit tests for role inference and scoring; integration checks that the
+  planner and console agree, and a library snapshot per climate in
+  `tests/future_logistics/tech_snapshots/`.
 
 ## Phase 2: company profiles and rail (A1)
 

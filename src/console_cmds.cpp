@@ -9,6 +9,7 @@
 
 #include "stdafx.h"
 #include "future_logistics/bootstrap.h"
+#include "future_logistics/tech_library.h"
 #include "core/string_consumer.hpp"
 #include "console_internal.h"
 #include "debug.h"
@@ -1208,6 +1209,17 @@ static bool ConFutureLogisticsCheck(std::span<std::string_view> argv)
 	if (argv.size() != 1 || _game_mode != GameMode::Normal) return false;
 	IConsolePrint(CC_DEFAULT, "Future Logistics validation: {} (details in misc debug log)", InspectFutureLogistics() ? "passed" : "failed");
 	return true;
+}
+
+/** Inspect the Future Logistics Tech Library. @copydoc IConsoleCmdProc */
+static bool ConFutureLogisticsTech(std::span<std::string_view> argv)
+{
+	if (argv.empty()) {
+		IConsolePrint(CC_HELP, "List loaded transport technology or pick the best for a job. Usage: 'future_logistics_tech list' or 'future_logistics_tech best <mode> <role> [<cargo label>]'.");
+		return true;
+	}
+	if (_game_mode != GameMode::Normal) return false;
+	return FutureLogisticsTechCommand(argv.subspan(1));
 }
 
 /** Run a local script file. @copydoc IConsoleCmdProc */
@@ -2977,6 +2989,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("echo",                    ConEcho);
 	IConsole::CmdRegister("echoc",                   ConEchoC);
 	IConsole::CmdRegister("future_logistics_check", ConFutureLogisticsCheck);
+	IConsole::CmdRegister("future_logistics_tech",  ConFutureLogisticsTech);
 	IConsole::CmdRegister("exec",                    ConExec);
 	IConsole::CmdRegister("schedule",                ConSchedule);
 	IConsole::CmdRegister("exit",                    ConExit);

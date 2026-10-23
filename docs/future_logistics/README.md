@@ -1,5 +1,8 @@
 # Future Logistics: day-zero bootstrap
 
+New to the project? Start with [`HANDOFF.md`](HANDOFF.md): goals, decisions,
+status and next steps.
+
 Upstream: official [OpenTTD/OpenTTD](https://github.com/OpenTTD/OpenTTD), master
 `51cb6dcf5e0d304396bf7c5cb3d724adde243fa8`. The destination's initial README commit
 is retained as a parent of the import merge. GPL-2.0 and upstream third-party
@@ -63,9 +66,11 @@ vehicle purchases reduce the cash normally. The loan is not erased or duplicated
 Copy `mods/ai/CorporateAI` to your personal OpenTTD `ai/` directory and select it
 for all four rivals in AI/Game Script settings. Each rival is given a profile
 (see [`roadmap.md`](roadmap.md), phase 2), is named after it, and builds that
-profile's starter railways and bus routes. CorporateAI reads its `profile`
-setting. It preserves the supplied fleet;
-expansion and technology adoption are future work. Other selected AIs remain in
+profile's starter network. After day zero CorporateAI runs it with the same
+choices through this fork's `AIFutureLogistics` script API: it renews and
+upgrades vehicles, adds vehicles where cargo waits and opens new routes as its
+profile's adoption rules allow (phase 6). Its `aggression` setting sets the
+pace. New routes are built in single-player games only. Other selected AIs remain in
 control after bootstrap and may replace or sell the starter network. Without an
 installed AI, upstream's dummy fallback is used; it is not a strategic competitor.
 
@@ -161,8 +166,8 @@ multiplayer dedicated server. Test artifacts go in `work/`.
 ## Scope and remaining work
 
 Freight routes have at most two legs (one transfer). No signals,
-bridges, tunnels, terrain engineering, strategic AI expansion or in-game AI
-vehicle adoption are implemented here. Drones, hyperloop and rockets are
+bridges, tunnels or terrain engineering are implemented here, and rivals only
+open new routes after day zero in single-player games. Drones, hyperloop and rockets are
 supported as NewGRF tech families, but the Future Logistics NewGRF itself
 does not exist yet; only the format test NewGRF does. Difficult maps, disconnected heights, very early start dates,
 NewGRFs that remove compatible standard-road buses, and town restrictions may

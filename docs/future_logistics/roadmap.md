@@ -5,12 +5,15 @@ companies already run real networks. Over the decades new technology arrives
 from the Future Logistics NewGRF (drones, then hyperloop, then rockets), and the
 rivals adopt it too, so progression is a race rather than an unopposed build.
 
-**Status (October 2026):** phases 0–5 are complete. The four rivals have
+**Status (October 2026):** phases 0–6 are complete; see
+[`HANDOFF.md`](HANDOFF.md) for the goals, decisions and next steps. The four rivals have
 distinct profiles, and the starting market has an airline, passenger and
 freight trains, feeder buses into railway stations, and trucks that continue
 rail cargo chains, all scaled to the size of the world. NewGRFs can add whole
 tech families, rivals and cargo meanings through badges, with no code change.
-See `validation.md` for the recorded test results.
+After day zero, CorporateAI keeps each rival growing and adopting new tech with
+the same planners (single-player). See `validation.md` for the recorded test
+results.
 
 The key design rules for everything below: **rivals ask the Tech Library for
 "the best tech for this job", never for a specific vehicle**, and **what rivals
@@ -226,18 +229,38 @@ Limits:
 - Routes have at most two legs, one transfer.
 - Cargo types cannot carry badges, so their meaning is declared by label.
 
-## Phase 6: rivals that keep up
+## Phase 6: rivals that keep up (done, single-player)
 
 Goal: after day zero, rivals renew and grow modestly, and adopt new tech.
 
-- Recommended design (option A): give scripts access to the Tech Library and
-  catalogue through a script API, so `CorporateAI` asks the same recipes and
-  adoption rules that day zero uses. This makes `CorporateAI` fork-only, which
-  is fine.
-- `CorporateAI`: replace old vehicles, add vehicles to busy routes, open a small
-  number of new routes per year, and adopt new families as their adoption
-  rules allow.
-- Aggression and expansion settings (low/medium/high).
+- **Script API (option A)**: `AIFutureLogistics` (`src/script/api/script_futurelogistics.hpp`)
+  gives an AI the day-zero choices: a profile's recipes for today
+  (`GetPlanSize`, `GetPlanRecipe`), the planners (`BuildService`), the Tech
+  Library's vehicle choice (`GetReplacement`) and a depot on a vehicle's own
+  network for copies of it (`GetRouteDepot`). The shared code is in
+  `src/future_logistics/growth.cpp`. `CorporateAI` is now fork-only.
+- **`CorporateAI` 4**: turns on autorenew, sets autoreplace rules from the Tech
+  Library once a year and sends vehicles that are due to a depot (with
+  breakdowns off they never go on their own); adds a vehicle to a route when
+  more than two loads wait at its loading station, up to 3, 5 or 8 vehicles
+  (routes are told apart by cargo and stations, since day-zero vehicles do not
+  share orders); sells a vehicle that lost money two years running on a route
+  that has others;
+  opens a new route every 24, 12 or 6 months, choosing the recipe it has built
+  least, so newly adopted families come first; borrows to build and repays
+  what is not needed.
+- **Aggression setting**: low, medium (default) or high, in the AI's settings.
+- New services avoid towns the company already serves and industries any
+  company serves.
+
+Limits:
+
+- Building is single-player only: the planners run their commands directly,
+  as the day-zero bootstrap does, and nested commands do not charge money, so
+  they cannot yet be wrapped in one network command. In multiplayer the AI only
+  looks after its fleet.
+- New routes depend on what the planners can build: railways need flat land at
+  one height and no bridges, so on a small, built-up map rail growth can stop.
 
 ## Phase 7: future tech arrives
 

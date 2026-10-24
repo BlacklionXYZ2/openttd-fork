@@ -14,6 +14,11 @@
 #include "../engine_func.h"
 #include "../newgrf_badge.h"
 #include "../strings_func.h"
+#include "../tile_map.h"
+#include "../vehicle_base.h"
+#include "../viewport_func.h"
+#include "../window_func.h"
+#include "../window_gui.h"
 
 #include "table/strings.h"
 
@@ -151,6 +156,30 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 			Report(fmt::format("FL tech found id={} kind={} index={}{}", item.id, TaggedKindName(item.kind), item.index, built));
 		}
 		Report(fmt::format("FL tech find id={} matches={}", argv[1], items.size()));
+		return true;
+	}
+	if ((argv.size() == 2 || argv.size() == 3) && argv[0] == "view") {
+		/* Centre the main view on a vehicle with this fl_id, for screenshots: one in flight or moving
+		 * between stations ("moving"), or one standing at a station ("parked"); either if not given. */
+		using namespace FutureLogistics;
+		const auto engine = FindEngineById(argv[1]);
+		if (!engine.has_value() || (argv.size() == 3 && argv[2] != "moving" && argv[2] != "parked")) return false;
+		const bool want_moving = argv.size() == 3 && argv[2] == "moving";
+		const bool want_parked = argv.size() == 3 && argv[2] == "parked";
+		for (const Vehicle *v : Vehicle::Iterate()) {
+			if (!v->IsPrimaryVehicle() || v->engine_type != *engine || v->vehstatus.Test(VehState::Hidden)) continue;
+			const bool at_station = IsTileType(v->tile, TileType::Station);
+			if ((want_moving && (at_station || v->cur_speed == 0)) || (want_parked && (!at_station || v->cur_speed != 0))) continue;
+			ScrollMainWindowTo(v->x_pos, v->y_pos, v->z_pos, true);
+			/* Move the drawn view's position now rather than on the next frame, so a screenshot straight after
+			 * shows it; the next frame redraws the screen as usual. */
+			ViewportData &vp = *GetMainWindow()->viewport;
+			vp.virtual_left = vp.scrollpos_x;
+			vp.virtual_top = vp.scrollpos_y;
+			Report(fmt::format("FL tech view id={} vehicle={} tile={} speed={} at_station={}", argv[1], v->index, v->tile, v->cur_speed, at_station));
+			return true;
+		}
+		Report(fmt::format("FL tech view id={} none", argv[1]));
 		return true;
 	}
 	if ((argv.size() == 3 || argv.size() == 4) && argv[0] == "best") {

@@ -448,6 +448,7 @@ Load it in a new game, open the console and use:
 | `future_logistics_tech recipes` | Every recipe, and each rival's adoption plan for today's date |
 | `future_logistics_tech validate` | Problems: unknown names and mechanics, bad numbers, needs nobody provides, families with no vehicles, duplicate `fl_id`s, tags without `fl_format`, formatted vehicles without a `role/` badge |
 | `future_logistics_tech find <id>` | Every item with that `fl_id` |
+| `future_logistics_tech view <id> [moving\|parked]` | Centres the main view on a vehicle with that `fl_id`, for checking its graphics or taking a screenshot |
 | `future_logistics_tech best <mode> <role> [<cargo label>]` | The vehicle a company would pick for a job |
 
 ## What the game's code guarantees

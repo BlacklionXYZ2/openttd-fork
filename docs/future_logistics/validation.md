@@ -167,6 +167,12 @@ Found and fixed: building a railway's track before its stations could clear enou
 lose the town's permission for the station ("local authority refuses"), after preflight had
 passed. Stations are now built first.
 
+Railway tunnels (same night, later): on the four mountainous worlds, four railways now go
+through a hill in a tunnel (up to 16 tiles) instead of over it; no construction failed and every
+check passed. In four simulated months both trains using tunnels served their stations. The
+integration suite (38 scenarios, the mountain scenario now requiring a tunnel) and the unit
+tests pass.
+
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
 helistation copy first, and the Tech Library and `fl_id` index read each airport type without

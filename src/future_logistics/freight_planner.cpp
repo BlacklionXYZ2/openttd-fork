@@ -69,6 +69,26 @@ BridgeSpan FindBridge(TileIndex head, DiagDirection dir)
 	return {};
 }
 
+BridgeSpan FindTunnel(TileIndex portal, DiagDirection dir)
+{
+	if (!IsTileType(portal, TileType::Clear) && !IsTileType(portal, TileType::Trees)) return {};
+	const auto [slope, z] = GetTileSlopeZ(portal);
+	if (!IsInclinedSlope(slope) || GetInclinedSlopeDirection(slope) != dir) return {};
+	TileIndex tile = Step(portal, dir);
+	for (uint length = 0; length <= MAX_TUNNEL_SPAN && tile != INVALID_TILE; length++) {
+		const auto [end_slope, end_z] = GetTileSlopeZ(tile);
+		if (end_z == z) {
+			/* An exit that needs no terraforming, through at least one tile of hill. */
+			if (length == 0 || end_slope != ComplementSlope(slope)) return {};
+			if (!IsTileType(tile, TileType::Clear) && !IsTileType(tile, TileType::Trees)) return {};
+			return {tile, length};
+		}
+		if (end_z < z) return {};
+		tile = Step(tile, dir);
+	}
+	return {};
+}
+
 BridgeType CheapestBridge(uint length)
 {
 	BridgeType best = MAX_BRIDGES;

@@ -185,6 +185,7 @@ static bool CrossableRoad(TileIndex tile, DiagDirection heading)
 struct RailPath {
 	std::vector<TileIndex> tiles; ///< Tiles from the origin's exit to the destination's exit.
 	std::set<TileIndex> bridged; ///< Tiles under a bridge; the line's tiles either side of a run of them are its heads.
+	std::set<TileIndex> tunnelled; ///< Tiles over a tunnel; the line's tiles either side of a run of them are its portals.
 
 	bool empty() const { return this->tiles.empty(); }
 };
@@ -214,7 +215,8 @@ static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossi
 
 	const RailNode start{a.Exit(), a.exit, 0};
 	std::map<uint64_t, RailNode> previous;
-	std::set<uint64_t> middles; ///< Positions under a bridge.
+	std::set<uint64_t> middles; ///< Positions under a bridge or over a tunnel.
+	std::set<uint64_t> tunnel_middles; ///< Positions over a tunnel.
 	previous.emplace(start.Key(), RailNode{INVALID_TILE, a.exit, 0});
 	std::queue<RailNode> queue;
 	queue.push(start);
@@ -231,7 +233,11 @@ static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossi
 				RailPath path;
 				for (RailNode n = node; n.tile != INVALID_TILE; n = previous.at(n.Key())) {
 					path.tiles.push_back(n.tile);
-					if (middles.contains(n.Key())) path.bridged.insert(n.tile);
+					if (tunnel_middles.contains(n.Key())) {
+						path.tunnelled.insert(n.tile);
+					} else if (middles.contains(n.Key())) {
+						path.bridged.insert(n.tile);
+					}
 				}
 				std::ranges::reverse(path.tiles);
 				/* Positions include the heading, so a line can loop back over itself; keep looking for one that does not. */
@@ -239,6 +245,24 @@ static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossi
 				if (path.tiles.size() >= 6 && path.tiles.size() <= 160 && distinct.size() == path.tiles.size()) return path;
 			}
 			continue;
+		}
+		/* Having climbed onto a slope, the line may instead go through the hill in a tunnel. */
+		if (const BridgeSpan tunnel = FindTunnel(node.tile, node.heading); tunnel.land != INVALID_TILE && !off_bridge) {
+			const RailNode child{tunnel.land, node.heading, 0};
+			bool clear = !blocked.contains(tunnel.land) && tunnel.land != a.Depot() && !previous.contains(child.Key()) && previous.size() + tunnel.length < MAX_RAIL_STATES;
+			for (uint k = 1; k <= tunnel.length && clear; k++) clear = !previous.contains(RailNode{Step(node.tile, node.heading, k), node.heading, 0}.Key());
+			if (clear) {
+				RailNode last = node;
+				for (uint k = 1; k <= tunnel.length; k++) {
+					const RailNode middle{Step(node.tile, node.heading, k), node.heading, 0};
+					middles.insert(middle.Key());
+					tunnel_middles.insert(middle.Key());
+					previous.emplace(middle.Key(), last);
+					last = middle;
+				}
+				previous.emplace(child.Key(), last);
+				queue.push(child);
+			}
 		}
 		for (DiagDirection heading : DIRECTIONS) {
 			const uint8_t turn = TurnBetween(node.heading, heading);
@@ -369,8 +393,14 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const Rail
 	const std::vector<Track> tracks = LineTracks(a, b, path);
 	/* Bridges are built from head to head; their heads and the tiles under them get no track of their own. */
 	const auto bridges_on_line = RouteBridges(path, line.bridged);
+	const auto tunnels_on_line = RouteBridges(path, line.tunnelled);
 	std::vector<bool> bridge_part(path.size(), false);
-	for (const RouteBridge &b : bridges_on_line) std::fill(bridge_part.begin() + b.head, bridge_part.begin() + b.tail + 1, true);
+	for (const auto *spans : {&bridges_on_line, &tunnels_on_line}) {
+		for (const RouteBridge &b : *spans) std::fill(bridge_part.begin() + b.head, bridge_part.begin() + b.tail + 1, true);
+	}
+	auto build_tunnel = [&](const RouteBridge &t, DoCommandFlags flags) {
+		return Command<Commands::BuildTunnel>::Do(flags | CONSTRUCT, path[t.head], TransportType::Rail, consist.railtype, INVALID_ROADTYPE);
+	};
 	auto build_bridge = [&](const RouteBridge &b, DoCommandFlags flags) {
 		const BridgeType type = CheapestBridge(static_cast<uint>(b.tail - b.head - 1));
 		if (type == MAX_BRIDGES) return CommandCost(CMD_ERROR);
@@ -379,6 +409,11 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const Rail
 	Money cost = 0;
 	for (const RouteBridge &b : bridges_on_line) {
 		auto result = build_bridge(b, {});
+		if (result.Failed()) return ConstructionResult::Rejected;
+		cost += result.GetCost();
+	}
+	for (const RouteBridge &t : tunnels_on_line) {
+		auto result = build_tunnel(t, {});
 		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
 	}
@@ -439,6 +474,11 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const Rail
 		/* Clearing a bridge head removes the whole bridge and leaves what is under it. */
 		built.push_back(path[b.head]);
 	}
+	for (const RouteBridge &t : tunnels_on_line) {
+		if (ExecFailed(build_tunnel(t, EXEC))) return fail("tunnel");
+		/* Clearing a portal removes the whole tunnel. */
+		built.push_back(path[t.head]);
+	}
 	for (size_t i = 0; i < path.size(); i++) {
 		if (bridge_part[i]) continue;
 		if (auto result = Command<Commands::BuildRail>::Do(EXEC | CONSTRUCT, path[i], consist.railtype, tracks[i], false); ExecFailed(result)) {
@@ -485,9 +525,9 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const Rail
 
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={} crossings={} bridges={} slopes={}",
+	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={} crossings={} bridges={} tunnels={} slopes={}",
 		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
-		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon), crossings.size(), bridges_on_line.size(),
+		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon), crossings.size(), bridges_on_line.size(), tunnels_on_line.size(),
 		std::ranges::count_if(path, [](TileIndex t) { return !IsTileFlat(t); }));
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(a.front);
@@ -721,8 +761,8 @@ static std::vector<DiagDirection> RailSides(TileIndex tile)
 		if (GetRailStationAxis(tile) == Axis::X) return {DiagDirection::NE, DiagDirection::SW};
 		return {DiagDirection::SE, DiagDirection::NW};
 	}
-	/* A rail bridge head leads off the bridge on its land side; the walk crosses to the other head. */
-	if (IsBridgeTile(tile) && GetTunnelBridgeTransportType(tile) == TransportType::Rail) return {ReverseDiagDir(GetTunnelBridgeDirection(tile))};
+	/* A rail bridge head or tunnel portal leads off on its open side; the walk crosses to the other end. */
+	if (IsTileType(tile, TileType::TunnelBridge) && GetTunnelBridgeTransportType(tile) == TransportType::Rail) return {ReverseDiagDir(GetTunnelBridgeDirection(tile))};
 	/* Towns may later build roads across the line; the crossing's owner is the track's owner. */
 	if (IsLevelCrossingTile(tile)) {
 		if (GetCrossingRailAxis(tile) == Axis::X) return {DiagDirection::NE, DiagDirection::SW};
@@ -748,8 +788,8 @@ std::set<StationID> RailStationsReachable(const Vehicle *train, TileIndex *depot
 		queue.pop();
 		if (IsTileType(tile, TileType::Station) && HasStationRail(tile)) reached.insert(GetStationIndex(tile));
 		if (depot != nullptr && *depot == INVALID_TILE && IsRailDepotTile(tile) && GetTileOwner(tile) == train->owner) *depot = tile;
-		if (IsBridgeTile(tile) && GetTunnelBridgeTransportType(tile) == TransportType::Rail) {
-			const TileIndex other = GetOtherBridgeEnd(tile);
+		if (IsTileType(tile, TileType::TunnelBridge) && GetTunnelBridgeTransportType(tile) == TransportType::Rail) {
+			const TileIndex other = GetOtherTunnelBridgeEnd(tile);
 			if (!seen.contains(other)) { seen.insert(other); queue.push(other); }
 		}
 		for (DiagDirection side : RailSides(tile)) {

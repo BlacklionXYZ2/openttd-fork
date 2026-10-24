@@ -130,10 +130,10 @@ constexpr size_t MAX_HUB_CHECKS = 6; ///< Transfer station sites checked with Pl
 
 constexpr uint MAX_BRIDGE_SPAN = 6; ///< Most tiles a planned bridge spans between its heads.
 
-/** A bridge a route may take: from a head tile over lower or unbuildable ground to a landing. */
+/** A bridge or tunnel a route may take, from the tile it starts on to the tile it ends on. */
 struct BridgeSpan {
-	TileIndex land = INVALID_TILE; ///< Far head, or INVALID_TILE if there is no bridge.
-	uint length = 0; ///< Tiles between the heads.
+	TileIndex land = INVALID_TILE; ///< Far end, or INVALID_TILE if there is none.
+	uint length = 0; ///< Tiles between the ends.
 };
 
 /**
@@ -145,7 +145,18 @@ struct BridgeSpan {
  */
 BridgeSpan FindBridge(TileIndex head, DiagDirection dir);
 
-/** Where a bridge sits on a planned route: the indices of its two heads. */
+constexpr uint MAX_TUNNEL_SPAN = 16; ///< Most tiles a planned tunnel runs under between its portals.
+
+/**
+ * Find a tunnel from a portal on open land inclined up the way the route is going, through the hill
+ * to the first tile at the portal's height, which must slope the opposite way.
+ * @param portal Near portal, where the route has climbed onto the slope.
+ * @param dir Direction of the tunnel.
+ * @return The tunnel's far portal and length, or one with an invalid landing.
+ */
+BridgeSpan FindTunnel(TileIndex portal, DiagDirection dir);
+
+/** Where a bridge or tunnel sits on a planned route: the indices of its two ends. */
 struct RouteBridge {
 	size_t head; ///< Index of the near head.
 	size_t tail; ///< Index of the far head.

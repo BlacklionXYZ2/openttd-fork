@@ -174,8 +174,9 @@ In rough order:
    - Railways and new road climb and descend straight over tiles inclined along
      them, and curve only on flat tiles. Both bridge water, roads, railways and
      dips up to six tiles across, from flat open land to flat open land at the
-     same height. There are no tunnels, longer bridges or foundations, so wide
-     rivers, deep valleys and steep or uneven ground still stop a line. Where a railway cannot
+     same height, and railways tunnel up to 16 tiles through hills. Road routes
+     have no tunnels, and there are no longer bridges or foundations, so wide
+     rivers, deep valleys and steep or uneven ground can still stop a line. Where a railway cannot
      bridge a town road it uses a level crossing, where a fast train can hit a
      road vehicle already on it (an OpenTTD rule: the crossing only closes when
      the train is one tile away).

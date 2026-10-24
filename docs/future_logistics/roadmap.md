@@ -261,9 +261,9 @@ Limits:
   as the day-zero bootstrap does, and nested commands do not charge money, so
   they cannot yet be wrapped in one network command. In multiplayer the AI only
   looks after its fleet.
-- New routes depend on what the planners can build: railways climb straight
-  over slopes but have no bridges or tunnels, so on a small, built-up map rail
-  growth can stop.
+- New routes depend on what the planners can build: railways climb, bridge
+  and tunnel, but need flat open land for stations, so on a small, built-up map
+  rail growth can stop.
 
 ## Phase 7: future tech arrives (started)
 

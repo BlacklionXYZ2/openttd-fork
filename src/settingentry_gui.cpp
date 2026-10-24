@@ -885,6 +885,14 @@ SettingsContainer &GetSettingsTree()
 			}
 
 			ai->Add(new SettingEntry("economy.give_money"));
+
+			/* Future Logistics: established rivals created before the player starts. */
+			SettingsPage *rivals = ai->Add(new SettingsPage(STR_CONFIG_SETTING_BOOTSTRAP));
+			{
+				rivals->Add(new SettingEntry("game_creation.bootstrap_enabled"));
+				rivals->Add(new SettingEntry("game_creation.bootstrap_capital_per_head"));
+				rivals->Add(new SettingEntry("game_creation.bootstrap_capital"));
+			}
 		}
 
 		SettingsPage *network = main->Add(new SettingsPage(STR_CONFIG_SETTING_NETWORK));

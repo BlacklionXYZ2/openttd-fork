@@ -110,6 +110,15 @@ Branch `feature/future-logistics-grf`, 24 October 2026, Linux.
 | 512×512 world, 2056, with the NewGRF | AeroLink opened rocket passenger and mail routes between two cities via spaceports on day zero. Rocket freight waits for goods or valuables to carry: rockets are limited to express and armoured cargo, after a first version carried wood |
 | Integration suite | **35 scenarios passed**, including two scenarios each for drones, hyperloop and rockets |
 
+Later the same night:
+
+| Check | Result |
+| --- | --- |
+| 512×512 world, 2056 | Rockets: see above |
+| Data centres, 512×512 temperate worlds, four seeds | 4 to 9 data centres generated, one per town; `validate` clean. No world had a bank, so there was nothing to deliver to them: the data centre's cargo needs a decision |
+| Road routes over town roads | Across the integration worlds most mail and truck routes now use a few tiles of existing street (up to 6), mostly stops on town roads; the controlled, 2026 and coastal worlds build the same number of services as before |
+| Integration suite | **36 scenarios passed**, unit tests passed |
+
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
 helistation copy first, and the Tech Library and `fl_id` index read each airport type without

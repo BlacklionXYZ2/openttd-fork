@@ -295,7 +295,10 @@ are tracked separately; the first versions use rail-type and aircraft mechanics.
 ## Phase 8: quality and release
 
 - Settings for density, start year, rival count and aggression in the game's
-  settings window.
+  settings window. **Started**: the head start settings (on/off, capital per
+  inhabitant, largest grant) are in Settings → Computer players → Established
+  rivals; rival count is the usual competitor limit, and aggression is in
+  CorporateAI's own settings.
 - Balance passes: the player must be able to catch up.
 - Intel x86_64 macOS 12 build (`mac-artifact-x86_64.yml`) run and play-tested on
   the target MacBook, plus Apple Silicon and Linux CI.

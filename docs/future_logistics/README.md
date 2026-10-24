@@ -40,7 +40,8 @@ Actions availability and billing are controlled by the repository owner.
 
 ## Configuration and scripts
 
-This experimental fork enables bootstrap by default. Set these in openttd.cfg:
+This experimental fork enables bootstrap by default. The three bootstrap settings are also in
+the game's settings window under Computer players → Established rivals. In openttd.cfg:
 
 ```ini
 [game_creation]

@@ -31,6 +31,7 @@ constexpr DoCommandFlags EXEC{DoCommandFlag::Execute}; ///< Execute after comman
 constexpr DoCommandFlags CONSTRUCT{DoCommandFlag::Auto, DoCommandFlag::NoWater}; ///< Normal construction trait flags.
 constexpr size_t MAX_SEARCH = 8192; ///< Maximum visited tiles per town pair.
 constexpr size_t MAX_PAIRS = 128; ///< Maximum town pairs considered per company.
+constexpr uint32_t MIN_ROLLBACK_CLEARANCE = 16; ///< Fewest tiles of clearing any service needs in reserve to be removed again (a dock pair).
 
 /** Markets already taken by earlier rivals, so they do not compete for the same customers. */
 struct Reservations {

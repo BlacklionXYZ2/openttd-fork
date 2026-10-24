@@ -16,6 +16,7 @@
 #include "road_planner.h"
 #include "../aircraft.h"
 #include "../cargotype.h"
+#include "../company_base.h"
 #include "../company_func.h"
 #include "../debug.h"
 #include "../engine_base.h"
@@ -47,6 +48,9 @@ namespace FutureLogistics {
 ConstructionResult BuildService(const Recipe &recipe, const Profile &profile, std::span<const Recipe> plan, const TechLibrary &library, Reservations &reserved)
 {
 	if (!IsSupported(recipe.mechanic, recipe.market)) return ConstructionResult::Rejected;
+	/* Every planner rejects a service it could not demolish again; without even the smallest such amount
+	 * of clearing, reject now rather than after searching the whole map for routes. */
+	if ((Company::Get(_current_company)->clear_limit >> 16) < MIN_ROLLBACK_CLEARANCE) return ConstructionResult::Rejected;
 	ServiceSpec spec{recipe.family, recipe.min_tier, recipe.early_adopters, profile.industry_markets, {}};
 	if (recipe.market == Market::Industry) {
 		for (const Recipe &other : plan) {

@@ -119,6 +119,13 @@ Later the same night:
 | Road routes over town roads | Across the integration worlds most mail and truck routes now use a few tiles of existing street (up to 6), mostly stops on town roads; the controlled, 2026 and coastal worlds build the same number of services as before |
 | Integration suite | **36 scenarios passed**, unit tests passed |
 | Tech arriving mid-game: controlled world from 2021, four simulated years, with the NewGRF | No drones exist at the start. In 2024 AeroLink adopted drones through CorporateAI and opened a drone mail route; in 2025 AeroLink and Metro & Regional opened more. Every yearly check passed; fleet 28 → 38 → 42 → 57 vehicles |
+| Ten-year regression, controlled world from 1955, with all of the night's changes | 22 new routes, three of them railways with level crossings over town roads. Checks at years 2, 4, 6 and 8 passed (26, 49, 61, 60 vehicles); rivals ended with 5.1 to 6.0 million and no loan. At year ten three loss-making trains sat stopped in depots waiting to be sold and the check failed them; it now reports such vehicles as parked, and passes (60 vehicles) |
+
+The year-ten trains waited because autorenew or autoreplace had renewed them in the depot
+(they were zero days old) under new vehicle IDs, so CorporateAI no longer recognised them as
+the ones it sent to be sold. It now sells any of its vehicles stopped in a depot, since it never
+stops one for another reason. Continuing the year-ten save for three months with the new
+CorporateAI, no vehicle was left parked and the check passed (63 vehicles).
 
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged

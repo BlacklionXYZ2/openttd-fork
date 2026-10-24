@@ -45,6 +45,7 @@ jobs:
           xattr -dr com.apple.quarantine OpenTTD.app
         Copy baseset/* to ~/Documents/OpenTTD/baseset/
         Copy mods/ai/CorporateAI to ~/Documents/OpenTTD/ai/
+        The Future Logistics and Starship NewGRFs are inside the app and are on for new games.
         EOT
         ditto -c -k --sequesterRsrc --keepParent pkg openttd-mac-arm64.zip
 

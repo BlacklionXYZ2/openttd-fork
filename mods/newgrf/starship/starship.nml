@@ -110,15 +110,17 @@ item(FEAT_AIRCRAFT, starship, 64) {
         model_life:                   50;
         vehicle_life:                 30;
         reliability_decay:            15;
-        loading_speed:                50;
+        loading_speed:                80;
         sprite_id:                    SPRITE_ID_NEW_AIRCRAFT;
         aircraft_type:                AIRCRAFT_TYPE_LARGE;
+        /* Balanced as the top of the transport world: the most expensive vehicle to buy and to run (both
+         * factors at their maximum), the largest capacity, and the most profit. See PLACEHOLDERS.md. */
         cost_factor:                  255;
-        running_cost_factor:          180;
+        running_cost_factor:          255;
         speed:                        2000 km/h;
         acceleration:                 50;
-        passenger_capacity:           300;
-        mail_capacity:                60;
+        passenger_capacity:           500;
+        mail_capacity:                120;
         refittable_cargo_classes:     bitmask(CC_PASSENGERS, CC_MAIL, CC_EXPRESS, CC_ARMOURED);
         range:                        0;
         sound_effect:                 SOUND_TAKEOFF_JET_FAST;

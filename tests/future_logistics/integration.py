@@ -91,8 +91,8 @@ CorporateAI =
 [game_scripts]
 DayZeroMonopolies =
 """)
-        if grfs:
-            cfg.write_text(cfg.read_text() + "[newgrf]\n" + "".join(f"{grf.name} = \n" for grf in grfs))
+        # Always a NewGRF list, even an empty one: without it, new games use the shipped Future Logistics NewGRFs.
+        cfg.write_text(cfg.read_text() + "[newgrf]\n" + "".join(f"{grf.name} = \n" for grf in grfs))
         if game_script:
             shutil.copytree(game_script, folder / "game" / game_script.name, dirs_exist_ok=True)
             cfg.write_text(cfg.read_text().replace("DayZeroMonopolies =", f"{game_script.name} ="))
@@ -326,6 +326,9 @@ DayZeroMonopolies =
     final_check = ship_run.split("FL check result")[-2]
     starships = re.findall(r"FL check company=2 vehicle=\d+ type=air connected=(\w+) served=(\w+) .*engine=464C0102:air:64 ", final_check)
     require(starships and all(c == "true" and v == "true" for c, v in starships), "not every Starship served its launch sites")
+    # Balance: Starship earns the most of any vehicle.
+    profits = re.findall(r"FL check company=\d+ vehicle=\d+ type=\w+ .*profit=(-?\d+) .*engine=(\S+) ", final_check)
+    require(max(profits, key=lambda p: int(p[0]))[1] == "464C0102:air:64", "a vehicle out-earned every Starship")
     # With the Future Logistics NewGRF: both declare the rocket family, and only one city airport copy is added.
     both, _ = run("starship-with-future-logistics", year=2056, map_bits=9, grfs=[fl_grf, ss_grf],
                   commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
@@ -333,6 +336,11 @@ DayZeroMonopolies =
     # Metropolitan airport, one city airport, the spaceport and the launch site.
     require(len(re.findall(r"FL tech infra kind=airport id=airport:\d+ speed=0 size=6x6", both)) == 4,
             "loading Starship with Future Logistics adds a second city airport")
+    # Balance: Starship is the most expensive vehicle to buy and to run, and carries the most.
+    vehicles = re.findall(r"FL tech vehicle id=(\S+) .*capacity=(\d+) .*cost=(\d+) running_cost=(\d+) name=", both)
+    for column, what in ((2, "purchase cost"), (3, "running cost"), (1, "capacity")):
+        top = max(vehicles, key=lambda v: int(v[column]))
+        require(top[0] == "464C0102:air:64", f"Starship does not have the highest {what}: {top[0]} does")
 
     # Corporate Infrastructure: Gareth's decorative objects, loaded alongside Future Logistics.
     ci_grf = ROOT / "mods/newgrf/corporate_infrastructure/CorporateInfrastructure.grf"

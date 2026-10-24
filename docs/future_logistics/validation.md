@@ -195,6 +195,14 @@ following the replacement redirect, so no airport is listed twice.
 | Same world, three simulated months | All six Starships served both of their launch sites (profits far too high at the placeholder values). The NewGRF profiler shows both the idle and the powered sprite sets in use |
 | Starship with the Future Logistics NewGRF, 2056 | `validate` reports no problems; AeroLink chose Starship over the Reusable Rocket. Exactly one city airport in either load order (the package leaves out its own copy when the Future Logistics NewGRF is active) |
 
+Starship balance and shipping (same day, later):
+
+| Check | Result |
+| --- | --- |
+| Rankings, 2056, both NewGRFs (135 vehicles) | Starship has the highest purchase cost (522,949; next the Reusable Rocket, 512,695), running cost (7,171 a year; next the Darwin 300, 7,115) and capacity (500 passengers; next the Dinger 200, 400). The integration suite now checks all three |
+| Profit, same world, one simulated year | The two highest-earning vehicles were Starships (25.1 and 17.1 million); the best other vehicle, a Dinger 200, earned 14.3 million. Starships sharing a route earn less, since the first takes most of the waiting passengers. The Starship service scenario now checks that its top earner is a Starship |
+| Shipped with the game | The NewGRFs are copied to the build's `newgrf` folder and installed with the game's data. With a configuration that has no NewGRF list (a first run), a new 2050 game loaded Future Logistics and Starship by itself and AeroLink built Starship routes |
+
 Found and fixed: with both NewGRFs loaded, each added an unchanged copy of the city airport,
 so players would have seen two. The flame sprite's speed threshold was first given in the wrong
 units (for aircraft, `current_speed` is in units of about 12.8 km/h), so it would never have shown.

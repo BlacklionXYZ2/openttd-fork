@@ -31,7 +31,11 @@ Not pushed yet.
   with sprites converted from the handoff art. On its own, AeroLink opened
   Starship routes on day zero and every Starship served its launch sites;
   with the Future Logistics NewGRF too, both work and players see one city
-  airport.
+  airport. It is balanced as the top vehicle: the most expensive to buy and
+  run, the largest capacity and the most profit.
+- The game now ships with its NewGRFs (`mods/newgrf/CMakeLists.txt`), and new
+  games use Future Logistics and Starship by default when the configuration
+  has no NewGRF list yet (`src/settings.cpp`).
 - In a game started in 2021, the rivals adopted drones on their own in
   2024–25 through CorporateAI: the whole loop from new tech to rival adoption
   works.

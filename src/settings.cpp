@@ -1072,12 +1072,36 @@ static void GraphicsSetLoadConfig(IniFile &ini)
  * @param is_static GRF is static.
  * @return The list of loaded NewGRF configurations.
  */
+/**
+ * Future Logistics NewGRFs a new game uses when the configuration has no NewGRF list yet, as on the
+ * first run. They ship with the game; players can remove them in the NewGRF settings like any other.
+ */
+static constexpr std::array<std::string_view, 2> FUTURE_LOGISTICS_DEFAULT_GRFS{"future_logistics.grf", "starship.grf"};
+
+/**
+ * Make the default NewGRF list for new games from the Future Logistics NewGRFs that are installed.
+ * @return The NewGRFs found, in order.
+ */
+static GRFConfigList FutureLogisticsDefaultGRFs()
+{
+	GRFConfigList list;
+	for (std::string_view filename : FUTURE_LOGISTICS_DEFAULT_GRFS) {
+		auto c = std::make_unique<GRFConfig>(std::string(filename));
+		if (!FillGRFDetails(*c, false) || c->flags.Test(GRFConfigFlag::Invalid)) continue;
+		AppendToGRFConfigList(list, std::move(c));
+	}
+	return list;
+}
+
 static GRFConfigList GRFLoadConfig(const IniFile &ini, std::string_view grpname, bool is_static)
 {
 	const IniGroup *group = ini.GetGroup(grpname);
 	GRFConfigList list;
 
-	if (group == nullptr) return list;
+	if (group == nullptr) {
+		if (grpname == "newgrf" && !is_static) return FutureLogisticsDefaultGRFs();
+		return list;
+	}
 
 	uint num_grfs = 0;
 	for (const IniItem &item : group->items) {

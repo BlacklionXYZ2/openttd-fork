@@ -7,14 +7,20 @@ community badge conventions, so rival companies find and adopt it with no change
 
 It works on its own, or alongside the Future Logistics NewGRF
 ([`../future_logistics/`](../future_logistics/README.md)), whose Reusable Rocket and Spaceport
-belong to the same `rocket` family. All numbers are placeholders: see
-[`PLACEHOLDERS.md`](PLACEHOLDERS.md).
+belong to the same `rocket` family. Starship is balanced as the top of the transport world: the
+most expensive vehicle to buy and to run, the largest capacity (500 passengers and 120 mail) and
+the most profit; the other numbers are placeholders. See [`PLACEHOLDERS.md`](PLACEHOLDERS.md).
+
+The game ships with this NewGRF and the Future Logistics NewGRF and uses both in new games by
+default: they are installed in the game's `newgrf` folder, and added to a new game's NewGRF list
+when the configuration does not have one yet (the first run). Players can remove them in the
+NewGRF settings.
 
 ## Contents
 
 | Item | Kind | What it is |
 |---|---|---|
-| Starship | aircraft (large) | Passengers, mail, express and armoured cargo between launch sites, from 2045 |
+| Starship | aircraft (large) | 500 passengers and 120 mail, or express and armoured cargo, between launch sites at 2000 km/h, from 2045 |
 | Starship Launch Site | airport (6×6) | The city airport's runway, taxiways and hangar, with the launch pad art on its northern 4×4 tiles |
 
 ## How it fits the tech format
@@ -78,5 +84,6 @@ With the integration harness (`tests/future_logistics/integration.py`):
 
 ## Use
 
-Put `starship.grf` in `~/Documents/OpenTTD/newgrf/`, add it under NewGRF Settings before starting a
-game, and start in 2045 or later (or play until then).
+In this fork it is already installed and on for new games. In other OpenTTD builds, put
+`starship.grf` in `~/Documents/OpenTTD/newgrf/` and add it under NewGRF Settings before starting a
+game. Starship arrives in 2045.

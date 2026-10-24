@@ -148,9 +148,10 @@ In rough order:
    - Freight routes have at most two legs.
    - Vehicles whose capacity comes from a NewGRF callback (Iron Horse wagons)
      show a placeholder capacity in the Tech Library.
-   - Stations are only built on clear, flat land, so industries in town centres
-     (banks, data centres) cannot be served yet. Road routes should learn to use
-     existing town roads at their ends.
+   - Road routes now use existing town and unowned roads, with drive-through
+     stops on them; railways, airports and docks still need clear, flat land.
+   - Temperate maps rarely start with banks, so data centres usually have
+     nothing to receive: the data centre's cargo needs a decision.
 6. **Parked:** Gareth reported that GUI icons looked very small in a recent Mac
    build. It has not been reproduced; it is to be looked at later.
 7. **Environment note:** the cloud sessions used for development could not

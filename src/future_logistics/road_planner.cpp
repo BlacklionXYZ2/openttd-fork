@@ -69,19 +69,49 @@ int StopCatchment(RoadStopType type)
 }
 
 /**
- * Find buildable stop tiles near a point.
+ * Check whether a tile has a plain public road that a company's vehicles may use and that a route may
+ * join: flat, owned by a town or nobody, without one-way rules or tram track, and of a road type the
+ * vehicles can drive on.
+ * @param tile Tile to check.
+ * @param rt Road type of the route's vehicles.
+ * @return Whether the route may use the road.
+ */
+bool PublicRoad(TileIndex tile, RoadType rt)
+{
+	if (!IsValidTile(tile) || !IsNormalRoadTile(tile) || !IsTileFlat(tile)) return false;
+	if (!HasTileRoadType(tile, RoadTramType::Road) || HasTileRoadType(tile, RoadTramType::Tram)) return false;
+	const Owner owner = GetRoadOwner(tile, RoadTramType::Road);
+	if (owner != OWNER_TOWN && owner != OWNER_NONE) return false;
+	return GetDisallowedRoadDirections(tile) == DisallowedRoadDirections{} && HasPowerOnRoad(rt, GetRoadTypeRoad(tile));
+}
+
+/**
+ * Check whether a public road tile is a straight piece, where a drive-through stop can go.
+ * @param tile Road tile.
+ * @return Whether it has exactly one straight road.
+ */
+bool StraightRoad(TileIndex tile)
+{
+	const RoadBits bits = GetRoadBits(tile, RoadTramType::Road);
+	return bits == ROAD_X || bits == ROAD_Y;
+}
+
+/**
+ * Find stop tiles near a point: clear land for a new stop, or a straight piece of public road for a
+ * drive-through stop on it.
  * @param centre Point to search around.
  * @param radius Search radius in tiles.
+ * @param rt Road type of the route's vehicles.
  * @param accept Extra check on a tile, such as cargo acceptance.
  * @return Candidate tiles in scan order.
  */
-std::vector<TileIndex> FindStops(TileIndex centre, int radius, const std::function<bool(TileIndex)> &accept)
+std::vector<TileIndex> FindStops(TileIndex centre, int radius, RoadType rt, const std::function<bool(TileIndex)> &accept)
 {
 	std::vector<TileIndex> result;
 	for (int y = std::max(1, (int)TileY(centre) - radius); y <= std::min((int)Map::SizeY() - 2, (int)TileY(centre) + radius); y++) {
 		for (int x = std::max(1, (int)TileX(centre) - radius); x <= std::min((int)Map::SizeX() - 2, (int)TileX(centre) + radius); x++) {
 			const TileIndex tile = TileXY(x, y);
-			if (Buildable(tile) && accept(tile)) result.push_back(tile);
+			if ((Buildable(tile) || (PublicRoad(tile, rt) && StraightRoad(tile))) && accept(tile)) result.push_back(tile);
 		}
 	}
 	return result;
@@ -101,12 +131,13 @@ RoadStopType StopFor(CargoType cargo)
  * Find stop tiles in a town that both send and accept a town cargo.
  * @param town Town to serve.
  * @param cargo Passengers or mail.
- * @return Buildable candidate tiles belonging to this town's area.
+ * @param rt Road type of the route's vehicles.
+ * @return Candidate tiles belonging to this town's area.
  */
-std::vector<TileIndex> TownStops(const Town *town, CargoType cargo)
+std::vector<TileIndex> TownStops(const Town *town, CargoType cargo, RoadType rt)
 {
 	const int radius = StopCatchment(StopFor(cargo));
-	return FindStops(town->xy, TOWN_SEARCH_RADIUS, [&](TileIndex tile) {
+	return FindStops(town->xy, TOWN_SEARCH_RADIUS, rt, [&](TileIndex tile) {
 		if (ClosestTownFromTile(tile, UINT_MAX)->index != town->index) return false;
 		return GetAcceptanceAroundTiles(tile, 1, 1, radius).first[cargo] >= 8 && GetProductionAroundTiles(tile, 1, 1, radius)[cargo] > 0;
 	});
@@ -120,13 +151,42 @@ struct Route {
 };
 
 /**
- * Find a corridor using bounded multi-source breadth-first search.
+ * Check whether a route may step from one tile to the next. New road goes on clear land at one height.
+ * It may join public road, adding the piece that connects them, but two public road tiles are only
+ * followed where they already connect, and a stop on public road is only entered along the road, so
+ * no street gains a junction there.
+ * @param from Tile the route is on.
+ * @param to Adjacent tile.
+ * @param rt Road type of the route's vehicles.
+ * @param stops Candidate stops at both ends.
+ * @return Whether the step is allowed.
+ */
+bool CanStep(TileIndex from, TileIndex to, RoadType rt, const std::set<TileIndex> &stops)
+{
+	if (GetTileZ(to) != GetTileZ(from)) return false;
+	const bool from_road = PublicRoad(from, rt);
+	const bool to_road = PublicRoad(to, rt);
+	if (!to_road && !Buildable(to)) return false;
+	if (from_road && to_road) {
+		return GetRoadBits(from, RoadTramType::Road).Any(Bit(RouteDirection(from, to))) && GetRoadBits(to, RoadTramType::Road).Any(Bit(RouteDirection(to, from)));
+	}
+	/* Joining a road adds a piece to it unless it already points this way; never add one to a stop's tile. */
+	if (from_road && stops.contains(from) && !GetRoadBits(from, RoadTramType::Road).Any(Bit(RouteDirection(from, to)))) return false;
+	if (to_road && stops.contains(to) && !GetRoadBits(to, RoadTramType::Road).Any(Bit(RouteDirection(to, from)))) return false;
+	return true;
+}
+
+/**
+ * Find a corridor using bounded multi-source breadth-first search, over clear land and public roads.
  * @param starts Candidate stops at the origin.
  * @param ends Candidate stops at the destination.
+ * @param rt Road type of the route's vehicles.
  * @return Proposed route, with an invalid depot if no suitable corridor exists.
  */
-Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends)
+Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends, RoadType rt)
 {
+	std::set<TileIndex> stops(starts.begin(), starts.end());
+	stops.insert(ends.begin(), ends.end());
 	std::set<TileIndex> targets(ends.begin(), ends.end());
 	std::map<TileIndex, TileIndex> previous;
 	std::queue<TileIndex> queue;
@@ -155,7 +215,7 @@ Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileInde
 		}
 		for (TileIndex next : Neighbours(tile)) {
 			if (previous.size() >= MAX_SEARCH) break;
-			if (previous.contains(next) || !Buildable(next) || GetTileZ(next) != GetTileZ(tile)) continue;
+			if (previous.contains(next) || !CanStep(tile, next, rt, stops)) continue;
 			previous.emplace(next, tile);
 			queue.push(next);
 		}
@@ -223,9 +283,19 @@ CommandCost Stop(TileIndex tile, DiagDirection direction, RoadType roadtype, con
 ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = true, BuiltLeg *result_built = nullptr)
 {
 	const RoadType rt = job.engine->VehInfo<RoadVehicleInfo>().roadtype;
+	/* Public road on the route keeps its owner and road type; it only gains the pieces it lacks. */
+	std::vector<bool> on_road;
+	for (TileIndex tile : route.path) on_road.push_back(PublicRoad(tile, rt));
+	auto missing = [&](size_t i) {
+		RoadBits bits = Pieces(route, i);
+		if (on_road[i]) bits.Reset(GetRoadBits(route.path[i], RoadTramType::Road));
+		return bits;
+	};
+	auto type_at = [&](size_t i) { return on_road[i] ? GetRoadTypeRoad(route.path[i]) : rt; };
 	Money cost = 0;
 	for (size_t i = 0; i < route.path.size(); i++) {
-		auto result = Command<Commands::BuildRoad>::Do(CONSTRUCT, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid());
+		if (missing(i).None()) continue;
+		auto result = Command<Commands::BuildRoad>::Do(CONSTRUCT, route.path[i], missing(i), type_at(i), {}, TownID::Invalid());
 		if (result.Failed()) {
 			Debug(Facility::Misc, Severity::Debug1, "FL road preflight rejected tile={} error={}", route.path[i], result.GetErrorMessage());
 			return ConstructionResult::Rejected;
@@ -234,8 +304,9 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	}
 	const auto first_dir = RouteDirection(route.path[0], route.path[1]);
 	const auto last_dir = RouteDirection(route.path.back(), route.path[route.path.size() - 2]);
-	for (const auto &[tile, direction, join] : {std::tuple{route.path.front(), first_dir, job.join_first}, {route.path.back(), last_dir, job.join_last}}) {
-		auto result = Stop(tile, direction, rt, job, join, {});
+	const size_t last = route.path.size() - 1;
+	for (const auto &[i, direction, join] : {std::tuple{size_t{0}, first_dir, job.join_first}, {last, last_dir, job.join_last}}) {
+		auto result = Stop(route.path[i], direction, type_at(i), job, join, {});
 		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
 	}
@@ -251,6 +322,7 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	if (!execute) return ConstructionResult::Success;
 
 	std::vector<TileIndex> built;
+	std::vector<TileIndex> road_stops; ///< Stops on public road: removed without the road.
 	std::vector<VehicleID> vehicles;
 	auto rollback = [&]() {
 		for (VehicleID vehicle : vehicles) {
@@ -259,6 +331,11 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 				return;
 			}
 		}
+		for (TileIndex tile : road_stops) {
+			auto result = Command<Commands::RemoveRoadStop>::Do(EXEC, tile, 1, 1, job.stop, false);
+			if (result.Failed()) Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={} error={}", tile, result.GetErrorMessage());
+		}
+		/* Pieces added to public road are left; the road itself is never removed. */
 		for (auto it = built.rbegin(); it != built.rend(); ++it) {
 			auto result = Command<Commands::LandscapeClear>::Do(EXEC, *it);
 			if (result.Failed()) {
@@ -272,10 +349,13 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 		return ConstructionResult::Failed;
 	};
 	for (size_t i = 0; i < route.path.size(); i++) {
-		if (Command<Commands::BuildRoad>::Do(EXEC | CONSTRUCT, route.path[i], Pieces(route, i), rt, {}, TownID::Invalid()).Failed()) return fail("road");
-		built.push_back(route.path[i]);
+		if (!missing(i).None() && Command<Commands::BuildRoad>::Do(EXEC | CONSTRUCT, route.path[i], missing(i), type_at(i), {}, TownID::Invalid()).Failed()) return fail("road");
+		if (!on_road[i]) built.push_back(route.path[i]);
 	}
-	if (Stop(route.path.front(), first_dir, rt, job, job.join_first, EXEC).Failed() || Stop(route.path.back(), last_dir, rt, job, job.join_last, EXEC).Failed()) return fail("stops");
+	for (const auto &[i, direction, join] : {std::tuple{size_t{0}, first_dir, job.join_first}, {last, last_dir, job.join_last}}) {
+		if (Stop(route.path[i], direction, type_at(i), job, join, EXEC).Failed()) return fail("stops");
+		if (on_road[i]) road_stops.push_back(route.path[i]);
+	}
 	if (Command<Commands::BuildRoadDepot>::Do(EXEC | CONSTRUCT, route.depot, rt, depot_dir).Failed()) return fail("depot");
 	built.push_back(route.depot);
 	for (uint n = 0; n < job.vehicles; n++) {
@@ -297,9 +377,9 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	}
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : route.path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL route company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={}",
+	Debug(Facility::Misc, Severity::Notice, "FL route company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={} public_road={}",
 		_current_company, job.kind, CargoSpec::Get(job.cargo)->label.AsString(), job.vehicles, vehicles.front(), route.path.front(), route.path.back(),
-		route.depot, route.path.size(), Company::Get(_current_company)->money, signature);
+		route.depot, route.path.size(), Company::Get(_current_company)->money, signature, std::ranges::count(on_road, true));
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(route.path.front());
 		result_built->to = GetStationIndex(route.path.back());
@@ -380,9 +460,9 @@ ConstructionResult BuildTownRoad(const TechLibrary &library, const ServiceSpec &
 	for (size_t i = 0; i < std::min(MAX_PAIRS, pairs.size()); i++) {
 		const auto &pair = pairs[i];
 		for (const Town *town : {pair.a, pair.b}) {
-			if (!candidates.contains(town->index)) candidates.emplace(town->index, TownStops(town, cargo));
+			if (!candidates.contains(town->index)) candidates.emplace(town->index, TownStops(town, cargo, bus->VehInfo<RoadVehicleInfo>().roadtype));
 		}
-		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index));
+		auto route = FindRoute(candidates.at(pair.a->index), candidates.at(pair.b->index), bus->VehInfo<RoadVehicleInfo>().roadtype);
 		if (route.depot == INVALID_TILE) continue;
 		const MarketTier tier = TierForTowns(pair.a, pair.b);
 		auto result = Build(route, {stop == RoadStopType::Bus ? "bus" : "mail", stop, bus, cargo, GetTierLimits(tier).fleet, false});
@@ -431,7 +511,7 @@ ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec 
 		std::ranges::stable_sort(towns, {}, &Candidate::distance);
 		if (towns.size() > MAX_FEEDER_TOWNS) towns.resize(MAX_FEEDER_TOWNS);
 		for (const Candidate &candidate : towns) {
-			auto route = FindRoute(starts, TownStops(candidate.town, cargo));
+			auto route = FindRoute(starts, TownStops(candidate.town, cargo, bus->VehInfo<RoadVehicleInfo>().roadtype), bus->VehInfo<RoadVehicleInfo>().roadtype);
 			if (route.depot == INVALID_TILE) continue;
 			const MarketTier tier = TierForTowns(station->town, candidate.town);
 			RoadJob job{"feeder", RoadStopType::Bus, bus, cargo, GetTierLimits(tier).fleet, false, station->index};
@@ -452,26 +532,27 @@ ConstructionResult BuildFeederBus(const TechLibrary &library, const ServiceSpec 
  * @param place Industry, town or transfer station.
  * @param cargo Cargo carried.
  * @param destination Whether the cargo is delivered here, so the stop must accept it.
+ * @param rt Road type of the route's vehicles.
  * @return Candidate tiles.
  */
-static std::vector<TileIndex> FreightStops(const Place &place, CargoType cargo, bool destination)
+static std::vector<TileIndex> FreightStops(const Place &place, CargoType cargo, bool destination, RoadType rt)
 {
 	const int radius = StopCatchment(RoadStopType::Truck);
 	auto accepts = [&](TileIndex tile) { return !destination || GetAcceptanceAroundTiles(tile, 1, 1, radius).first[cargo] >= 8; };
 	if (place.IsHub()) {
-		auto stops = FindStops(place.hub, place.radius, [](TileIndex) { return true; });
+		auto stops = FindStops(place.hub, place.radius, rt, [](TileIndex) { return true; });
 		std::ranges::stable_sort(stops, {}, [&](TileIndex tile) { return DistanceManhattan(tile, place.hub); });
 		KeepUsable(stops, place, [](TileIndex tile) { return tile; }, place.usable ? 2 : SIZE_MAX);
 		return stops;
 	}
 	if (place.town != nullptr) {
-		return FindStops(place.town->xy, TOWN_SEARCH_RADIUS, [&](TileIndex tile) {
+		return FindStops(place.town->xy, TOWN_SEARCH_RADIUS, rt, [&](TileIndex tile) {
 			return ClosestTownFromTile(tile, UINT_MAX) == place.town && accepts(tile);
 		});
 	}
 	const Industry *industry = place.industry;
 	const int search = std::max<int>(industry->location.w, industry->location.h) / 2 + radius;
-	return FindStops(Centre(industry), search, [&](TileIndex tile) {
+	return FindStops(Centre(industry), search, rt, [&](TileIndex tile) {
 		TileArea area(tile, 1, 1);
 		area.Expand(radius);
 		return area.Intersects(industry->location) && accepts(tile);
@@ -487,12 +568,13 @@ ConstructionResult RoadLeg(const TechLibrary &library, const ServiceSpec &spec, 
 {
 	const Engine *truck = ChooseRoadVehicle(library, spec, FreightRole(library, job.cargo), job.cargo);
 	if (truck == nullptr) return ConstructionResult::Rejected;
-	const auto origins = FreightStops(from, job.cargo, false);
+	const RoadType rt = truck->VehInfo<RoadVehicleInfo>().roadtype;
+	const auto origins = FreightStops(from, job.cargo, false, rt);
 	if (origins.empty()) return ConstructionResult::Rejected;
-	const auto destinations = FreightStops(to, job.cargo, true);
+	const auto destinations = FreightStops(to, job.cargo, true, rt);
 	if (destinations.empty()) return ConstructionResult::Rejected;
 	built.sited = true;
-	const auto route = FindRoute(origins, destinations);
+	const auto route = FindRoute(origins, destinations, rt);
 	if (route.depot == INVALID_TILE) return ConstructionResult::Rejected;
 	const RoadJob road_job{"truck", RoadStopType::Truck, truck, job.cargo, GetTierLimits(job.tier).fleet, true, from.join, to.join, job.transfer};
 	return Build(route, road_job, execute, &built);

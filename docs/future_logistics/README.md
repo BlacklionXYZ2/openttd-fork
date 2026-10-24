@@ -109,7 +109,9 @@ planner flush the track signal update buffer, as the normal command loop does.
 The air planner builds two airports of the type the market tier allows and a
 small fleet chosen by the Tech Library, for passengers, mail or freight. The
 water planner builds two docks on the same water, a ship depot and a fleet, and
-uses an oil rig's own dock where there is one. The freight planner picks a
+uses an oil rig's own dock where there is one. Road routes run over new road on clear land and
+over existing town and unowned roads, with drive-through stops on straight town streets; they
+only add missing road pieces to town roads and never remove them. The freight planner picks a
 cargo, source and destination and builds the route with one of these, or with
 two that meet at a joined station where the first leg's vehicles transfer and
 leave empty. The road planner builds buses, feeder

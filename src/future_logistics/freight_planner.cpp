@@ -231,6 +231,15 @@ ConstructionResult BuildFreight(const TechLibrary &library, const ServiceSpec &s
 	if (main == nullptr || main->leg == nullptr) return ConstructionResult::Rejected;
 	const std::vector<FreightPair> pairs = FreightPairs(spec, reserved);
 	Debug(Facility::Misc, Severity::Notice, "FL freight company={} lead={} candidates={}", _current_company, main->name, pairs.size());
+	size_t preferred = 0;
+	for (size_t i = 0; i < pairs.size(); i++) {
+		/* The first few, and the first few in the rival's preferred markets. */
+		if (i >= 5 && (pairs[i].preference != 0 || preferred++ >= 3)) continue;
+		Debug(Facility::Misc, Severity::Debug1, "FL freight candidate company={} rank={} source={} destination={}{} cargo={} distance={} chain={} preference={}", _current_company, i,
+			pairs[i].source->index, pairs[i].destination != nullptr ? "industry:" : "town:",
+			pairs[i].destination != nullptr ? pairs[i].destination->index.base() : pairs[i].town->index.base(),
+			CargoSpec::Get(pairs[i].cargo)->label.AsString(), pairs[i].distance, pairs[i].chain, pairs[i].preference);
+	}
 
 	size_t tried = 0;
 	for (const FreightPair &pair : pairs) {

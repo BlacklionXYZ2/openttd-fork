@@ -1,0 +1,6 @@
+##grflangid 0x01
+STR_GRF_NAME      :Future Logistics
+STR_GRF_DESC      :New technology for the Future Logistics game: drones first; hyperloop, rockets, data centres and more to follow. Values and graphics are placeholders.
+STR_FAMILY_DRONE  :Drones
+STR_CARGO_DRONE   :Cargo Drone
+STR_DRONE_PORT    :Drone Port

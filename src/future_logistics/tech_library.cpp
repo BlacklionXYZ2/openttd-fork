@@ -235,7 +235,9 @@ double ScoreTech(uint capacity, uint speed, uint16_t reliability_max, Money cost
 		ApplyInfraTags(record, rti->badges, library.problems);
 	}
 	for (uint8_t type = 0; type < NUM_AIRPORTS; type++) {
-		const AirportSpec *spec = AirportSpec::Get(type);
+		/* A NewGRF airport based on a built-in one replaces it: the built-in one is disabled and Get() redirects to
+		 * the replacement, which is listed under its own type. Read each type without the redirect. */
+		const AirportSpec *spec = AirportSpec::GetWithoutOverride(type);
 		if (!spec->enabled) continue;
 		InfraRecord &record = library.infrastructure.emplace_back();
 		record.kind = InfraKind::Airport;
@@ -275,6 +277,7 @@ bool TechLibrary::IsUsable(const TechRecord &record, const TechQuery &query) con
 	}
 	if (query.roadtype != INVALID_ROADTYPE && record.roadtype != query.roadtype) return false;
 	if (query.short_strip && record.fast) return false;
+	if (query.helicopter && !record.helicopter) return false;
 	if (query.distance > 0 && record.range > 0 && record.range < query.distance) return false;
 	if (IsValidCargoType(query.cargo) && !record.traction && (record.capacity == 0 || !record.refits.Test(query.cargo))) return false;
 	const Engine *engine = Engine::Get(record.engine);

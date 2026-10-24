@@ -96,6 +96,22 @@ Found and fixed during the runs:
 - With breakdowns off vehicles never visit depots, so autorenew and autoreplace
   never ran; the AI now sends vehicles that are due.
 
+## Phase 7 start: drones (Future Logistics NewGRF)
+
+Branch `feature/future-logistics-grf`, 24 October 2026, Linux.
+
+| Check | Result |
+| --- | --- |
+| NewGRF build | `future_logistics.grf` builds with NML 0.9.0; `validate` reports no problems |
+| Controlled world, 2026, with the NewGRF | AeroLink and Metro & Regional both built drone mail routes on day zero (two drones each) between drone ports; the base-game helistation stays available as its own airport |
+| Same world, four simulated months | Every drone reached both drone ports and carried full loads of mail; CorporateAI added drones where mail waited (four → nine). Profit is about break-even at the placeholder values |
+| Integration suite | **31 scenarios passed**, including two new drone scenarios |
+
+Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
+so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
+helistation copy first, and the Tech Library and `fl_id` index read each airport type without
+following the replacement redirect, so no airport is listed twice.
+
 ## Reproduction and evidence
 
 Local build (dependencies were extracted into `work/deps/usr` because this

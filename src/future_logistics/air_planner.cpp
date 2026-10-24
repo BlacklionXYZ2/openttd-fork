@@ -40,6 +40,43 @@ constexpr size_t MAX_AIR_PAIRS = 32; ///< Routes tried per airport type.
 constexpr int AIRPORT_SEARCH_RADIUS = 20; ///< How far from the town centre an airport may go.
 constexpr uint MIN_AIR_DISTANCE = 48; ///< Shorter hops are left to road and rail.
 constexpr uint MAX_AIR_DISTANCE = 256; ///< Longest route considered, in Manhattan tiles.
+constexpr uint MIN_HELI_DISTANCE = 12; ///< Shortest helicopter or drone route, in Manhattan tiles.
+constexpr uint MAX_HELI_DISTANCE = 64; ///< Longest helicopter or drone route: heliports serve short hops.
+
+/** An airport type the planners may build, and what it allows. */
+struct AirportChoice {
+	const InfraRecord *record; ///< The airport in the Tech Library.
+	uint8_t type; ///< Airport type.
+	bool helicopters_only; ///< Heliports, helistations and drone ports only take helicopters.
+	uint8_t class_rank; ///< Size class for the market tier limit; helicopter airports count as the smallest.
+	uint min_distance; ///< Shortest route it serves.
+	uint max_distance; ///< Longest route it serves.
+};
+
+/**
+ * List the airport types a service may build, largest first. An airport needs a hangar, to buy the fleet in.
+ * Airports that only take helicopters serve short routes and count as the smallest class.
+ * @param library Loaded transport technology, including the airport types.
+ * @param spec The service, whose family limits which tagged airports it may use.
+ * @return Usable airport types.
+ */
+std::vector<AirportChoice> UsableAirports(const TechLibrary &library, const ServiceSpec &spec)
+{
+	std::vector<AirportChoice> airports;
+	for (const InfraRecord &record : library.Infrastructure()) {
+		if (record.kind != InfraKind::Airport || !spec.AllowsInfrastructure(record.tech)) continue;
+		const AirportSpec *airport_spec = AirportSpec::Get(record.index);
+		if (!airport_spec->IsAvailable() || airport_spec->fsm == nullptr || airport_spec->depots.empty()) continue;
+		const auto flags = GetAirport(record.index)->flags;
+		if (!flags.Any({AirportFTAClass::Flag::Airplanes, AirportFTAClass::Flag::Helicopters})) continue;
+		const bool helicopters_only = !flags.Test(AirportFTAClass::Flag::Airplanes);
+		airports.push_back({&record, static_cast<uint8_t>(record.index), helicopters_only,
+			static_cast<uint8_t>(helicopters_only ? 0 : airport_spec->class_index.base()),
+			helicopters_only ? MIN_HELI_DISTANCE : MIN_AIR_DISTANCE, helicopters_only ? MAX_HELI_DISTANCE : MAX_AIR_DISTANCE});
+	}
+	std::ranges::stable_sort(airports, std::greater{}, [](const AirportChoice &a) { return a.record->size_x * a.record->size_y; });
+	return airports;
+}
 
 /**
  * Get an airport type's catchment radius as the station rules apply it.
@@ -219,22 +256,16 @@ struct AirPair {
 ConstructionResult TryAirPairs(const TechLibrary &library, const ServiceSpec &spec, CargoType cargo, TechRole role, const std::vector<AirPair> &pairs,
 	const std::function<void(const AirPair &, const TechRecord &)> &on_success)
 {
-	std::vector<const InfraRecord *> airports;
-	for (const InfraRecord &record : library.Infrastructure()) {
-		if (record.kind != InfraKind::Airport || !spec.AllowsInfrastructure(record.tech)) continue;
-		const AirportSpec *airport_spec = AirportSpec::Get(record.index);
-		if (airport_spec->IsAvailable() && airport_spec->fsm != nullptr && GetAirport(record.index)->flags.Test(AirportFTAClass::Flag::Airplanes)) airports.push_back(&record);
-	}
-	std::ranges::stable_sort(airports, std::greater{}, [](const InfraRecord *r) { return r->size_x * r->size_y; });
-
-	for (const InfraRecord *airport : airports) {
-		const uint8_t type = static_cast<uint8_t>(airport->index);
+	for (const AirportChoice &airport : UsableAirports(library, spec)) {
+		const uint8_t type = airport.type;
 		const AirportSpec *airport_spec = AirportSpec::Get(type);
 		const bool short_strip = GetAirport(type)->flags.Test(AirportFTAClass::Flag::ShortStrip);
-		for (size_t i = 0; i < std::min(MAX_AIR_PAIRS, pairs.size()); i++) {
-			const AirPair &pair = pairs[i];
+		size_t tried = 0;
+		for (const AirPair &pair : pairs) {
+			if (pair.distance < airport.min_distance || pair.distance > airport.max_distance) continue;
+			if (tried++ == MAX_AIR_PAIRS) break;
 			const TierLimits &limits = GetTierLimits(pair.tier);
-			if (!limits.air_passenger || airport_spec->class_index.base() > limits.max_airport_class) continue;
+			if (!limits.air_passenger || airport.class_rank > limits.max_airport_class) continue;
 			const uint range_needed = static_cast<uint>(std::ceil(std::sqrt(static_cast<double>(DistanceSquare(pair.a.Centre(), pair.b.Centre())))));
 			TechQuery query;
 			query.mode = TechMode::Air;
@@ -242,9 +273,10 @@ ConstructionResult TryAirPairs(const TechLibrary &library, const ServiceSpec &sp
 			query.cargo = cargo;
 			query.company = _current_company;
 			query.short_strip = short_strip;
+			query.helicopter = airport.helicopters_only;
 			query.distance = range_needed;
 			query.family = spec.family;
-			query.provides = airport->provides;
+			query.provides = airport.record->provides;
 			query.early_adopters = spec.early_adopters;
 			const TechRecord *record = library.FindBest(query);
 			if (record == nullptr) continue;
@@ -286,7 +318,7 @@ ConstructionResult BuildTownAirline(const TechLibrary &library, const ServiceSpe
 			if (a->index >= b->index) continue;
 			const uint distance = DistanceManhattan(a->xy, b->xy);
 			const MarketTier tier = TierForTowns(a, b);
-			if (distance < MIN_AIR_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(tier).air_passenger || tier < spec.min_tier) continue;
+			if (distance < MIN_HELI_DISTANCE || distance > MAX_AIR_DISTANCE || !GetTierLimits(tier).air_passenger || tier < spec.min_tier) continue;
 			pairs.push_back({0, distance, Place::Of(a), Place::Of(b), tier});
 		}
 	}
@@ -310,27 +342,24 @@ ConstructionResult AirLeg(const TechLibrary &library, const ServiceSpec &spec, c
 	if (from.town != nullptr || to.town != nullptr) return ConstructionResult::Rejected;
 	const TierLimits &limits = GetTierLimits(job.tier);
 	if (!limits.air_passenger) return ConstructionResult::Rejected;
-	std::vector<const InfraRecord *> airports;
-	for (const InfraRecord &record : library.Infrastructure()) {
-		if (record.kind != InfraKind::Airport || !spec.AllowsInfrastructure(record.tech)) continue;
-		const AirportSpec *airport_spec = AirportSpec::Get(record.index);
-		if (airport_spec->IsAvailable() && airport_spec->fsm != nullptr && GetAirport(record.index)->flags.Test(AirportFTAClass::Flag::Airplanes)) airports.push_back(&record);
-	}
-	std::ranges::stable_sort(airports, std::greater{}, [](const InfraRecord *r) { return r->size_x * r->size_y; });
 	const uint range_needed = static_cast<uint>(std::ceil(std::sqrt(static_cast<double>(DistanceSquare(from.Centre(), to.Centre())))));
-	for (const InfraRecord *airport : airports) {
-		const uint8_t type = static_cast<uint8_t>(airport->index);
+	const uint distance = DistanceManhattan(from.Centre(), to.Centre());
+	for (const AirportChoice &airport : UsableAirports(library, spec)) {
+		const uint8_t type = airport.type;
 		const AirportSpec *airport_spec = AirportSpec::Get(type);
-		if (airport_spec->class_index.base() > limits.max_airport_class) continue;
+		if (airport.class_rank > limits.max_airport_class) continue;
+		/* Transfer legs can be short; each airport type keeps to the routes it suits. */
+		if (distance < airport.min_distance || distance > airport.max_distance) continue;
 		TechQuery query;
 		query.mode = TechMode::Air;
 		query.role = FreightRole(library, job.cargo);
 		query.cargo = job.cargo;
 		query.company = _current_company;
 		query.short_strip = GetAirport(type)->flags.Test(AirportFTAClass::Flag::ShortStrip);
+		query.helicopter = airport.helicopters_only;
 		query.distance = range_needed;
 		query.family = spec.family;
-		query.provides = airport->provides;
+		query.provides = airport.record->provides;
 		query.early_adopters = spec.early_adopters;
 		const TechRecord *record = library.FindBest(query);
 		if (record == nullptr) continue;

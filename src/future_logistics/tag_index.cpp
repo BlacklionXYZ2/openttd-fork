@@ -82,7 +82,9 @@ std::vector<TaggedItem> CollectTaggedItems()
 		if (!rti->label.Empty()) Add(items, TaggedKind::RoadType, rt, rti->badges);
 	}
 	for (uint8_t type = 0; type < NUM_AIRPORTS; type++) {
-		const AirportSpec *spec = AirportSpec::Get(type);
+		/* A NewGRF airport based on a built-in one replaces it: the built-in one is disabled and Get() redirects to
+		 * the replacement, which is listed under its own type. Read each type without the redirect. */
+		const AirportSpec *spec = AirportSpec::GetWithoutOverride(type);
 		if (spec->enabled) Add(items, TaggedKind::Airport, type, spec->badges);
 	}
 	for (IndustryType type = 0; type < NUM_INDUSTRYTYPES; type++) {

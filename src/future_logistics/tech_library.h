@@ -134,6 +134,7 @@ struct TechQuery {
 	TechPart part = TechPart::Vehicle; ///< Which part of a consist.
 	RailType railtype = INVALID_RAILTYPE; ///< Track the vehicle must run on, or INVALID_RAILTYPE for any.
 	bool short_strip = false; ///< The airports have a short strip, so fast aircraft are unsafe.
+	bool helicopter = false; ///< The airports only take helicopters, such as heliports and drone ports.
 	uint distance = 0; ///< Route length in tiles that an aircraft's range must cover; 0 to ignore.
 	std::string family; ///< Tech family the vehicle must belong to, or empty for any.
 	std::vector<std::string> provides; ///< Sites available, which must cover the vehicle's fl_needs.

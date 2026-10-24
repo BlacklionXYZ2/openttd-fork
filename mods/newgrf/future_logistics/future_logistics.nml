@@ -1,0 +1,93 @@
+/*
+ * Future Logistics NewGRF. GPL-2.0-only.
+ *
+ * New technology that arrives over the decades, described with the shared tech format
+ * (docs/future_logistics/tech_format.md) so rival companies find and adopt it. Every number
+ * here is a placeholder until the balance pass; see PLACEHOLDERS.md. Graphics are placeholders
+ * too: base-game sprites stand in until the art is converted.
+ *
+ * Build with NML 0.9.0: ./build.sh
+ */
+grf {
+    grfid: "FL\01\01";
+    name: string(STR_GRF_NAME);
+    desc: string(STR_GRF_DESC);
+    version: 1;
+    min_compatible_version: 1;
+}
+
+badgetable {
+    "fl_format/2",
+    /* Drones: a tech family built with the airport pair mechanic, for mail between towns. */
+    "fl_family/drone",
+    "fl_family/drone/mechanic/airport_pair",
+    "fl_family/drone/market/mail",
+    "fl_family/drone/min_tier/town",
+    "fl_tech/drone",
+    "fl_needs/drone_pad",
+    "fl_provides/drone_pad",
+    "fl_role/express",
+    "fl_role/parcel",
+    "fl_id/cargo_drone",
+    "fl_id/drone_port",
+    /* Metro & Regional already runs mail by road; it takes up drones a year after they arrive.
+     * AeroLink adopts every new air family two years after it arrives by its own rule. */
+    "fl_profile/metro_regional/adopt/drone/airport_pair/mail/1",
+    /* Shared badge classes from the NewGRF specification, for other NewGRFs, AIs and the purchase list. */
+    "role/mail",
+    "power/electric",
+}
+
+/* Only the family has a display name; the fl_ classes stay unnamed so players never see them. */
+item(FEAT_BADGES, family_drone, 0) { property { label: "fl_family/drone"; name: string(STR_FAMILY_DRONE); } }
+
+/* Cargo drone. Placeholder graphics: the base-game Tricario helicopter sprite. */
+item(FEAT_AIRCRAFT, cargo_drone, 64) {
+    property {
+        name:                         string(STR_CARGO_DRONE);
+        climates_available:           ALL_CLIMATES;
+        introduction_date:            date(2022, 1, 1);
+        model_life:                   40;
+        vehicle_life:                 12;
+        reliability_decay:            20;
+        loading_speed:                10;
+        sprite_id:                    9;
+        aircraft_type:                AIRCRAFT_TYPE_HELICOPTER;
+        cost_factor:                  20;
+        running_cost_factor:          12;
+        speed:                        120 km/h;
+        acceleration:                 20;
+        passenger_capacity:           8;
+        mail_capacity:                0;
+        /* Passengers are excluded, so the game makes mail, the first refittable cargo, the default. */
+        refittable_cargo_classes:     bitmask(CC_MAIL, CC_EXPRESS);
+        non_refittable_cargo_classes: bitmask(CC_PASSENGERS);
+        range:                        80;
+        sound_effect:                 SOUND_TAKEOFF_HELICOPTER;
+        badges: ["fl_format/2", "fl_id/cargo_drone", "fl_tech/drone", "fl_needs/drone_pad",
+                 "fl_role/express", "fl_role/parcel", "role/mail", "power/electric"];
+    }
+}
+
+/* The first NewGRF airport based on a built-in airport replaces it. This unchanged copy of the
+ * helistation (type 8) takes that place, so the drone port below is added rather than taking the
+ * helistation away from players. */
+item(FEAT_AIRPORTS, helistation_unchanged, 0) {
+    property {
+        override: 8;
+    }
+}
+
+/* Drone port. A helistation layout until the four-pad art is converted; OpenTTD airports have at
+ * most three helipads. */
+item(FEAT_AIRPORTS, drone_port, 1) {
+    property {
+        override:         8;
+        name:             string(STR_DRONE_PORT);
+        years_available:  [2022, 65535];
+        catchment_area:   4;
+        noise_level:      1;
+        maintenance_cost: 10;
+        badges: ["fl_format/2", "fl_id/drone_port", "fl_tech/drone", "fl_provides/drone_pad"];
+    }
+}

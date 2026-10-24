@@ -56,7 +56,7 @@ content" below).
 |---|---|---|
 | `rail_line` | two terminus stations, a single line, a depot, one train | rail |
 | `road_route` | two drive-through stops, an owned road, a depot, a small fleet | road |
-| `airport_pair` | two airports and a small fleet | air |
+| `airport_pair` | two airports and a small fleet; airports that only take helicopters (heliports, drone ports) get helicopters only and serve routes of 12 to 64 tiles, other airports 48 to 256 | air |
 | `dock_pair` | two docks on the same water, a ship depot and a small fleet; an industry with its own dock, such as an oil rig, is used as it is | water |
 
 ### Freight routes and transfers

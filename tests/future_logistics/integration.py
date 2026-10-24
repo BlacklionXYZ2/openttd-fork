@@ -249,6 +249,22 @@ DayZeroMonopolies =
     require(not re.search(r"recipe=\w+/(rail_line|airport_pair)/\w+ fallback=\w+ result=success", tiny),
             "two villages should not get railways or airlines")
 
+    # The Future Logistics NewGRF itself: drones arrive in 2022 and rivals adopt them for mail.
+    fl_grf = ROOT / "mods/newgrf/future_logistics/future_logistics.grf"
+    drones, drone_save = run("drone-world", year=2026, grfs=[fl_grf],
+                             commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
+    require("FL tech validate problems=0" in drones, "the Future Logistics NewGRF has declaration problems")
+    require(re.search(r"FL tech vehicle id=464C0101:air:64 .*roles=parcel,express\(declared\) power=electric tech=drone ", drones),
+            "the cargo drone was not read with its family, roles and power source")
+    require(len(re.findall(r"FL tech infra kind=airport ", drones)) == len(set(re.findall(r"FL tech infra kind=airport id=(\S+)", drones))),
+            "an airport was listed twice")
+    for company in ("2", "3"):
+        require(re.search(rf"FL service company={company} recipe=drone/airport_pair/mail fallback=false result=success", drones),
+                f"company {company} did not adopt drones for mail")
+    drone_run, _ = run("drone-service", load=drone_save, service=True, months=4, grfs=[fl_grf])
+    flying = re.findall(r"FL check company=\d+ vehicle=\d+ type=air connected=true served=true .*engine=464C0101:air:64 ", drone_run)
+    require(len(flying) >= 4, "the drones did not serve their drone ports")
+
     # A NewGRF that adds a tech family, a rival, a cargo meaning, a rule for a built-in rival, and mistakes.
     grf_text, _ = run("newgrf-tech-tree", limit=5, grfs=[ROOT / "tests/future_logistics/grf/fl_test.grf"],
                       commands="future_logistics_tech recipes\nfuture_logistics_tech validate\nfuture_logistics_tech list\n"
@@ -330,7 +346,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones from the Future Logistics NewGRF adopted for mail; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

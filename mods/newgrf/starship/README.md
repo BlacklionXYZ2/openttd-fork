@@ -53,22 +53,28 @@ Made from the Corporate Infrastructure handoff art (`../future_logistics/art/ori
 - **Launch and landing.** Starship is a helicopter-type aircraft, so it rises straight up from the
   launch mount and comes straight back down onto it; landing is the launch in reverse. The launch
   site's movement is the country airport's, whose helicopters take off at (44, 37) and land at
-  (44, 40) in sixteenths of a tile, and the art is placed so its launch mount is there (measured in
-  a game). Starship waits on the mount while its engines run up, then climbs, accelerating.
-- **Flame.** The rocket body is the solid part of `rocket_idle.png`, scaled to 44 pixels tall at
-  normal zoom; it stands upright, so one sprite serves all eight directions. The flame is drawn as
-  the helicopter's rotor, which the game draws just above the body and animates every tick while the
-  engine runs: three frames cycle. Which flame depends on the flight phase (`flight_state`):
-  flame over an exhaust plume while launching and landing, the flame alone in flight, none on the
-  ground. The flame comes from `rocket_powered.png`, scaled so its rocket is as wide as the idle one
-  (the two images are drawn at different scales); the plume is drawn by the tool.
+  (44, 40) in sixteenths of a tile, and the art is placed so its launch mount is there.
+- **Seen only on the pad and in the air.** On the map the rocket is drawn as the helicopter's
+  rotor, which the game redraws every tick while the engine runs; the body sprite is left blank,
+  since the game only redraws it when the vehicle moves. So Starship appears standing in the
+  mount's clamp when its engines light for take-off, climbs away, and on landing comes down onto
+  the mount and is gone once its engines stop: it never drifts between the mount, the stands and
+  the hangar. Vehicle windows, the depot and the purchase list show the rocket as usual.
+- **Size and flame.** The rocket is the solid part of `rocket_idle.png`, 125 pixels tall at normal
+  zoom, so standing in the clamp its nose reaches the tower's upper clamp arm (measured in a game,
+  with the airport's ground grid drawn over a screenshot). One sprite serves all eight directions.
+  Under it is the flame from `rocket_powered.png` (scaled so its rocket is as wide as the idle one;
+  the two images are drawn at different scales), over an exhaust plume drawn by the tool while
+  launching and landing. Three frames cycle with the rotor; which set depends on the flight phase
+  (`flight_state`).
 - **Launch site.** `spaceport_empty.webp`, scaled to a 4×4 footprint, placed over the 5×4 layout and
   cut into one piece per tile. Each piece is its tile's ground sprite, with concrete where the art
   does not reach. Every pixel belongs to exactly one piece, so the pieces rebuild the picture
   whatever order the tiles are drawn in, with no seams. The hangar is the country airport's, at
   tile (3, 0), beside the art's hangar building.
 
-Known limits: the art's back edge reaches a quarter of a tile past the layout's north-east side;
+Known limits: Starship's take-off and landing spots are 3/16 of a tile apart, so it lands a
+little in front of the clamp; the art's back edge reaches a quarter of a tile past the layout's north-east side;
 the tower's upper pieces belong to a tile far below them, so they can be clipped when only part of
 the screen is redrawn; and the rocket has no separate shadow sprite.
 

@@ -52,59 +52,78 @@ badgetable {
 item(FEAT_BADGES, family_rocket, 0) { property { label: "fl_family/rocket"; name: string(STR_FAMILY_ROCKET); } }
 
 /* Starship. A helicopter-type aircraft, so it launches straight up from the pad and lands straight down onto it,
- * as a reusable rocket does. The body is the same upright rocket in every direction. The flame is drawn as the
- * helicopter's rotor, which the game draws just above the body and animates while the engine runs: blank when
- * stopped, then three frames that cycle. */
+ * as a reusable rocket does. The rocket is the same upright sprite in every direction, tall enough to reach the
+ * launch tower's upper clamp. */
 spriteset(starship_body, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/rocket_idle_1x.png") {
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
-    [0, 0, 7, 44, -3, -42]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
 }
 alternative_sprites(starship_body, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/rocket_idle_2x.png") {
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
-    [0, 0, 13, 88, -6, -84]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
 }
 
-/* Launch and landing: flame over an exhaust plume. */
+/* On the map the body is never drawn: the whole rocket is drawn as the rotor (below), which the game redraws every
+ * tick while the engine runs, whereas the body is only redrawn when it moves. So Starship is seen while its engines
+ * run on the launch mount, in the air and landing: it appears on the mount for take-off and is gone once it has
+ * landed, rather than drifting between the mount, stands and hangar. The depot, vehicle windows and purchase list
+ * (the low byte of extra_callback_info1 is not 0) show the rocket. */
+spriteset(starship_hidden, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/flame_strip_1x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+}
+switch (FEAT_AIRCRAFT, SELF, starship_graphics, extra_callback_info1 & 0xFF) {
+    0: starship_hidden;
+    starship_body;
+}
+
+/* Launch and landing: the rocket over its flame and an exhaust plume. */
 spriteset(starship_plume, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/plume_strip_1x.png") {
     [0, 0, 1, 1, 0, 0]
-    [2, 0, 26, 31, -13, 6]
-    [29, 0, 26, 34, -13, 6]
-    [56, 0, 26, 38, -13, 6]
+    [2, 0, 74, 211, -7, -130]
+    [77, 0, 74, 220, -7, -130]
+    [152, 0, 74, 231, -7, -130]
 }
 alternative_sprites(starship_plume, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/plume_strip_2x.png") {
     [0, 0, 1, 1, 0, 0]
-    [2, 0, 52, 62, -26, 12]
-    [55, 0, 52, 68, -26, 12]
-    [108, 0, 52, 76, -26, 12]
+    [2, 0, 148, 422, -14, -260]
+    [151, 0, 148, 440, -14, -260]
+    [300, 0, 148, 462, -14, -260]
 }
 
-/* Flight: the flame alone. */
+/* Flight: the rocket over its flame. */
 spriteset(starship_flame, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/flame_strip_1x.png") {
     [0, 0, 1, 1, 0, 0]
-    [2, 0, 12, 13, -6, 6]
-    [15, 0, 12, 16, -6, 6]
-    [28, 0, 12, 20, -6, 6]
+    [2, 0, 33, 160, 14, -130]
+    [36, 0, 33, 169, 14, -130]
+    [70, 0, 33, 180, 14, -130]
 }
 alternative_sprites(starship_flame, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/flame_strip_2x.png") {
     [0, 0, 1, 1, 0, 0]
-    [2, 0, 23, 26, -11, 12]
-    [26, 0, 23, 32, -11, 12]
-    [50, 0, 23, 40, -11, 12]
+    [2, 0, 66, 320, 27, -260]
+    [69, 0, 66, 338, 27, -260]
+    [136, 0, 66, 360, 27, -260]
 }
 
-/* On the ground: no flame. */
+/* On the ground: nothing. */
 spriteset(starship_no_flame, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/flame_strip_1x.png") {
     [0, 0, 1, 1, 0, 0]
     [0, 0, 1, 1, 0, 0]
@@ -118,9 +137,10 @@ alternative_sprites(starship_no_flame, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/f
     [0, 0, 1, 1, 0, 0]
 }
 
-/* The flame by flight phase (var 0xE2, the TTDPatch movement states the game reports): launching (23 at an airport,
- * 26 at a heliport) and landing (25, 28) show the plume, landing being the launch in reverse; climbing and flying
- * (15 to 21) show the flame alone; on the ground there is none. */
+/* The rotor by flight phase (var 0xE2, the TTDPatch movement states the game reports): launching (23 at an airport,
+ * 26 at a heliport) and landing (25, 28) show the rocket with flame and plume, landing being the launch in reverse;
+ * climbing and flying (15 to 21) show it with its flame; anything else, on the ground, shows nothing. Each set is
+ * blank for a stopped rotor, then three frames that cycle. */
 switch (FEAT_AIRCRAFT, SELF, starship_rotor, flight_state) {
     23: starship_plume;
     25: starship_plume;
@@ -157,7 +177,7 @@ item(FEAT_AIRCRAFT, starship, 64) {
                  "role/passenger", "role/mail", "role/freight", "power/rocket"];
     }
     graphics {
-        default:  starship_body;
+        default:  starship_graphics;
     }
     /* The rotor is drawn through the helicopter's override of itself. */
     livery_override(starship) {

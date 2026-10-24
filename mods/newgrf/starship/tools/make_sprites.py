@@ -22,7 +22,9 @@ HERE = Path(__file__).resolve().parent.parent
 ART = HERE.parent / "future_logistics" / "art" / "originals"
 GFX = HERE / "gfx"
 
-ROCKET_HEIGHT = 44  # Rocket body height at normal zoom, in pixels.
+# Rocket body height at normal zoom, in pixels: standing on the launch mount, its top reaches the upper clamp
+# arm of the tower (measured in game).
+ROCKET_HEIGHT = 125
 TILE_W, TILE_H = 64, 32  # A tile's ground diamond at normal zoom.
 PAD_TILES = 4  # The art's footprint, in tiles each way.
 # The launch site's layout, in tiles along x and y, and where the art's footprint starts in it. The offset puts
@@ -32,6 +34,10 @@ PAD_TILES = 4  # The art's footprint, in tiles each way.
 LAYOUT_TILES = (5, 4)
 ART_OFFSET = (0.71, -0.24)
 ROTOR_Z_OFFSET = 5  # A helicopter's rotor is drawn this many pixels above its body (aircraft.h).
+# Where the lit rocket stands, relative to its position at the launch site's take-off spot, in pixels at normal
+# zoom (measured in game with the airport's ground grid drawn over a screenshot): the clamp opening on top of
+# the launch mount is this far right of and above the take-off spot. In flight the offset makes no difference.
+MOUNT_OFFSET = (30, -12)
 
 
 def opaque_crop(image, threshold=200, alpha_floor=60):
@@ -87,10 +93,10 @@ def plume(width, height, frame, zoom):
         y = rng.uniform(0.15, 0.95) * height
         spread = (y / height) * width * 0.45
         x = width / 2 + rng.uniform(-spread, spread)
-        r = rng.uniform(1.5, 3.5) * zoom * (0.6 + y / height)
+        r = rng.uniform(1.5, 3.5) * zoom * (ROCKET_HEIGHT / 44) * (0.6 + y / height)
         shade = rng.randint(190, 240)
         draw.ellipse((x - r, y - r * 0.7, x + r, y + r * 0.7), fill=(shade, shade, shade, rng.randint(150, 220)))
-    return image.filter(ImageFilter.GaussianBlur(0.6 * zoom))
+    return image.filter(ImageFilter.GaussianBlur(0.6 * zoom * ROCKET_HEIGHT / 44))
 
 
 def rocket_sprites(info):
@@ -106,27 +112,42 @@ def rocket_sprites(info):
         w = max(2, round(idle_core.width * scale * zoom))
         h = max(2, round(idle_core.height * scale * zoom))
         # The body: the rocket's foot is two pixels (at normal zoom) below the vehicle's position.
-        save_rocket(info, "rocket_idle", drop_fringe(idle_core.resize((w, h), Image.LANCZOS)), zoom, h - 2 * zoom)
+        body = drop_fringe(idle_core.resize((w, h), Image.LANCZOS))
+        save_rocket(info, "rocket_idle", body, zoom, h - 2 * zoom)
         pw = max(2, round(powered_core.width * powered_scale * zoom))
         ph = max(2, round(powered_core.height * powered_scale * zoom))
         lit = drop_fringe(powered_core.resize((pw, ph), Image.LANCZOS))
         flame = lit.crop((0, round(flame_start(powered_core) * powered_scale * zoom), pw, ph))
-        # The flame is drawn as the helicopter's rotor, which the game draws ROTOR_Z_OFFSET above the body and
-        # animates while the engine runs. Its top meets the rocket's foot, overlapping it by a pixel.
-        top = (ROTOR_Z_OFFSET + 2 - 1) * zoom
+        # The rocket with its engines lit is drawn as the helicopter's rotor, which the game draws ROTOR_Z_OFFSET
+        # above the body and redraws every tick while the engine runs (the body is only redrawn when it moves).
         flames, plumes = [], []
         for frame, stretch in enumerate((0.8, 1.0, 1.25)):
             fh = max(1, round(flame.height * stretch))
             stretched = flame.resize((pw, fh), Image.LANCZOS)
-            # Flight: the flame alone, flickering by changing length.
-            flames.append((stretched, -(pw // 2), top))
-            # Launch and landing: the flame over a spreading exhaust plume.
-            cloud_w, cloud_h = 26 * zoom, 18 * zoom
-            sprite = plume(cloud_w, fh + cloud_h, frame, zoom)
-            sprite.alpha_composite(stretched, ((cloud_w - pw) // 2, 0))
-            plumes.append((sprite, -(cloud_w // 2), top))
+            # Flight: the rocket over its flame, which flickers by changing length.
+            flames.append(lit_rocket(body, stretched, None, zoom))
+            # Launch and landing: the rocket over its flame and a spreading exhaust plume, which grows with the rocket.
+            cloud_w, cloud_h = round(26 * zoom * ROCKET_HEIGHT / 44), round(18 * zoom * ROCKET_HEIGHT / 44)
+            plumes.append(lit_rocket(body, stretched, plume(cloud_w, fh + cloud_h, frame, zoom), zoom))
         save_rotor_strip(info, "flame", flames, zoom)
         save_rotor_strip(info, "plume", plumes, zoom)
+
+
+def lit_rocket(body, flame, cloud, zoom):
+    """The rocket body over its flame, and an exhaust cloud under the flame if given, with rotor offsets."""
+    width = max(body.width, flame.width, cloud.width if cloud else 0)
+    foot = body.height - zoom
+    height = max(foot + flame.height, foot + (cloud.height if cloud else 0))
+    image = Image.new("RGBA", (width, height))
+    if cloud:
+        image.alpha_composite(cloud, ((width - cloud.width) // 2, foot))
+    image.alpha_composite(flame, ((width - flame.width) // 2, foot))
+    image.alpha_composite(body, ((width - body.width) // 2, 0))
+    # The body's top is (body height - 2) pixels above the vehicle's position at normal zoom, moved to the launch
+    # mount's clamp; the rotor is drawn ROTOR_Z_OFFSET pixels higher than the body, so its sprite starts that
+    # much lower relative to it.
+    return (image, -(width // 2) + MOUNT_OFFSET[0] * zoom,
+            -(body.height - 2 * zoom) + MOUNT_OFFSET[1] * zoom + ROTOR_Z_OFFSET * zoom)
 
 
 def save_rotor_strip(info, name, frames, zoom):

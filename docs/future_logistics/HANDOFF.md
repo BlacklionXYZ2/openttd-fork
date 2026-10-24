@@ -30,6 +30,8 @@ Not pushed yet.
   non-stop.
 - The established-rivals settings are in the settings window (Computer
   players → Established rivals).
+- A ten-year regression run with all of the above passed once rivals' vehicles
+  left in depots after renewal were sold (`validation.md`).
 - Waiting on decisions: what data centres receive (maps rarely start with
   banks), the cargo hub and parcels, and the data centre bonus (see the
   handoff's open decisions).
@@ -43,7 +45,7 @@ Future Logistics is a fork of OpenTTD (upstream OpenTTD, not JGR) with two parts
    network before the player arrives: railways, airlines, bus and truck routes,
    ferries and freight chains, sized to the world. Afterwards the rivals keep
    running and growing their companies through the CorporateAI script.
-2. **The Future Logistics NewGRF** (not started). New technology that arrives
+2. **The Future Logistics NewGRF** (started, in `mods/newgrf/future_logistics/`). New technology that arrives
    over the decades: parcels, drones, hyperloop, rockets in the style of
    SpaceX's Falcon 9, Falcon Heavy and Starship, data centres and other new
    industries. It is ordinary NewGRF content plus `fl_` badges, so the rivals
@@ -99,8 +101,8 @@ affects much of the rest.
 | NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop, rockets | `feature/future-logistics-grf` |
 | 8: quality and release | not started | |
 
-Tests on Linux: the C++ unit tests (2307 assertions) and 29 full-game
-integration scenarios pass; a ten-year run with growing rivals is recorded in
+Tests on Linux: the C++ unit tests (2307 assertions) and 36 full-game
+integration scenarios pass; ten-year runs with growing rivals are recorded in
 `validation.md`. Nothing has yet been built or played on the target Mac.
 
 ## Map of the code

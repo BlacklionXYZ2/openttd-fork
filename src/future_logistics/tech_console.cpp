@@ -15,6 +15,7 @@
 #include "../newgrf_badge.h"
 #include "../strings_func.h"
 #include "../tile_map.h"
+#include "../aircraft.h"
 #include "../vehicle_base.h"
 #include "../viewport_func.h"
 #include "../window_func.h"
@@ -160,14 +161,22 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 	}
 	if ((argv.size() == 2 || argv.size() == 3) && argv[0] == "view") {
 		/* Centre the main view on a vehicle with this fl_id, for screenshots: one in flight or moving
-		 * between stations ("moving"), or one standing at a station ("parked"); either if not given. */
+		 * between stations ("moving"), one standing at a station ("parked"), or an aircraft taking off or
+		 * landing ("launching"); any if not given. */
 		using namespace FutureLogistics;
 		const auto engine = FindEngineById(argv[1]);
-		if (!engine.has_value() || (argv.size() == 3 && argv[2] != "moving" && argv[2] != "parked")) return false;
+		if (!engine.has_value() || (argv.size() == 3 && argv[2] != "moving" && argv[2] != "parked" && argv[2] != "launching")) return false;
 		const bool want_moving = argv.size() == 3 && argv[2] == "moving";
 		const bool want_parked = argv.size() == 3 && argv[2] == "parked";
+		const bool want_launching = argv.size() == 3 && argv[2] == "launching";
 		for (const Vehicle *v : Vehicle::Iterate()) {
 			if (!v->IsPrimaryVehicle() || v->engine_type != *engine || v->vehstatus.Test(VehState::Hidden)) continue;
+			if (want_launching) {
+				if (v->type != VehicleType::Aircraft) continue;
+				const uint8_t state = Aircraft::From(v)->state;
+				if (state != TAKEOFF && state != STARTTAKEOFF && state != ENDTAKEOFF && state != HELITAKEOFF
+						&& state != LANDING && state != ENDLANDING && state != HELILANDING && state != HELIENDLANDING) continue;
+			}
 			const bool at_station = IsTileType(v->tile, TileType::Station);
 			if ((want_moving && (at_station || v->cur_speed == 0)) || (want_parked && (!at_station || v->cur_speed != 0))) continue;
 			ScrollMainWindowTo(v->x_pos, v->y_pos, v->z_pos, true);

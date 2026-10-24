@@ -329,13 +329,13 @@ DayZeroMonopolies =
     # Balance: Starship earns the most of any vehicle.
     profits = re.findall(r"FL check company=\d+ vehicle=\d+ type=\w+ .*profit=(-?\d+) .*engine=(\S+) ", final_check)
     require(max(profits, key=lambda p: int(p[0]))[1] == "464C0102:air:64", "a vehicle out-earned every Starship")
-    # With the Future Logistics NewGRF: both declare the rocket family, and only one city airport copy is added.
+    # With the Future Logistics NewGRF: both declare the rocket family, and each built-in airport is listed once.
     both, _ = run("starship-with-future-logistics", year=2056, map_bits=9, grfs=[fl_grf, ss_grf],
                   commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
     require("FL tech validate problems=0" in both, "Starship and Future Logistics together report declaration problems")
-    # Metropolitan airport, one city airport, the spaceport and the launch site.
-    require(len(re.findall(r"FL tech infra kind=airport id=airport:\d+ speed=0 size=6x6", both)) == 4,
-            "loading Starship with Future Logistics adds a second city airport")
+    # The launch site copies the country airport (4x3); the country airport itself must still be there, once.
+    require(len(re.findall(r"FL tech infra kind=airport id=airport:\d+ speed=0 size=4x3", both)) == 1,
+            "loading Starship replaces or duplicates the country airport")
     # Balance: Starship is the most expensive vehicle to buy and to run, and carries the most.
     vehicles = re.findall(r"FL tech vehicle id=(\S+) .*capacity=(\d+) .*cost=(\d+) running_cost=(\d+) name=", both)
     for column, what in ((2, "purchase cost"), (3, "running cost"), (1, "capacity")):

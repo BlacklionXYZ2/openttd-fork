@@ -21,7 +21,7 @@ NewGRF settings.
 | Item | Kind | What it is |
 |---|---|---|
 | Starship | aircraft (large) | 500 passengers and 120 mail, or express and armoured cargo, between launch sites at 2000 km/h, from 2045 |
-| Starship Launch Site | airport (6×6) | The city airport's runway, taxiways and hangar, with the launch pad art on its northern 4×4 tiles |
+| Starship Launch Site | airport (5×4) | The launch complex from the handoff art: launch tower and mount, hangar and propellant tanks |
 
 ## How it fits the tech format
 
@@ -40,28 +40,37 @@ No rival rules are added: AeroLink's built-in rule for any new air family adopts
 family two years after it arrives. Other NewGRFs can add rules with
 `fl_profile/<profile>/adopt/rocket/...`.
 
-The first NewGRF airport based on a built-in airport replaces it, so the package defines an
-unchanged copy of the city airport before the launch site. The Future Logistics NewGRF does the
-same; when it is also active, this package leaves its copy out, so players see one city airport
-whichever order the two are loaded in.
+The launch site's movement comes from the country airport. The first NewGRF airport based on a
+built-in airport replaces it, so the package defines an unchanged copy of the country airport
+before the launch site, and players keep the country airport (the Future Logistics NewGRF copies
+the city airport and helistation, not this one).
 
-## Graphics
+## Graphics and animation
 
-Made from the Corporate Infrastructure handoff art
-(`../future_logistics/art/originals/`) by [`tools/make_sprites.py`](tools/make_sprites.py), with
-normal and 2× zoom 32-bit sprites:
+Made from the Corporate Infrastructure handoff art (`../future_logistics/art/originals/`) by
+[`tools/make_sprites.py`](tools/make_sprites.py), with normal and 2× zoom 32-bit sprites.
 
-- **Starship**: the solid part of `rocket_idle.png` and `rocket_powered.png`, scaled to 44 pixels
-  tall at normal zoom. The rocket stands upright, so one sprite serves all eight directions. The
-  powered sprite (with flame) is shown once the rocket moves fast enough to be airborne.
-- **Launch pad**: `spaceport_empty.webp`, scaled to a 4×4 footprint and cut into one piece per tile.
-  Every pixel goes to exactly one tile and each piece is drawn on concrete, so the pieces rebuild
-  the picture whatever order the tiles are drawn in.
+- **Launch and landing.** Starship is a helicopter-type aircraft, so it rises straight up from the
+  launch mount and comes straight back down onto it; landing is the launch in reverse. The launch
+  site's movement is the country airport's, whose helicopters take off at (44, 37) and land at
+  (44, 40) in sixteenths of a tile, and the art is placed so its launch mount is there (measured in
+  a game). Starship waits on the mount while its engines run up, then climbs, accelerating.
+- **Flame.** The rocket body is the solid part of `rocket_idle.png`, scaled to 44 pixels tall at
+  normal zoom; it stands upright, so one sprite serves all eight directions. The flame is drawn as
+  the helicopter's rotor, which the game draws just above the body and animates every tick while the
+  engine runs: three frames cycle. Which flame depends on the flight phase (`flight_state`):
+  flame over an exhaust plume while launching and landing, the flame alone in flight, none on the
+  ground. The flame comes from `rocket_powered.png`, scaled so its rocket is as wide as the idle one
+  (the two images are drawn at different scales); the plume is drawn by the tool.
+- **Launch site.** `spaceport_empty.webp`, scaled to a 4×4 footprint, placed over the 5×4 layout and
+  cut into one piece per tile. Each piece is its tile's ground sprite, with concrete where the art
+  does not reach. Every pixel belongs to exactly one piece, so the pieces rebuild the picture
+  whatever order the tiles are drawn in, with no seams. The hangar is the country airport's, at
+  tile (3, 0), beside the art's hangar building.
 
-The sprites have not yet been checked by eye in a game with graphics. Known limits: tall parts of
-the pad art are drawn by the northern tile, so they can be clipped when only part of the screen is
-redrawn; the rocket has no separate shadow sprite; and Starship takes off and lands along the
-runway like an aircraft, because a vertical launch needs engine work.
+Known limits: the art's back edge reaches a quarter of a tile past the layout's north-east side;
+the tower's upper pieces belong to a tile far below them, so they can be clipped when only part of
+the screen is redrawn; and the rocket has no separate shadow sprite.
 
 ## Build
 

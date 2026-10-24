@@ -31,9 +31,9 @@ match it.
 | Starship | refits | passengers, mail, express and armoured cargo | Like the Future Logistics rocket |
 | Starship | vehicle life / model life | 30 / 50 years | |
 | Starship | tier | `fl_tier/4` | One above nothing else yet; only ordering within the family |
-| Starship | powered sprite | shown above about 256 km/h (`current_speed > 20`) | Meant to show the flame once airborne; not yet checked by eye |
+| Starship | flame | by flight phase: plume while launching and landing, flame in flight, none on the ground | Checked in game: see the README |
 | Starship Launch Site | available from | 2045 | |
-| Starship Launch Site | layout | city airport (6×6) with the pad art on its northern 4×4 tiles | Aircraft movement is the city airport's: rockets take off and land along the runway |
+| Starship Launch Site | layout | the handoff launch complex over a 5×4 layout, moving like a country airport | Starship launches and lands vertically on the launch mount |
 | Starship Launch Site | catchment / noise / maintenance | 6 / 25 / 80 | |
 | Rockets family | minimum market tier / markets | city / passengers, mail, freight | The same as the Future Logistics NewGRF declares |
 | AeroLink | Starship adoption delay | 2 years | Its built-in rule for any new air family |

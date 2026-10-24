@@ -32,8 +32,8 @@ Not pushed yet.
   players → Established rivals).
 - A ten-year regression run with all of the above passed once rivals' vehicles
   left in depots after renewal were sold (`validation.md`).
-- Railways and road routes now climb over slopes, and road routes bridge
-  railways in their way (a short bridge rather than a level crossing, which
+- Railways and road routes now climb over slopes and bridge rivers, roads
+  and railways up to six tiles across; road routes bridge railways in their way (a short bridge rather than a level crossing, which
   fast trains turned out to hit buses on). On mountainous worlds rivals build
   about twice as many railways as before.
 - Waiting on decisions: what data centres receive (maps rarely start with
@@ -105,7 +105,7 @@ affects much of the rest.
 | NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop, rockets | `feature/future-logistics-grf` |
 | 8: quality and release | not started | |
 
-Tests on Linux: the C++ unit tests (2307 assertions) and 37 full-game
+Tests on Linux: the C++ unit tests (2307 assertions) and 38 full-game
 integration scenarios pass; ten-year runs with growing rivals are recorded in
 `validation.md`. Nothing has yet been built or played on the target Mac.
 
@@ -172,10 +172,10 @@ In rough order:
      planners' commands wrapped in one network command, which means
      accumulating their costs (nested commands do not charge money).
    - Railways and new road climb and descend straight over tiles inclined along
-     them, and curve only on flat tiles. Road routes bridge a railway in their
-     way, and railways bridge roads where there is flat open land each side;
-     otherwise there are no bridges, tunnels or foundations, so rivers, deep
-     valleys and steep or uneven ground stop a line. Where a railway cannot
+     them, and curve only on flat tiles. Both bridge water, roads, railways and
+     dips up to six tiles across, from flat open land to flat open land at the
+     same height. There are no tunnels, longer bridges or foundations, so wide
+     rivers, deep valleys and steep or uneven ground still stop a line. Where a railway cannot
      bridge a town road it uses a level crossing, where a fast train can hit a
      road vehicle already on it (an OpenTTD rule: the crossing only closes when
      the train is one tile away).

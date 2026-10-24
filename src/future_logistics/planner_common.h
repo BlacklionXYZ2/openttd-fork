@@ -128,6 +128,47 @@ using LegBuild = ConstructionResult (*)(const TechLibrary &library, const Servic
 
 constexpr size_t MAX_HUB_CHECKS = 6; ///< Transfer station sites checked with Place::usable per leg.
 
+constexpr uint MAX_BRIDGE_SPAN = 6; ///< Most tiles a planned bridge spans between its heads.
+
+/** A bridge a route may take: from a head tile over lower or unbuildable ground to a landing. */
+struct BridgeSpan {
+	TileIndex land = INVALID_TILE; ///< Far head, or INVALID_TILE if there is no bridge.
+	uint length = 0; ///< Tiles between the heads.
+};
+
+/**
+ * Find the shortest bridge from a head on flat open land, straight ahead over water, roads,
+ * railways or lower ground, to flat open land at the same height.
+ * @param head Near bridge head.
+ * @param dir Direction of the bridge.
+ * @return The bridge, or one with an invalid landing.
+ */
+BridgeSpan FindBridge(TileIndex head, DiagDirection dir);
+
+/** Where a bridge sits on a planned route: the indices of its two heads. */
+struct RouteBridge {
+	size_t head; ///< Index of the near head.
+	size_t tail; ///< Index of the far head.
+};
+
+/**
+ * List the bridges on a planned route.
+ * @param path Route tiles.
+ * @param bridged Tiles under a bridge.
+ * @return Each run of bridged tiles with the heads either side of it.
+ */
+inline std::vector<RouteBridge> RouteBridges(const std::vector<TileIndex> &path, const std::set<TileIndex> &bridged)
+{
+	std::vector<RouteBridge> result;
+	for (size_t i = 1; i + 1 < path.size(); i++) {
+		if (!bridged.contains(path[i]) || bridged.contains(path[i - 1])) continue;
+		size_t j = i;
+		while (j < path.size() && bridged.contains(path[j])) j++;
+		if (j < path.size()) result.push_back({i - 1, j});
+	}
+	return result;
+}
+
 /**
  * Find the cheapest bridge type available for a span.
  * @param length Tiles between the bridge heads.

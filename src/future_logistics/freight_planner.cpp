@@ -22,6 +22,8 @@
 #include "../debug.h"
 #include "../industry.h"
 #include "../landscape_cmd.h"
+#include "../rail_map.h"
+#include "../road_map.h"
 #include "../settings_type.h"
 #include "../signal_func.h"
 #include "../station_func.h"
@@ -50,6 +52,23 @@ TileIndex Place::Centre() const
  * Remove a leg: sell its vehicles, then clear what it built in reverse order.
  * @param built What was built.
  */
+BridgeSpan FindBridge(TileIndex head, DiagDirection dir)
+{
+	if (!Buildable(head)) return {};
+	const int z = GetTileZ(head);
+	TileIndex tile = Step(head, dir);
+	for (uint length = 1; length <= MAX_BRIDGE_SPAN; length++) {
+		if (tile == INVALID_TILE || GetTileMaxZ(tile) > z) return {};
+		const bool spannable = IsTileType(tile, TileType::Water) || IsNormalRoadTile(tile) || IsPlainRailTile(tile)
+			|| ((IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees)) && GetTileMaxZ(tile) < z);
+		if (!spannable) return {};
+		const TileIndex land = Step(tile, dir);
+		if (land != INVALID_TILE && Buildable(land) && GetTileZ(land) == z) return {land, length};
+		tile = land;
+	}
+	return {};
+}
+
 BridgeType CheapestBridge(uint length)
 {
 	BridgeType best = MAX_BRIDGES;

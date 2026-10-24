@@ -36,7 +36,7 @@ def main():
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
             towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
-            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False, months=3, mountains=False):
+            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False, months=3, mountains=False, rivers=False):
         folder = output / name
         folder.mkdir(exist_ok=True)
         if grfs:
@@ -104,6 +104,10 @@ DayZeroMonopolies =
         if mountains:
             text = cfg.read_text().replace("land_generator = 0", "land_generator = 1").replace("tree_placer = 0", "tree_placer = 2")
             cfg.write_text(text.replace("terrain_type = 0", "terrain_type = 3").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 0"))
+        if rivers:
+            text = cfg.read_text().replace("land_generator = 0", "land_generator = 1").replace("tree_placer = 0", "tree_placer = 2")
+            text = text.replace("terrain_type = 0", "terrain_type = 2").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 0")
+            cfg.write_text(text.replace("[game_creation]\n", "[game_creation]\namount_of_rivers = 3\n"))
         scripts = folder / "scripts"
         scripts.mkdir(exist_ok=True)
         startup = commands + "future_logistics_check\n"
@@ -338,6 +342,11 @@ DayZeroMonopolies =
     slopes = [int(n) for n in re.findall(r"FL rail company=\d+ .* slopes=(\d+)", mountain_world)]
     require(len(slopes) >= 3 and sum(1 for n in slopes if n > 0) >= 2, "railways in a mountainous world should climb over slopes")
     require("FL check result=true" in mountain_world and "FL construction failed" not in mountain_world, "mountain railways failed to build or connect")
+    # Lines bridge rivers, roads and railways in their way.
+    river_world, _ = run("river-world", rivers=True, seed=1)
+    spans = [int(n) for n in re.findall(r"FL (?:rail|route) company=\d+ .* bridges=(\d+)", river_world)]
+    require(sum(spans) >= 3, "railways and roads in a world with rivers should use bridges")
+    require("FL check result=true" in river_world and "FL construction failed" not in river_world, "bridged lines failed to build or connect")
     require("FL complete companies=5 operational=4" in default_world, "default terrain/tree/town settings failed")
     no_clearance, _ = run("no-cleanup-capacity", clear_limit=0)
     require("FL complete companies=5 operational=0" in no_clearance and "FL construction failed" not in no_clearance,
@@ -391,7 +400,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; railways over hills; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones, hyperloop and rockets from the Future Logistics NewGRF adopted by the rivals; data centres generated; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; railways over hills and rivers; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones, hyperloop and rockets from the Future Logistics NewGRF adopted by the rivals; data centres generated; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

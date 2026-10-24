@@ -155,6 +155,18 @@ Found and fixed during the runs:
   world an electric line bridged a road and its train served both stations. All 37 scenarios
   and the unit tests pass.
 
+Bridges over rivers (same night, later):
+
+| Check | Result |
+| --- | --- |
+| Four hilly 256×256 worlds with many rivers, 1950 | With one-tile bridges: 33 services, three construction failures, one company not operational. With bridges up to six tiles over water, roads, railways and dips: 40 services, no failures, all companies operational; 13 lines use bridges |
+| Two of those worlds, four simulated months | Every vehicle served its stations; no crashes |
+| Integration suite | **38 scenarios passed**, including a new world with rivers; unit tests passed |
+
+Found and fixed: building a railway's track before its stations could clear enough trees to
+lose the town's permission for the station ("local authority refuses"), after preflight had
+passed. Stations are now built first.
+
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
 helistation copy first, and the Tech Library and `fl_id` index read each airport type without

@@ -152,25 +152,8 @@ struct Route {
 	std::vector<TileIndex> path; ///< Ordered tiles between the two stops.
 	TileIndex depot = INVALID_TILE; ///< Depot tile, invalid if planning failed.
 	size_t junction = 0; ///< Index of the road tile adjoining the depot.
+	std::set<TileIndex> bridged; ///< Tiles under a bridge; the route's tiles either side of a run of them are its heads.
 };
-
-/**
- * Check whether a road heading one way may bridge a railway tile: plain track, not higher than the
- * flat land on either side. A bridge, not a level crossing, because a fast train is on a crossing
- * before a road vehicle already on it can clear it, and destroys it.
- * @param from Flat tile before the railway, which becomes a bridge head.
- * @param dir Direction the road is going.
- * @return The far bridge head, or INVALID_TILE if no bridge may go there.
- */
-static TileIndex BridgeOverRail(TileIndex from, DiagDirection dir)
-{
-	const TileIndex rail = Step(from, dir);
-	if (rail == INVALID_TILE || !IsPlainRailTile(rail) || GetTileMaxZ(rail) > GetTileZ(from)) return INVALID_TILE;
-	const TileIndex land = Step(rail, dir);
-	if (land == INVALID_TILE || !Buildable(land) || GetTileZ(land) != GetTileZ(from)) return INVALID_TILE;
-	return land;
-}
-
 
 /**
  * Check whether a route may step from one tile to the next. New road goes on clear land, flat or
@@ -179,17 +162,18 @@ static TileIndex BridgeOverRail(TileIndex from, DiagDirection dir)
  * followed where they already connect, and a stop on public road is only entered along the road, so
  * no street gains a junction there.
  * @param before Tile the route came from, or INVALID_TILE at a stop.
+ * @param off_bridge Whether \a from is the far head of a bridge.
  * @param from Tile the route is on.
  * @param to Adjacent tile.
  * @param rt Road type of the route's vehicles.
  * @param stops Candidate stops at both ends.
  * @return Whether the step is allowed.
  */
-bool CanStep(TileIndex before, TileIndex from, TileIndex to, RoadType rt, const std::set<TileIndex> &stops)
+bool CanStep(TileIndex before, bool off_bridge, TileIndex from, TileIndex to, RoadType rt, const std::set<TileIndex> &stops)
 {
 	const DiagDirection dir = RouteDirection(from, to);
-	/* Road on a slope, or off a bridge (whose middle is the railway it spans), runs straight. */
-	const bool straight = !IsTileFlat(from) || (before != INVALID_TILE && IsTileType(before, TileType::Railway));
+	/* Road on a slope, or off a bridge, runs straight. */
+	const bool straight = !IsTileFlat(from) || off_bridge;
 	if (straight && (before == INVALID_TILE || RouteDirection(before, from) != dir)) return false;
 	const auto leaving = SideHeight(from, dir);
 	if (!leaving.has_value() || leaving != SideHeight(to, ReverseDiagDir(dir))) return false;
@@ -210,7 +194,7 @@ bool CanStep(TileIndex before, TileIndex from, TileIndex to, RoadType rt, const 
  * @param starts Candidate stops at the origin.
  * @param ends Candidate stops at the destination.
  * @param rt Road type of the route's vehicles.
- * @param bridges Whether the corridor may bridge railways.
+ * @param bridges Whether the corridor may use bridges.
  * @return Proposed route, with an invalid depot if no suitable corridor exists.
  */
 static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends, RoadType rt, bool bridges)
@@ -219,6 +203,7 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 	stops.insert(ends.begin(), ends.end());
 	std::set<TileIndex> targets(ends.begin(), ends.end());
 	std::map<TileIndex, TileIndex> previous;
+	std::set<TileIndex> middles; ///< Tiles under a bridge.
 	std::queue<TileIndex> queue;
 	for (TileIndex tile : starts) {
 		previous.emplace(tile, INVALID_TILE);
@@ -229,13 +214,16 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 		queue.pop();
 		if (targets.contains(tile)) {
 			Route route;
-			for (TileIndex t = tile; t != INVALID_TILE; t = previous.at(t)) route.path.push_back(t);
+			for (TileIndex t = tile; t != INVALID_TILE; t = previous.at(t)) {
+				route.path.push_back(t);
+				if (middles.contains(t)) route.bridged.insert(t);
+			}
 			std::reverse(route.path.begin(), route.path.end());
 			if (route.path.size() < 8 || route.path.size() > 128) continue;
 			std::set<TileIndex> occupied(route.path.begin(), route.path.end());
+			auto bridged = [&](size_t j) { return j < route.path.size() && route.bridged.contains(route.path[j]); };
 			for (size_t i = 1; i + 1 < route.path.size(); i++) {
-				/* Not on a slope, nor at a bridge: a railway tile is a bridge's middle, with a head each side. */
-				auto bridged = [&](size_t j) { return j < route.path.size() && IsTileType(route.path[j], TileType::Railway); };
+				/* Not on a slope, nor at a bridge. */
 				if (!IsTileFlat(route.path[i]) || bridged(i) || bridged(i - 1) || bridged(i + 1)) continue;
 				for (TileIndex neighbour : Neighbours(route.path[i])) {
 					if (!occupied.contains(neighbour) && Buildable(neighbour) && GetTileZ(neighbour) == GetTileZ(route.path[i])) {
@@ -247,29 +235,39 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 			}
 		}
 		const TileIndex before = previous.at(tile);
+		const bool off_bridge = middles.contains(before);
 		for (TileIndex next : Neighbours(tile)) {
 			if (previous.size() >= MAX_SEARCH) break;
 			if (previous.contains(next)) continue;
-			if (CanStep(before, tile, next, rt, stops)) {
+			if (CanStep(before, off_bridge, tile, next, rt, stops)) {
 				previous.emplace(next, tile);
 				queue.push(next);
 				continue;
 			}
-			/* A bridge over a railway, entered straight from flat open land and landing on it. */
+			/* A bridge over water, a railway, a road or a dip, entered straight from flat open land and landing on it. */
 			const DiagDirection dir = RouteDirection(tile, next);
-			if (!bridges || before == INVALID_TILE || RouteDirection(before, tile) != dir || !Buildable(tile) || stops.contains(tile)) continue;
-			const TileIndex land = BridgeOverRail(tile, dir);
-			if (land == INVALID_TILE || previous.contains(land) || stops.contains(land)) continue;
-			previous.emplace(next, tile);
-			previous.emplace(land, next);
-			queue.push(land);
+			if (!bridges || off_bridge || before == INVALID_TILE || RouteDirection(before, tile) != dir || stops.contains(tile)) continue;
+			const BridgeSpan bridge = FindBridge(tile, dir);
+			if (bridge.land == INVALID_TILE || previous.contains(bridge.land) || stops.contains(bridge.land)) continue;
+			bool clear = true;
+			for (uint k = 1; k <= bridge.length; k++) clear &= !previous.contains(Step(tile, dir, k));
+			if (!clear) continue;
+			TileIndex last = tile;
+			for (uint k = 1; k <= bridge.length; k++) {
+				const TileIndex middle = Step(tile, dir, k);
+				middles.insert(middle);
+				previous.emplace(middle, last);
+				last = middle;
+			}
+			previous.emplace(bridge.land, last);
+			queue.push(bridge.land);
 		}
 	}
 	return {};
 }
 
 /**
- * Find a corridor, bridging railways only if there is no other way, since bridges cost more.
+ * Find a corridor, using bridges only if there is no other way, since bridges cost more.
  * @param starts Candidate stops at the origin.
  * @param ends Candidate stops at the destination.
  * @param rt Road type of the route's vehicles.
@@ -350,23 +348,23 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 		return bits;
 	};
 	auto type_at = [&](size_t i) { return on_road[i] ? GetRoadTypeRoad(route.path[i]) : rt; };
-	/* A railway tile on the route is spanned by a bridge from the tile before it to the tile after. */
-	auto spanned = [&](size_t i) { return i < route.path.size() && IsTileType(route.path[i], TileType::Railway); };
-	auto bridge_part = [&](size_t i) { return spanned(i) || (i > 0 && spanned(i - 1)) || spanned(i + 1); };
-	const BridgeType bridge = CheapestBridge(1);
-	auto build_bridge = [&](size_t i, DoCommandFlags flags) {
-		if (bridge == MAX_BRIDGES) return CommandCost(CMD_ERROR);
-		return Command<Commands::BuildBridge>::Do(flags | CONSTRUCT, route.path[i + 1], route.path[i - 1], TransportType::Road, bridge, INVALID_RAILTYPE, rt);
+	/* Bridges are built from head to head; their heads and the tiles under them get no road of their own. */
+	const auto bridges = RouteBridges(route.path, route.bridged);
+	std::vector<bool> bridge_part(route.path.size(), false);
+	for (const RouteBridge &b : bridges) std::fill(bridge_part.begin() + b.head, bridge_part.begin() + b.tail + 1, true);
+	auto build_bridge = [&](const RouteBridge &b, DoCommandFlags flags) {
+		const BridgeType type = CheapestBridge(static_cast<uint>(b.tail - b.head - 1));
+		if (type == MAX_BRIDGES) return CommandCost(CMD_ERROR);
+		return Command<Commands::BuildBridge>::Do(flags | CONSTRUCT, route.path[b.tail], route.path[b.head], TransportType::Road, type, INVALID_RAILTYPE, rt);
 	};
 	Money cost = 0;
+	for (const RouteBridge &b : bridges) {
+		auto result = build_bridge(b, {});
+		if (result.Failed()) return ConstructionResult::Rejected;
+		cost += result.GetCost();
+	}
 	for (size_t i = 0; i < route.path.size(); i++) {
-		if (spanned(i)) {
-			auto result = build_bridge(i, {});
-			if (result.Failed()) return ConstructionResult::Rejected;
-			cost += result.GetCost();
-			continue;
-		}
-		if (bridge_part(i) || missing(i).None()) continue;
+		if (bridge_part[i] || missing(i).None()) continue;
 		auto result = Command<Commands::BuildRoad>::Do(CONSTRUCT, route.path[i], missing(i), type_at(i), {}, TownID::Invalid());
 		if (result.Failed()) {
 			Debug(Facility::Misc, Severity::Debug1, "FL road preflight rejected tile={} error={}", route.path[i], result.GetErrorMessage());
@@ -396,7 +394,6 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	std::vector<TileIndex> built;
 	std::vector<TileIndex> road_stops; ///< Stops on public road: removed without the road.
 	std::vector<VehicleID> vehicles;
-	uint bridges = 0;
 	auto rollback = [&]() {
 		for (VehicleID vehicle : vehicles) {
 			if (Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid).Failed()) {
@@ -421,15 +418,13 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 		rollback();
 		return ConstructionResult::Failed;
 	};
+	for (const RouteBridge &b : bridges) {
+		if (build_bridge(b, EXEC).Failed()) return fail("bridge");
+		/* Clearing a bridge head removes the whole bridge and leaves what is under it. */
+		built.push_back(route.path[b.head]);
+	}
 	for (size_t i = 0; i < route.path.size(); i++) {
-		if (spanned(i)) {
-			if (build_bridge(i, EXEC).Failed()) return fail("bridge");
-			/* Clearing a bridge head removes the whole bridge and leaves the railway. */
-			built.push_back(route.path[i - 1]);
-			bridges++;
-			continue;
-		}
-		if (bridge_part(i)) continue;
+		if (bridge_part[i]) continue;
 		if (!missing(i).None() && Command<Commands::BuildRoad>::Do(EXEC | CONSTRUCT, route.path[i], missing(i), type_at(i), {}, TownID::Invalid()).Failed()) return fail("road");
 		if (!on_road[i]) built.push_back(route.path[i]);
 	}
@@ -462,7 +457,7 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	for (TileIndex tile : route.path) signature = (signature ^ tile.base()) * 1099511628211ULL;
 	Debug(Facility::Misc, Severity::Notice, "FL route company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={} public_road={} bridges={} slopes={}",
 		_current_company, job.kind, CargoSpec::Get(job.cargo)->label.AsString(), job.vehicles, vehicles.front(), route.path.front(), route.path.back(),
-		route.depot, route.path.size(), Company::Get(_current_company)->money, signature, std::ranges::count(on_road, true), bridges,
+		route.depot, route.path.size(), Company::Get(_current_company)->money, signature, std::ranges::count(on_road, true), bridges.size(),
 		std::ranges::count_if(route.path, [](TileIndex t) { return !IsTileFlat(t); }));
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(route.path.front());

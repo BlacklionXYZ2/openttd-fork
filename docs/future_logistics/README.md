@@ -106,10 +106,12 @@ straight over tiles inclined along the road and bridging any railway in its way 
 if there is no route without one); stops and depots go on flat land. It builds an owned route, two distinct drive-through stops, an attached
 depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
-railways reserve their two industries. Lines bridge roads on a one-tile bridge
-where there is flat open land each side; only where no such line exists do they
-cross straight town roads at right angles with level crossings (not on track
-types that forbid them). Rail and
+railways reserve their two industries. Railways and roads bridge water, roads,
+railways and dips up to six tiles across, between flat open tiles at the same height;
+road routes use bridges only when there is no route without one. A railway crosses a
+straight town road at right angles with a level crossing only where no line bridging
+it exists (and never on track types that forbid level crossings). Stations are built
+before the line, since clearing trees for it can cost the town's permission. Rail and
 road orders are non-stop, so vehicles do not stop at other stations their route
 passes. All engine command executions in the rail
 planner flush the track signal update buffer, as the normal command loop does.

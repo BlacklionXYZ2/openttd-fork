@@ -306,6 +306,32 @@ DayZeroMonopolies =
     require(re.search(r"FL check company=2 vehicle=\d+ type=air connected=true served=true .*engine=464C0101:air:65 ", rocket_run),
             "the rockets did not serve their spaceports")
 
+    # Starship: a package of its own in the shared rocket family, with a launch site; AeroLink adopts it.
+    ss_grf = ROOT / "mods/newgrf/starship/starship.grf"
+    if nmlc:
+        rebuilt = output / "starship_rebuilt.grf"
+        subprocess.run([nmlc, "-c", "-o", str(rebuilt), "starship.nml"], cwd=ss_grf.parent, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        require(rebuilt.read_bytes() == ss_grf.read_bytes(), "starship.grf is out of date: run mods/newgrf/starship/build.sh")
+    ships, ship_save = run("starship-world", year=2050, map_bits=9, grfs=[ss_grf],
+                           commands="future_logistics_tech validate\nfuture_logistics_tech find starship\nfuture_logistics_tech find starship_launch_site\n")
+    require("FL tech validate problems=0" in ships, "the Starship NewGRF has declaration problems")
+    require(re.search(r"FL tech found id=starship kind=vehicle", ships) and re.search(r"FL tech found id=starship_launch_site kind=airport", ships),
+            "the Starship or its launch site has no fl_id")
+    require(re.search(r"FL towns company=2 a=\d+ b=\d+ tier=city population=\d+,\d+ aircraft=464C0102:air:64", ships)
+            and re.search(r"FL service company=2 recipe=rocket/airport_pair/town_pair fallback=false result=success", ships),
+            "AeroLink did not open a Starship route on its own")
+    ship_run, _ = run("starship-service", load=ship_save, service=True, map_bits=9, grfs=[ss_grf])
+    starships = re.findall(r"FL check company=2 vehicle=\d+ type=air connected=(\w+) served=(\w+) .*engine=464C0102:air:64 ", ship_run)
+    require(starships and all(c == "true" and v == "true" for c, v in starships), "not every Starship served its launch sites")
+    # With the Future Logistics NewGRF: both declare the rocket family, and only one city airport copy is added.
+    both, _ = run("starship-with-future-logistics", year=2056, map_bits=9, grfs=[fl_grf, ss_grf],
+                  commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
+    require("FL tech validate problems=0" in both, "Starship and Future Logistics together report declaration problems")
+    # Metropolitan airport, one city airport, the spaceport and the launch site.
+    require(len(re.findall(r"FL tech infra kind=airport id=airport:\d+ speed=0 size=6x6", both)) == 4,
+            "loading Starship with Future Logistics adds a second city airport")
+
     # Corporate Infrastructure: Gareth's decorative objects, loaded alongside Future Logistics.
     ci_grf = ROOT / "mods/newgrf/corporate_infrastructure/CorporateInfrastructure.grf"
     if nmlc:
@@ -417,7 +443,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; Corporate Infrastructure objects; railways over hills, through them and over rivers; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones, hyperloop and rockets from the Future Logistics NewGRF adopted by the rivals; data centres generated; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; Starship on its own and with Future Logistics; Corporate Infrastructure objects; railways over hills, through them and over rivers; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones, hyperloop and rockets from the Future Logistics NewGRF adopted by the rivals; data centres generated; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

@@ -13,6 +13,7 @@ stands, and what comes next. The detail lives in the pages it links to.
 | [`validation.md`](validation.md) | Recorded test results for every phase |
 | [`mods/newgrf/future_logistics/`](../../mods/newgrf/future_logistics/README.md) | The Future Logistics NewGRF, its placeholder values and the handoff art |
 | [`mods/newgrf/corporate_infrastructure/`](../../mods/newgrf/corporate_infrastructure/README.md) | Gareth's Corporate Infrastructure package: six decorative objects from the concept art |
+| [`mods/newgrf/starship/`](../../mods/newgrf/starship/README.md) | Starship: a reusable rocket and launch site, a complete package in the tech format |
 
 ## Latest work (night of 23–24 October 2026)
 
@@ -25,6 +26,12 @@ Not pushed yet.
   Infrastructure package (six decorative objects from the concept art) is in
   `mods/newgrf/corporate_infrastructure/`, compiled and placing in game; its
   art is not yet used for the working vehicles and buildings.
+- Starship is a complete NewGRF package of its own (`mods/newgrf/starship/`):
+  a reusable rocket (2045) and a launch site in the shared rocket family,
+  with sprites converted from the handoff art. On its own, AeroLink opened
+  Starship routes on day zero and every Starship served its launch sites;
+  with the Future Logistics NewGRF too, both work and players see one city
+  airport.
 - In a game started in 2021, the rivals adopted drones on their own in
   2024–25 through CorporateAI: the whole loop from new tech to rival adoption
   works.

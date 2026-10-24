@@ -278,7 +278,10 @@ CorporateAI grows their drone routes. **Hyperloop is in** too, with no code chan
 track type of its own (`HYPL`, 2035), a propulsion pod and passenger and mail capsules;
 National Rail adopts it five years after it arrives. **Rockets are in** as fast aircraft
 between spaceports (2050) for passengers, mail and high-value freight; AeroLink adopts them.
-The Corporate Infrastructure handoff art is not yet converted.
+**Starship is a package of its own** (`mods/newgrf/starship/`, 2045): a reusable rocket and a
+launch site in the same `rocket` family, with graphics converted from the handoff art. It works
+alone or with the Future Logistics NewGRF, and AeroLink adopts it with no code change. The rest
+of the Corporate Infrastructure handoff art is not yet converted.
 
 Details of each tech and industry will be decided when it is developed. With
 the phase 5 format, most of each one is NewGRF content plus declarations; code
@@ -290,6 +293,7 @@ is only needed where a new mechanic or market is.
 | Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | **Done** (placeholders): helicopter-only airports added to the air planner |
 | Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | **Done** (placeholders): no code needed |
 | Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | **Done** (placeholders, flying like aircraft); a launch sequence would need engine work |
+| Starship | 2045 | Separate NewGRF: Starship aircraft and launch site, in the rocket family, with converted art | **Done** (placeholders); no code needed |
 | Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | **Started**: the industry exists (receives bank cargo, one per town); rivals cannot reach town-centre sites yet, and the revenue bonus needs code and a decision |
 
 Underground hyperloop and true rocket flight behaviour need engine changes and

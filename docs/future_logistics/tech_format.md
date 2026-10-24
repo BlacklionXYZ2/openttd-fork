@@ -432,6 +432,11 @@ item(FEAT_AIRPORTS, launchpad) {
 Badge labels used in properties must be listed in the `badgetable`. Check
 the exact syntax against the installed NML version (tested with NML 0.9.0).
 
+A complete, working package in this format is
+[`mods/newgrf/starship/`](../../mods/newgrf/starship/README.md): a rocket and its
+launch site that join the `rocket` family, declare it for when they are loaded on
+their own, and are adopted by AeroLink with no code change.
+
 ## Checking a NewGRF
 
 Load it in a new game, open the console and use:

@@ -29,7 +29,9 @@ All numbers are placeholders until the balance pass; see [`PLACEHOLDERS.md`](PLA
 The art from the Corporate Infrastructure handoff (drone port, cargo drone, distribution centre,
 data centre, spaceport, rocket) is not used here yet; see "Art" below. Gareth's v0.1 package
 turns six of the images into decorative objects: see
-[`../corporate_infrastructure/`](../corporate_infrastructure/README.md).
+[`../corporate_infrastructure/`](../corporate_infrastructure/README.md). The rocket and empty
+launch pad images are converted for [`../starship/`](../starship/README.md), a separate package
+in the same rocket family.
 
 ## Known limits
 

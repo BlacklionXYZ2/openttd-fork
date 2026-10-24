@@ -185,6 +185,20 @@ so the drone port at first replaced the helistation; the NewGRF now defines an u
 helistation copy first, and the Tech Library and `fl_id` index read each airport type without
 following the replacement redirect, so no airport is listed twice.
 
+## NewGRF packages (24 October 2026)
+
+| Check | Result |
+| --- | --- |
+| Corporate Infrastructure 0.1 (Gareth's package) | Compiles with NML 0.9.0 without warnings, reproducibly. With the Future Logistics NewGRF, a test Game Script built all six objects |
+| Starship package, build | Compiles with NML 0.9.0 without warnings, reproducibly; 36 sprites made from the handoff art by `tools/make_sprites.py` |
+| Starship on its own, 512×512 world, 2050 | `validate` reports no problems; `find` finds both `fl_id`s. AeroLink adopted the rocket family by its rule for any new air family and opened a Starship passenger route and a mail route between launch sites on day zero |
+| Same world, three simulated months | All six Starships served both of their launch sites (profits far too high at the placeholder values). The NewGRF profiler shows both the idle and the powered sprite sets in use |
+| Starship with the Future Logistics NewGRF, 2056 | `validate` reports no problems; AeroLink chose Starship over the Reusable Rocket. Exactly one city airport in either load order (the package leaves out its own copy when the Future Logistics NewGRF is active) |
+
+Found and fixed: with both NewGRFs loaded, each added an unchanged copy of the city airport,
+so players would have seen two. The flame sprite's speed threshold was first given in the wrong
+units (for aircraft, `current_speed` is in units of about 12.8 km/h), so it would never have shown.
+
 ## Reproduction and evidence
 
 Local build (dependencies were extracted into `work/deps/usr` because this

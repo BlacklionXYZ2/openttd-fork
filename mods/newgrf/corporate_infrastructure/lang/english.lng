@@ -1,0 +1,11 @@
+##grflangid 0x01
+# Corporate Infrastructure: British English
+STR_GRF_NAME       :Corporate Infrastructure 0.1 (Objects)
+STR_GRF_DESCRIPTION:Six graphical objects built from the Corporate Infrastructure concept art. Decorative preview only; industries, functioning ports, cargo transport and revenue systems are not included.
+STR_CLASS          :Corporate Infrastructure
+STR_DATA_CENTRE              :Data Centre
+STR_DISTRIBUTION_CENTRE      :Distribution Centre
+STR_DRONE_PORT               :Four-Pad Drone Port
+STR_SPACEPORT_EMPTY          :Spaceport - Empty Pad
+STR_SPACEPORT_STARSHIP       :Spaceport - Starship on Pad
+STR_CARGO_DRONE_GAME_SCALE   :Parked Cargo Drone

@@ -1,0 +1,264 @@
+{
+  "version": "0.1",
+  "status": "compiled",
+  "compiled": true,
+  "nml_validated": true,
+  "assets": [
+    {
+      "id": 0,
+      "key": "data_centre",
+      "name": "Data Centre",
+      "footprint": "4x4",
+      "tiles": [
+        4,
+        4
+      ],
+      "sprite_extent_z": 90,
+      "source": "openttd_data_centre_transparent.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "trim_bbox": [
+        44,
+        204,
+        1211,
+        1108
+      ],
+      "description": "High-cost data centre. Visual object only: financial bonus needs game code.",
+      "sprites": [
+        {
+          "zoom": 1,
+          "width": 240,
+          "height": 186,
+          "xrel": -120,
+          "yrel": -58,
+          "filename": "gfx/data_centre_1x.png"
+        },
+        {
+          "zoom": 2,
+          "width": 480,
+          "height": 372,
+          "xrel": -240,
+          "yrel": -117,
+          "filename": "gfx/data_centre_2x.png"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "key": "distribution_centre",
+      "name": "Distribution Centre",
+      "footprint": "4x4",
+      "tiles": [
+        4,
+        4
+      ],
+      "sprite_extent_z": 35,
+      "source": "openttd_distribution_centre_4x4_transparent.png",
+      "original_size": [
+        1260,
+        1260
+      ],
+      "trim_bbox": [
+        126,
+        309,
+        1140,
+        1047
+      ],
+      "description": "Warehouse and goods hub. Visual object only: not a freight station.",
+      "sprites": [
+        {
+          "zoom": 1,
+          "width": 240,
+          "height": 175,
+          "xrel": -120,
+          "yrel": -47,
+          "filename": "gfx/distribution_centre_1x.png"
+        },
+        {
+          "zoom": 2,
+          "width": 480,
+          "height": 350,
+          "xrel": -240,
+          "yrel": -95,
+          "filename": "gfx/distribution_centre_2x.png"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "key": "drone_port",
+      "name": "Four-Pad Drone Port",
+      "footprint": "4x4",
+      "tiles": [
+        4,
+        4
+      ],
+      "sprite_extent_z": 35,
+      "source": "openttd_drone_port_transparent.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "trim_bbox": [
+        138,
+        206,
+        1116,
+        1047
+      ],
+      "description": "Four visually depicted drone pads. Not functioning aircraft pads.",
+      "sprites": [
+        {
+          "zoom": 1,
+          "width": 240,
+          "height": 206,
+          "xrel": -120,
+          "yrel": -78,
+          "filename": "gfx/drone_port_1x.png"
+        },
+        {
+          "zoom": 2,
+          "width": 480,
+          "height": 412,
+          "xrel": -240,
+          "yrel": -157,
+          "filename": "gfx/drone_port_2x.png"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "key": "spaceport_empty",
+      "name": "Spaceport - Empty Pad",
+      "footprint": "4x4",
+      "tiles": [
+        4,
+        4
+      ],
+      "sprite_extent_z": 50,
+      "source": "spaceport_empty_pad_transparent.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "trim_bbox": [
+        103,
+        159,
+        1153,
+        1142
+      ],
+      "description": "Decorative empty rocket launch pad.",
+      "sprites": [
+        {
+          "zoom": 1,
+          "width": 240,
+          "height": 225,
+          "xrel": -120,
+          "yrel": -97,
+          "filename": "gfx/spaceport_empty_1x.png"
+        },
+        {
+          "zoom": 2,
+          "width": 480,
+          "height": 450,
+          "xrel": -240,
+          "yrel": -195,
+          "filename": "gfx/spaceport_empty_2x.png"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "key": "spaceport_starship",
+      "name": "Spaceport - Starship on Pad",
+      "footprint": "4x4",
+      "tiles": [
+        4,
+        4
+      ],
+      "sprite_extent_z": 70,
+      "source": "spaceport_starship_on_pad_transparent.png",
+      "original_size": [
+        1254,
+        1254
+      ],
+      "trim_bbox": [
+        103,
+        159,
+        1153,
+        1141
+      ],
+      "description": "Decorative launch pad with spacecraft on pad.",
+      "sprites": [
+        {
+          "zoom": 1,
+          "width": 240,
+          "height": 224,
+          "xrel": -120,
+          "yrel": -96,
+          "filename": "gfx/spaceport_starship_1x.png"
+        },
+        {
+          "zoom": 2,
+          "width": 480,
+          "height": 448,
+          "xrel": -240,
+          "yrel": -193,
+          "filename": "gfx/spaceport_starship_2x.png"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "key": "cargo_drone_game_scale",
+      "name": "Parked Cargo Drone",
+      "footprint": "1x1",
+      "tiles": [
+        1,
+        1
+      ],
+      "sprite_extent_z": 8,
+      "source": "openttd_cargo_drone_game_scale.png",
+      "original_size": [
+        192,
+        192
+      ],
+      "trim_bbox": [
+        26,
+        53,
+        166,
+        138
+      ],
+      "description": "Small static cargo drone. Moving drone needs 8-direction aircraft sprites.",
+      "sprites": [
+        {
+          "zoom": 1,
+          "width": 54,
+          "height": 33,
+          "xrel": -27,
+          "yrel": -13,
+          "filename": "gfx/cargo_drone_game_scale_1x.png"
+        },
+        {
+          "zoom": 2,
+          "width": 108,
+          "height": 66,
+          "xrel": -54,
+          "yrel": -27,
+          "filename": "gfx/cargo_drone_game_scale_2x.png"
+        }
+      ]
+    }
+  ],
+  "originals": [
+    "spaceport_empty_pad_transparent.png",
+    "openttd_distribution_centre_4x4_transparent.png",
+    "openttd_cargo_drone_game_scale.png",
+    "openttd_drone_port_transparent.png",
+    "spaceport_starship_on_pad_transparent.png",
+    "openttd_data_centre_transparent.png",
+    "openttd_cargo_drone_transparent.png"
+  ],
+  "tested": "Builds with NML 0.9.0; all six objects placed by the corporate-infrastructure integration scenario. Sprites not yet checked by eye."
+}

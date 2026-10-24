@@ -27,7 +27,9 @@ after three years (a rule in this NewGRF).
 
 All numbers are placeholders until the balance pass; see [`PLACEHOLDERS.md`](PLACEHOLDERS.md).
 The art from the Corporate Infrastructure handoff (drone port, cargo drone, distribution centre,
-data centre, spaceport, rocket) is not converted yet; see "Art" below.
+data centre, spaceport, rocket) is not used here yet; see "Art" below. Gareth's v0.1 package
+turns six of the images into decorative objects: see
+[`../corporate_infrastructure/`](../corporate_infrastructure/README.md).
 
 ## Known limits
 

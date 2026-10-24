@@ -12,6 +12,7 @@ stands, and what comes next. The detail lives in the pages it links to.
 | [`compatibility.md`](compatibility.md) | How third-party NewGRFs and the NewGRF specification fit |
 | [`validation.md`](validation.md) | Recorded test results for every phase |
 | [`mods/newgrf/future_logistics/`](../../mods/newgrf/future_logistics/README.md) | The Future Logistics NewGRF, its placeholder values and the handoff art |
+| [`mods/newgrf/corporate_infrastructure/`](../../mods/newgrf/corporate_infrastructure/README.md) | Gareth's Corporate Infrastructure package: six decorative objects from the concept art |
 
 ## Latest work (night of 23–24 October 2026)
 
@@ -20,8 +21,10 @@ Not pushed yet.
 
 - The Future Logistics NewGRF exists, with drones (2022), hyperloop (2035),
   rockets and spaceports (2050) and a data centre industry. Values and
-  graphics are placeholders (`PLACEHOLDERS.md`); the handoff art is stored but
-  not converted.
+  graphics are placeholders (`PLACEHOLDERS.md`). Gareth's Corporate
+  Infrastructure package (six decorative objects from the concept art) is in
+  `mods/newgrf/corporate_infrastructure/`, compiled and placing in game; its
+  art is not yet used for the working vehicles and buildings.
 - In a game started in 2021, the rivals adopted drones on their own in
   2024–25 through CorporateAI: the whole loop from new tech to rival adoption
   works.
@@ -151,7 +154,9 @@ In rough order:
 2. **Continue the NewGRF and phase 7.** Drones, hyperloop and rockets are in (placeholder values in
    `mods/newgrf/future_logistics/PLACEHOLDERS.md`, base-game graphics). The
    Corporate Infrastructure handoff from Gareth (concept art and requirements)
-   is reviewed in the NewGRF README: the art needs converting before use. Each technology needs its
+   is reviewed in the NewGRF README, and his v0.1 object package builds and
+   places in game (`mods/newgrf/corporate_infrastructure/`); the art still needs
+   converting before the working vehicles and buildings can use it. Each technology needs its
    graphics, vehicles and infrastructure, tagged per `tech_format.md`. Points
    already decided:
    - Vehicles carry the shared `role/` and `power/` badges as well as `fl_` ones.

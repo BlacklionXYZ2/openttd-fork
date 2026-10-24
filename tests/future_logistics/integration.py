@@ -251,6 +251,15 @@ DayZeroMonopolies =
 
     # The Future Logistics NewGRF itself: drones arrive in 2022 and rivals adopt them for mail.
     fl_grf = ROOT / "mods/newgrf/future_logistics/future_logistics.grf"
+    # The committed .grf must match its source; checked when an NML compiler is available ($NMLC or nmlc).
+    nmlc = os.environ.get("NMLC") or shutil.which("nmlc")
+    if nmlc:
+        rebuilt = output / "future_logistics_rebuilt.grf"
+        subprocess.run([nmlc, "-c", "-o", str(rebuilt), "future_logistics.nml"], cwd=fl_grf.parent, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        require(rebuilt.read_bytes() == fl_grf.read_bytes(), "future_logistics.grf is out of date: run mods/newgrf/future_logistics/build.sh")
+    else:
+        print("nmlc not found; not checking that future_logistics.grf matches its source", flush=True)
     drones, drone_save = run("drone-world", year=2026, grfs=[fl_grf],
                              commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
     require("FL tech validate problems=0" in drones, "the Future Logistics NewGRF has declaration problems")

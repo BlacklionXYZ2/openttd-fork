@@ -58,7 +58,14 @@ TechRecord Describe(const Engine *engine, const std::map<CargoType, TechRoles> &
 	record.id = TechId(engine);
 	record.cargo = engine->GetDefaultCargoType();
 	record.refits = GetUnionOfArticulatedRefitMasks(engine->index, true);
-	record.capacity = engine->CanCarryCargo() ? engine->GetDisplayDefaultCapacity() : 0;
+	/* As the purchase list does: trains and road vehicles count every articulated part, which some sets use for all of a wagon's capacity. */
+	if (!engine->CanCarryCargo() || !IsValidCargoType(record.cargo)) {
+		record.capacity = 0;
+	} else if (engine->type == VehicleType::Train || engine->type == VehicleType::Road) {
+		record.capacity = GetCapacityOfArticulatedParts(engine->index)[record.cargo];
+	} else {
+		record.capacity = engine->CanCarryCargo() ? engine->GetDisplayDefaultCapacity() : 0;
+	}
 	record.speed = engine->GetDisplayMaxSpeed();
 	record.reliability_max = engine->reliability_max;
 	record.life_years = engine->info.lifelength.base();

@@ -28,4 +28,13 @@ record the decision here.
 | Hyperloop vehicles | graphics | base-game maglev Lev4 and maglev carriages | |
 | Hyperloop family | minimum market tier | city | |
 | National Rail | hyperloop adoption delay | 5 years | Its built-in rule for any new rail family |
+| Reusable Rocket | introduction date | 1 Jan 2050 | From the roadmap |
+| Reusable Rocket | speed / range | 1800 km/h / unlimited | |
+| Reusable Rocket | capacity | 200 passengers + 40 mail | Refits to passengers, mail, express and armoured cargo (goods, valuables), not bulk or piece goods |
+| Reusable Rocket | cost factor / running cost factor | 250 / 200 | |
+| Reusable Rocket | graphics | base-game Yate Haugan | Handoff rocket art not converted; vertical launch needs engine work |
+| Spaceport | available from / layout | 2050 / city airport (6×6) | Handoff art is a 4×4 launch pad |
+| Spaceport | catchment / noise / maintenance | 6 / 20 / 60 | |
+| Rockets family | minimum market tier / markets | city / passengers, mail, freight | |
+| AeroLink / Integrated Logistics | rocket adoption delay | 2 years / 3 years (freight) | AeroLink's is its built-in rule for any new air family |
 

@@ -53,6 +53,24 @@ badgetable {
     "fl_id/hyperloop_pod",
     "fl_id/hyperloop_passenger_capsule",
     "fl_id/hyperloop_mail_capsule",
+    /* Rockets: a tech family built with the airport pair mechanic between spaceports. AeroLink adopts it two
+     * years after it arrives by its rule for any new air family; Integrated Logistics uses it for freight. */
+    "fl_family/rocket",
+    "fl_family/rocket/mechanic/airport_pair",
+    "fl_family/rocket/market/town_pair",
+    "fl_family/rocket/market/mail",
+    "fl_family/rocket/market/industry",
+    "fl_family/rocket/min_tier/city",
+    "fl_tech/rocket",
+    "fl_needs/launchpad",
+    "fl_provides/launchpad",
+    "fl_role/passenger_intercity",
+    "fl_role/freight_general",
+    "fl_id/rocket",
+    "fl_id/spaceport",
+    "fl_profile/integrated_logistics/adopt/rocket/airport_pair/industry/3",
+    "role/freight",
+    "power/rocket",
     /* Shared badge classes from the NewGRF specification, for other NewGRFs, AIs and the purchase list. */
     "role/mail",
     "role/express",
@@ -63,6 +81,7 @@ badgetable {
 /* Only the family has a display name; the fl_ classes stay unnamed so players never see them. */
 item(FEAT_BADGES, family_drone, 0) { property { label: "fl_family/drone"; name: string(STR_FAMILY_DRONE); } }
 item(FEAT_BADGES, family_hyperloop, 1) { property { label: "fl_family/hyperloop"; name: string(STR_FAMILY_HYPERLOOP); } }
+item(FEAT_BADGES, family_rocket, 2) { property { label: "fl_family/rocket"; name: string(STR_FAMILY_ROCKET); } }
 
 /* Cargo drone. Placeholder graphics: the base-game Tricario helicopter sprite. */
 item(FEAT_AIRCRAFT, cargo_drone, 64) {
@@ -200,5 +219,54 @@ item(FEAT_TRAINS, hyperloop_mail_capsule, 122) {
         default_cargo_type:  MAIL;
         refittable_cargo_classes: bitmask(CC_MAIL, CC_EXPRESS);
         badges: ["fl_format/2", "fl_id/hyperloop_mail_capsule", "fl_tech/hyperloop", "role/mail"];
+    }
+}
+
+/* Rocket. Flies between spaceports like an aircraft; vertical launch and landing need engine work.
+ * Placeholder graphics: the base-game Yate Haugan supersonic airliner. */
+item(FEAT_AIRCRAFT, rocket, 65) {
+    property {
+        name:                         string(STR_ROCKET);
+        climates_available:           ALL_CLIMATES;
+        introduction_date:            date(2050, 1, 1);
+        model_life:                   40;
+        vehicle_life:                 25;
+        reliability_decay:            20;
+        loading_speed:                40;
+        sprite_id:                    8;
+        aircraft_type:                AIRCRAFT_TYPE_LARGE;
+        cost_factor:                  250;
+        running_cost_factor:          200;
+        speed:                        1800 km/h;
+        acceleration:                 40;
+        passenger_capacity:           200;
+        mail_capacity:                40;
+        refittable_cargo_classes:     bitmask(CC_PASSENGERS, CC_MAIL, CC_EXPRESS, CC_ARMOURED);
+        range:                        0;
+        sound_effect:                 SOUND_TAKEOFF_JET_FAST;
+        badges: ["fl_format/2", "fl_id/rocket", "fl_tech/rocket", "fl_needs/launchpad",
+                 "fl_role/passenger_intercity", "fl_role/express", "fl_role/freight_general",
+                 "role/passenger", "role/mail", "role/freight", "power/rocket"];
+    }
+}
+
+/* As with the helistation, the first airport based on the city airport (type 1) replaces it, so an
+ * unchanged copy comes first and the spaceport is added after it. */
+item(FEAT_AIRPORTS, city_airport_unchanged, 2) {
+    property {
+        override: 1;
+    }
+}
+
+/* Spaceport. A city airport layout until the launch pad art is converted. */
+item(FEAT_AIRPORTS, spaceport, 3) {
+    property {
+        override:         1;
+        name:             string(STR_SPACEPORT);
+        years_available:  [2050, 65535];
+        catchment_area:   6;
+        noise_level:      20;
+        maintenance_cost: 60;
+        badges: ["fl_format/2", "fl_id/spaceport", "fl_tech/rocket", "fl_provides/launchpad"];
     }
 }

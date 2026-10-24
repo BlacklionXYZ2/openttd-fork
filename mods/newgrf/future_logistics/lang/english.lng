@@ -14,3 +14,6 @@ STR_HYPERLOOP_NEW_ENGINE        :New Hyperloop Vehicles
 STR_HYPERLOOP_POD               :Hyperloop Propulsion Pod
 STR_HYPERLOOP_PASSENGER_CAPSULE :Hyperloop Passenger Capsule
 STR_HYPERLOOP_MAIL_CAPSULE      :Hyperloop Mail Capsule
+STR_FAMILY_ROCKET               :Rockets
+STR_ROCKET                      :Reusable Rocket
+STR_SPACEPORT                   :Spaceport

@@ -107,7 +107,8 @@ Branch `feature/future-logistics-grf`, 24 October 2026, Linux.
 | Same world, four simulated months | Every drone reached both drone ports and carried full loads of mail; CorporateAI added drones where mail waited (four → nine). Profit is about break-even at the placeholder values |
 | Controlled world, 2041, with the NewGRF | National Rail built a 113-tile hyperloop mail line on day zero (propulsion pod and five mail capsules on `HYPL` track); no city pair was found for a passenger line on the small map |
 | Same world, three simulated months | The pod reached both stations with full loads and earned 1.5 million, the most of any of National Rail's trains: the placeholder values are far too generous |
-| Integration suite | **33 scenarios passed**, including two drone and two hyperloop scenarios |
+| 512×512 world, 2056, with the NewGRF | AeroLink opened rocket passenger and mail routes between two cities via spaceports on day zero. Rocket freight waits for goods or valuables to carry: rockets are limited to express and armoured cargo, after a first version carried wood |
+| Integration suite | **35 scenarios passed**, including two scenarios each for drones, hyperloop and rockets |
 
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged

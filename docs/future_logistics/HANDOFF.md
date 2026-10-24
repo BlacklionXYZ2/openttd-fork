@@ -73,8 +73,8 @@ affects much of the rest.
 | 4: trucks, feeders, fleets | done | merged in #1 |
 | 5: modular tech trees, mail, ships, freight transfers, third-party compatibility, community spec | done | [#2](https://github.com/BlacklionXYZ2/openttd-fork/pull/2) (`feature/modular-tech`), open |
 | 6: rivals that keep up (script API, CorporateAI 4) | done, single-player | `feature/rivals-keep-up`, built on top of #2 |
-| 7: future tech arrives | started: drones and hyperloop work with placeholders | `feature/future-logistics-grf` |
-| NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop | `feature/future-logistics-grf` |
+| 7: future tech arrives | drones, hyperloop and rockets work with placeholders; parcels and data centres to do | `feature/future-logistics-grf` |
+| NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop, rockets | `feature/future-logistics-grf` |
 | 8: quality and release | not started | |
 
 Tests on Linux: the C++ unit tests (2307 assertions) and 29 full-game
@@ -120,7 +120,7 @@ integration scenarios pass; a ten-year run with growing rivals is recorded in
 In rough order:
 
 1. **Review and merge #2**, then open the pull request for phase 6.
-2. **Continue the NewGRF and phase 7.** Drones and hyperloop are in (placeholder values in
+2. **Continue the NewGRF and phase 7.** Drones, hyperloop and rockets are in (placeholder values in
    `mods/newgrf/future_logistics/PLACEHOLDERS.md`, base-game graphics). The
    Corporate Infrastructure handoff from Gareth (concept art and requirements)
    is reviewed in the NewGRF README: the art needs converting before use. Each technology needs its

@@ -14,10 +14,15 @@ so day-zero rivals and CorporateAI find and adopt it with no code naming it.
 | Hyperloop (`fl_family/hyperloop`) | Tech family on its own track type, rail line mechanic, passengers and mail, city tier and up | Working |
 | Hyperloop Tube (`HYPL`, `fl_id/hyperloop_track`) | Track type, from 2035, no level crossings, compatible with nothing else | Working; plain rail graphics |
 | Propulsion Pod, Passenger and Mail Capsules | The pod pulls capsules, as a locomotive pulls wagons | Working; base-game maglev graphics |
+| Rockets (`fl_family/rocket`) | Tech family, airport pair mechanic, passengers, mail and high-value freight, city tier and up | Working |
+| Reusable Rocket (`fl_id/rocket`) | Fast aircraft that needs a launch pad, from 2050 | Working; base-game Yate Haugan graphics, flies like an aircraft |
+| Spaceport (`fl_id/spaceport`) | Airport with a launch pad, from 2050 | Working; city airport layout and graphics |
 
 AeroLink adopts drones two years after they arrive (its rule for any new air family);
 Metro & Regional adopts them for mail after one year (a rule in this NewGRF).
 National Rail adopts hyperloop five years after it arrives (its rule for any new rail family).
+AeroLink adopts rockets two years after they arrive; Integrated Logistics uses them for freight
+after three years (a rule in this NewGRF).
 
 All numbers are placeholders until the balance pass; see [`PLACEHOLDERS.md`](PLACEHOLDERS.md).
 The art from the Corporate Infrastructure handoff (drone port, cargo drone, distribution centre,
@@ -39,9 +44,9 @@ before starting a new game.
 - Tag every item with `fl_format/2` and its `fl_` tags, plus the shared `role/` and `power/`
   badges (tech_format.md, "Fitting in with community content").
 - The first NewGRF airport based on a built-in airport replaces it in OpenTTD. This file
-  therefore defines an unchanged copy of the helistation first, and new airports after it.
-  Keep that order when adding airports based on the helistation; do the same for any other
-  built-in airport type you base one on.
+  therefore defines unchanged copies of the helistation and the city airport first, and the
+  drone port and spaceport after them. Do the same for any other built-in airport type you
+  base one on.
 - Airports that only take helicopters (heliports, helistations, drone ports) serve routes of
   12 to 64 tiles in the planners; other airports serve 48 to 256.
 - OpenTTD airports have at most three helipads, so the four-pad drone port art needs an engine

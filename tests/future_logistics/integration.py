@@ -322,7 +322,9 @@ DayZeroMonopolies =
             and re.search(r"FL service company=2 recipe=rocket/airport_pair/town_pair fallback=false result=success", ships),
             "AeroLink did not open a Starship route on its own")
     ship_run, _ = run("starship-service", load=ship_save, service=True, map_bits=9, grfs=[ss_grf])
-    starships = re.findall(r"FL check company=2 vehicle=\d+ type=air connected=(\w+) served=(\w+) .*engine=464C0102:air:64 ", ship_run)
+    # Only the last check counts: the first, as the save loads, comes before any flying.
+    final_check = ship_run.split("FL check result")[-2]
+    starships = re.findall(r"FL check company=2 vehicle=\d+ type=air connected=(\w+) served=(\w+) .*engine=464C0102:air:64 ", final_check)
     require(starships and all(c == "true" and v == "true" for c, v in starships), "not every Starship served its launch sites")
     # With the Future Logistics NewGRF: both declare the rocket family, and only one city airport copy is added.
     both, _ = run("starship-with-future-logistics", year=2056, map_bits=9, grfs=[fl_grf, ss_grf],

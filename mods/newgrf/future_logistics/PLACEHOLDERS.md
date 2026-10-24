@@ -37,4 +37,10 @@ record the decision here.
 | Spaceport | catchment / noise / maintenance | 6 / 20 / 60 | |
 | Rockets family | minimum market tier / markets | city / passengers, mail, freight | |
 | AeroLink / Integrated Logistics | rocket adoption delay | 2 years / 3 years (freight) | AeroLink's is its built-in rule for any new air family |
+| Data Centre | layout and graphics | temperate bank (in towns) | Handoff art is a 4×4 tower site |
+| Data Centre | accepts / produces | valuables, gold or diamonds / nothing | The handoff says "gold from banks"; which bank cargo per climate is open |
+| Data Centre | funding cost multiplier | 255 (the maximum) | The handoff wants about £2 million and the most expensive building |
+| Data Centre | generation | 3 at map generation, none later | Only funded otherwise |
+| Data Centre | revenue bonus | not implemented | Needs game code and an agreed formula (handoff decision 4) |
+| Integrated Logistics | preferred market | tech | So it serves data centres first when it can reach them |
 

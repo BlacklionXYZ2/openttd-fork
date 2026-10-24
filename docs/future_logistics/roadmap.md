@@ -287,7 +287,7 @@ is only needed where a new mechanic or market is.
 | Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | **Done** (placeholders): helicopter-only airports added to the air planner |
 | Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | **Done** (placeholders): no code needed |
 | Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | **Done** (placeholders, flying like aircraft); a launch sequence would need engine work |
-| Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | Depends on what carries their cargo |
+| Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | **Started**: the industry exists (receives bank cargo, one per town); rivals cannot reach town-centre sites yet, and the revenue bonus needs code and a decision |
 
 Underground hyperloop and true rocket flight behaviour need engine changes and
 are tracked separately; the first versions use rail-type and aircraft mechanics.

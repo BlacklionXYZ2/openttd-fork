@@ -73,7 +73,7 @@ affects much of the rest.
 | 4: trucks, feeders, fleets | done | merged in #1 |
 | 5: modular tech trees, mail, ships, freight transfers, third-party compatibility, community spec | done | [#2](https://github.com/BlacklionXYZ2/openttd-fork/pull/2) (`feature/modular-tech`), open |
 | 6: rivals that keep up (script API, CorporateAI 4) | done, single-player | `feature/rivals-keep-up`, built on top of #2 |
-| 7: future tech arrives | drones, hyperloop and rockets work with placeholders; parcels and data centres to do | `feature/future-logistics-grf` |
+| 7: future tech arrives | drones, hyperloop and rockets work with placeholders; the data centre industry exists; parcels and the cargo hub wait on decisions | `feature/future-logistics-grf` |
 | NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop, rockets | `feature/future-logistics-grf` |
 | 8: quality and release | not started | |
 
@@ -148,6 +148,9 @@ In rough order:
    - Freight routes have at most two legs.
    - Vehicles whose capacity comes from a NewGRF callback (Iron Horse wagons)
      show a placeholder capacity in the Tech Library.
+   - Stations are only built on clear, flat land, so industries in town centres
+     (banks, data centres) cannot be served yet. Road routes should learn to use
+     existing town roads at their ends.
 6. **Parked:** Gareth reported that GUI icons looked very small in a recent Mac
    build. It has not been reproduced; it is to be looked at later.
 7. **Environment note:** the cloud sessions used for development could not

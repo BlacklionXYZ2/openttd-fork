@@ -17,6 +17,8 @@
 
 #include "table/strings.h"
 
+#include "../industry.h"
+
 #include "../safeguards.h"
 
 namespace {
@@ -142,7 +144,11 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 	if (argv.size() == 2 && argv[0] == "find") {
 		using namespace FutureLogistics;
 		const auto items = FindTagged(argv[1]);
-		for (const TaggedItem &item : items) Report(fmt::format("FL tech found id={} kind={} index={}", item.id, TaggedKindName(item.kind), item.index));
+		for (const TaggedItem &item : items) {
+			/* For an industry type, also say how many are on the map. */
+			const std::string built = item.kind == TaggedKind::Industry ? fmt::format(" built={}", Industry::GetIndustryTypeCount(static_cast<IndustryType>(item.index))) : "";
+			Report(fmt::format("FL tech found id={} kind={} index={}{}", item.id, TaggedKindName(item.kind), item.index, built));
+		}
 		Report(fmt::format("FL tech find id={} matches={}", argv[1], items.size()));
 		return true;
 	}

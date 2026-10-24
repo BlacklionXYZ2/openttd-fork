@@ -148,10 +148,11 @@ void Reserve(const FreightPair &pair, std::string_view legs, StationID hub, Rese
 		reserved.industries.insert(pair.destination->index);
 		reserved.supplied.insert(pair.destination->index);
 	}
-	Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} chain={} destination={}{} cargo={} tier={} legs={} hub={}", _current_company,
+	Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} chain={} destination={}{} cargo={} tier={} legs={} hub={} destination_type={}", _current_company,
 		pair.source->index, pair.chain, pair.destination != nullptr ? "industry:" : "town:",
 		pair.destination != nullptr ? pair.destination->index.base() : pair.town->index.base(),
-		CargoSpec::Get(pair.cargo)->label.AsString(), TierName(pair.tier), legs, hub == StationID::Invalid() ? std::string{"-"} : fmt::format("{}", hub));
+		CargoSpec::Get(pair.cargo)->label.AsString(), TierName(pair.tier), legs, hub == StationID::Invalid() ? std::string{"-"} : fmt::format("{}", hub),
+		pair.destination != nullptr ? fmt::format("{}", pair.destination->type) : std::string{"town"});
 }
 
 /**

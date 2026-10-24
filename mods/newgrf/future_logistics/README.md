@@ -17,6 +17,7 @@ so day-zero rivals and CorporateAI find and adopt it with no code naming it.
 | Rockets (`fl_family/rocket`) | Tech family, airport pair mechanic, passengers, mail and high-value freight, city tier and up | Working |
 | Reusable Rocket (`fl_id/rocket`) | Fast aircraft that needs a launch pad, from 2050 | Working; base-game Yate Haugan graphics, flies like an aircraft |
 | Spaceport (`fl_id/spaceport`) | Airport with a launch pad, from 2050 | Working; city airport layout and graphics |
+| Data Centre (`fl_industry/data_centre`, `fl_market/tech`) | Industry in towns that receives valuables, gold or diamonds; one per town | Generated and accepted; rivals cannot reach it yet (see below); no revenue bonus |
 
 AeroLink adopts drones two years after they arrive (its rule for any new air family);
 Metro & Regional adopts them for mail after one year (a rule in this NewGRF).
@@ -27,6 +28,15 @@ after three years (a rule in this NewGRF).
 All numbers are placeholders until the balance pass; see [`PLACEHOLDERS.md`](PLACEHOLDERS.md).
 The art from the Corporate Infrastructure handoff (drone port, cargo drone, distribution centre,
 data centre, spaceport, rocket) is not converted yet; see "Art" below.
+
+## Known limits
+
+- Rivals do not serve data centres yet. Banks and data centres sit in town centres, and the
+  planners only build stations on clear, flat land; they need to learn to use existing town
+  roads at the ends of a route.
+- The data centre's company revenue bonus, the distribution centre / cargo hub and parcels
+  wait on decisions from the Corporate Infrastructure handoff (what "cargo" means, whether the
+  hub creates or forwards cargo, how the bonus works).
 
 ## Building
 

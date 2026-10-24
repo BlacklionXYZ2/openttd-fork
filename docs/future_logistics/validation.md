@@ -118,6 +118,7 @@ Later the same night:
 | Data centres, 512×512 temperate worlds, four seeds | 4 to 9 data centres generated, one per town; `validate` clean. No world had a bank, so there was nothing to deliver to them: the data centre's cargo needs a decision |
 | Road routes over town roads | Across the integration worlds most mail and truck routes now use a few tiles of existing street (up to 6), mostly stops on town roads; the controlled, 2026 and coastal worlds build the same number of services as before |
 | Integration suite | **36 scenarios passed**, unit tests passed |
+| Tech arriving mid-game: controlled world from 2021, four simulated years, with the NewGRF | No drones exist at the start. In 2024 AeroLink adopted drones through CorporateAI and opened a drone mail route; in 2025 AeroLink and Metro & Regional opened more. Every yearly check passed; fleet 28 → 38 → 42 → 57 vehicles |
 
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged

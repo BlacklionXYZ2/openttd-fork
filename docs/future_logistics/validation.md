@@ -150,6 +150,10 @@ Found and fixed during the runs:
 - Undoing the first leg of a two-leg freight route failed to sell its train, which had already
   been started; it is now stopped first.
 - CorporateAI now logs crashed vehicles.
+- Railways now bridge roads too, and use a level crossing only where no bridged line exists.
+  Across the integration suite 11 railways bridge a road and 7 still cross one; in the 2041
+  world an electric line bridged a road and its train served both stations. All 37 scenarios
+  and the unit tests pass.
 
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged

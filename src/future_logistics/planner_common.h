@@ -8,6 +8,7 @@
 
 #include <optional>
 
+#include "../bridge_type.h"
 #include "../cargo_type.h"
 #include "../command_type.h"
 #include "../direction_type.h"
@@ -126,6 +127,13 @@ struct BuiltLeg {
 using LegBuild = ConstructionResult (*)(const TechLibrary &library, const ServiceSpec &spec, const Place &from, const Place &to, const LegJob &job, bool execute, BuiltLeg &built);
 
 constexpr size_t MAX_HUB_CHECKS = 6; ///< Transfer station sites checked with Place::usable per leg.
+
+/**
+ * Find the cheapest bridge type available for a span.
+ * @param length Tiles between the bridge heads.
+ * @return Bridge type, or MAX_BRIDGES if none is available yet.
+ */
+BridgeType CheapestBridge(uint length);
 
 /**
  * Narrow a list of candidate sites, nearest first, to those a place's extra check allows.

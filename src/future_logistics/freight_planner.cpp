@@ -26,6 +26,7 @@
 #include "../signal_func.h"
 #include "../station_func.h"
 #include "../town.h"
+#include "../bridge.h"
 #include "../vehicle_base.h"
 #include "../vehicle_cmd.h"
 
@@ -49,6 +50,16 @@ TileIndex Place::Centre() const
  * Remove a leg: sell its vehicles, then clear what it built in reverse order.
  * @param built What was built.
  */
+BridgeType CheapestBridge(uint length)
+{
+	BridgeType best = MAX_BRIDGES;
+	for (BridgeType type = 0; type < MAX_BRIDGES; type++) {
+		if (CheckBridgeAvailability(type, length).Failed()) continue;
+		if (best == MAX_BRIDGES || GetBridgeSpec(type)->price < GetBridgeSpec(best)->price) best = type;
+	}
+	return best;
+}
+
 void Undo(const BuiltLeg &built)
 {
 	for (VehicleID vehicle : built.vehicles) {

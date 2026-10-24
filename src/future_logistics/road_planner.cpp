@@ -171,19 +171,6 @@ static TileIndex BridgeOverRail(TileIndex from, DiagDirection dir)
 	return land;
 }
 
-/**
- * Find the cheapest bridge type that may span one tile.
- * @return Bridge type, or MAX_BRIDGES if none is available yet.
- */
-static BridgeType CheapestBridge()
-{
-	BridgeType best = MAX_BRIDGES;
-	for (BridgeType type = 0; type < MAX_BRIDGES; type++) {
-		if (CheckBridgeAvailability(type, 1).Failed()) continue;
-		if (best == MAX_BRIDGES || GetBridgeSpec(type)->price < GetBridgeSpec(best)->price) best = type;
-	}
-	return best;
-}
 
 /**
  * Check whether a route may step from one tile to the next. New road goes on clear land, flat or
@@ -366,7 +353,7 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	/* A railway tile on the route is spanned by a bridge from the tile before it to the tile after. */
 	auto spanned = [&](size_t i) { return i < route.path.size() && IsTileType(route.path[i], TileType::Railway); };
 	auto bridge_part = [&](size_t i) { return spanned(i) || (i > 0 && spanned(i - 1)) || spanned(i + 1); };
-	const BridgeType bridge = CheapestBridge();
+	const BridgeType bridge = CheapestBridge(1);
 	auto build_bridge = [&](size_t i, DoCommandFlags flags) {
 		if (bridge == MAX_BRIDGES) return CommandCost(CMD_ERROR);
 		return Command<Commands::BuildBridge>::Do(flags | CONSTRUCT, route.path[i + 1], route.path[i - 1], TransportType::Road, bridge, INVALID_RAILTYPE, rt);

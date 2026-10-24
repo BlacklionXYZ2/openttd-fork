@@ -173,11 +173,12 @@ In rough order:
      accumulating their costs (nested commands do not charge money).
    - Railways and new road climb and descend straight over tiles inclined along
      them, and curve only on flat tiles. Road routes bridge a railway in their
-     way; otherwise there are no bridges, tunnels or foundations, so rivers,
-     deep valleys and steep or uneven ground stop a line. Railways cross town
-     roads with level crossings, where a fast train can hit a road vehicle that
-     is already on the crossing (an OpenTTD rule: the crossing only closes when
-     the train is one tile away); bridging those roads would be safer.
+     way, and railways bridge roads where there is flat open land each side;
+     otherwise there are no bridges, tunnels or foundations, so rivers, deep
+     valleys and steep or uneven ground stop a line. Where a railway cannot
+     bridge a town road it uses a level crossing, where a fast train can hit a
+     road vehicle already on it (an OpenTTD rule: the crossing only closes when
+     the train is one tile away).
    - Freight routes have at most two legs.
    - Vehicles whose capacity comes from a NewGRF callback (Iron Horse wagons)
      show a placeholder capacity in the Tech Library.

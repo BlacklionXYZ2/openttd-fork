@@ -173,6 +173,13 @@ check passed. In four simulated months both trains using tunnels served their st
 integration suite (38 scenarios, the mountain scenario now requiring a tunnel) and the unit
 tests pass.
 
+Road tunnels: road routes use tunnels (and bridges) only when there is no other route, which
+none of the test worlds needed. To exercise them, the mountainous worlds were rerun with
+tunnels allowed from the start: three road routes tunnelled, one with three tunnels. This
+showed that a depot could be joined to a tile above a tunnel, where no road is built; the
+depot junction now avoids tunnels as well as bridges. Afterwards every check passed, and in four
+simulated months the vehicle on the three-tunnel route served its stations.
+
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
 helistation copy first, and the Tech Library and `fl_id` index read each airport type without

@@ -108,9 +108,9 @@ depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
 railways reserve their two industries. Railways and roads bridge water, roads,
 railways and dips up to six tiles across, between flat open tiles at the same height;
-road routes use bridges only when there is no route without one. A railway that has
-climbed onto a slope may instead tunnel through the hill, up to 16 tiles, to a slope
-at the same height on the far side. A railway crosses a
+road routes use bridges only when there is no route without one. A railway or road
+that has climbed onto a slope may instead tunnel through the hill, up to 16 tiles, to
+a slope at the same height on the far side. A railway crosses a
 straight town road at right angles with a level crossing only where no line bridging
 it exists (and never on track types that forbid level crossings). Stations are built
 before the line, since clearing trees for it can cost the town's permission. Rail and

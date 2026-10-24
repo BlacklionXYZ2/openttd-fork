@@ -153,6 +153,7 @@ struct Route {
 	TileIndex depot = INVALID_TILE; ///< Depot tile, invalid if planning failed.
 	size_t junction = 0; ///< Index of the road tile adjoining the depot.
 	std::set<TileIndex> bridged; ///< Tiles under a bridge; the route's tiles either side of a run of them are its heads.
+	std::set<TileIndex> tunnelled; ///< Tiles over a tunnel; the route's tiles either side of a run of them are its portals.
 };
 
 /**
@@ -203,7 +204,8 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 	stops.insert(ends.begin(), ends.end());
 	std::set<TileIndex> targets(ends.begin(), ends.end());
 	std::map<TileIndex, TileIndex> previous;
-	std::set<TileIndex> middles; ///< Tiles under a bridge.
+	std::set<TileIndex> middles; ///< Tiles under a bridge or over a tunnel.
+	std::set<TileIndex> tunnel_middles; ///< Tiles over a tunnel.
 	std::queue<TileIndex> queue;
 	for (TileIndex tile : starts) {
 		previous.emplace(tile, INVALID_TILE);
@@ -216,14 +218,18 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 			Route route;
 			for (TileIndex t = tile; t != INVALID_TILE; t = previous.at(t)) {
 				route.path.push_back(t);
-				if (middles.contains(t)) route.bridged.insert(t);
+				if (tunnel_middles.contains(t)) {
+					route.tunnelled.insert(t);
+				} else if (middles.contains(t)) {
+					route.bridged.insert(t);
+				}
 			}
 			std::reverse(route.path.begin(), route.path.end());
 			if (route.path.size() < 8 || route.path.size() > 128) continue;
 			std::set<TileIndex> occupied(route.path.begin(), route.path.end());
-			auto bridged = [&](size_t j) { return j < route.path.size() && route.bridged.contains(route.path[j]); };
+			auto bridged = [&](size_t j) { return j < route.path.size() && (route.bridged.contains(route.path[j]) || route.tunnelled.contains(route.path[j])); };
 			for (size_t i = 1; i + 1 < route.path.size(); i++) {
-				/* Not on a slope, nor at a bridge. */
+				/* Not on a slope, nor at a bridge or tunnel. */
 				if (!IsTileFlat(route.path[i]) || bridged(i) || bridged(i - 1) || bridged(i + 1)) continue;
 				for (TileIndex neighbour : Neighbours(route.path[i])) {
 					if (!occupied.contains(neighbour) && Buildable(neighbour) && GetTileZ(neighbour) == GetTileZ(route.path[i])) {
@@ -236,6 +242,25 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 		}
 		const TileIndex before = previous.at(tile);
 		const bool off_bridge = middles.contains(before);
+		/* Having climbed onto a slope, the road may instead go through the hill in a tunnel. */
+		if (bridges && !off_bridge && before != INVALID_TILE && !stops.contains(tile)) {
+			const DiagDirection dir = RouteDirection(before, tile);
+			const BridgeSpan tunnel = FindTunnel(tile, dir);
+			bool clear = tunnel.land != INVALID_TILE && !previous.contains(tunnel.land) && !stops.contains(tunnel.land);
+			for (uint k = 1; k <= tunnel.length && clear; k++) clear = !previous.contains(Step(tile, dir, k));
+			if (clear) {
+				TileIndex last = tile;
+				for (uint k = 1; k <= tunnel.length; k++) {
+					const TileIndex middle = Step(tile, dir, k);
+					middles.insert(middle);
+					tunnel_middles.insert(middle);
+					previous.emplace(middle, last);
+					last = middle;
+				}
+				previous.emplace(tunnel.land, last);
+				queue.push(tunnel.land);
+			}
+		}
 		for (TileIndex next : Neighbours(tile)) {
 			if (previous.size() >= MAX_SEARCH) break;
 			if (previous.contains(next)) continue;
@@ -350,8 +375,14 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	auto type_at = [&](size_t i) { return on_road[i] ? GetRoadTypeRoad(route.path[i]) : rt; };
 	/* Bridges are built from head to head; their heads and the tiles under them get no road of their own. */
 	const auto bridges = RouteBridges(route.path, route.bridged);
+	const auto tunnels = RouteBridges(route.path, route.tunnelled);
 	std::vector<bool> bridge_part(route.path.size(), false);
-	for (const RouteBridge &b : bridges) std::fill(bridge_part.begin() + b.head, bridge_part.begin() + b.tail + 1, true);
+	for (const auto *spans : {&bridges, &tunnels}) {
+		for (const RouteBridge &b : *spans) std::fill(bridge_part.begin() + b.head, bridge_part.begin() + b.tail + 1, true);
+	}
+	auto build_tunnel = [&](const RouteBridge &t, DoCommandFlags flags) {
+		return Command<Commands::BuildTunnel>::Do(flags | CONSTRUCT, route.path[t.head], TransportType::Road, INVALID_RAILTYPE, rt);
+	};
 	auto build_bridge = [&](const RouteBridge &b, DoCommandFlags flags) {
 		const BridgeType type = CheapestBridge(static_cast<uint>(b.tail - b.head - 1));
 		if (type == MAX_BRIDGES) return CommandCost(CMD_ERROR);
@@ -360,6 +391,11 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	Money cost = 0;
 	for (const RouteBridge &b : bridges) {
 		auto result = build_bridge(b, {});
+		if (result.Failed()) return ConstructionResult::Rejected;
+		cost += result.GetCost();
+	}
+	for (const RouteBridge &t : tunnels) {
+		auto result = build_tunnel(t, {});
 		if (result.Failed()) return ConstructionResult::Rejected;
 		cost += result.GetCost();
 	}
@@ -423,6 +459,11 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 		/* Clearing a bridge head removes the whole bridge and leaves what is under it. */
 		built.push_back(route.path[b.head]);
 	}
+	for (const RouteBridge &t : tunnels) {
+		if (build_tunnel(t, EXEC).Failed()) return fail("tunnel");
+		/* Clearing a portal removes the whole tunnel. */
+		built.push_back(route.path[t.head]);
+	}
 	for (size_t i = 0; i < route.path.size(); i++) {
 		if (bridge_part[i]) continue;
 		if (!missing(i).None() && Command<Commands::BuildRoad>::Do(EXEC | CONSTRUCT, route.path[i], missing(i), type_at(i), {}, TownID::Invalid()).Failed()) return fail("road");
@@ -455,9 +496,9 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 	}
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : route.path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL route company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={} public_road={} bridges={} slopes={}",
+	Debug(Facility::Misc, Severity::Notice, "FL route company={} kind={} cargo={} vehicles={} vehicle={} from={} to={} depot={} tiles={} balance={} signature={} public_road={} bridges={} tunnels={} slopes={}",
 		_current_company, job.kind, CargoSpec::Get(job.cargo)->label.AsString(), job.vehicles, vehicles.front(), route.path.front(), route.path.back(),
-		route.depot, route.path.size(), Company::Get(_current_company)->money, signature, std::ranges::count(on_road, true), bridges.size(),
+		route.depot, route.path.size(), Company::Get(_current_company)->money, signature, std::ranges::count(on_road, true), bridges.size(), tunnels.size(),
 		std::ranges::count_if(route.path, [](TileIndex t) { return !IsTileFlat(t); }));
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(route.path.front());
@@ -676,9 +717,9 @@ std::set<StationID> RoadStationsReachable(const Vehicle *vehicle, TileIndex *dep
 		TileIndex tile = queue.front(); queue.pop();
 		if (IsStationRoadStopTile(tile) && GetTileOwner(tile) == vehicle->owner) reached.insert(GetStationIndex(tile));
 		if (depot != nullptr && *depot == INVALID_TILE && IsRoadDepotTile(tile) && GetTileOwner(tile) == vehicle->owner) *depot = tile;
-		/* Across a road bridge to its other head. */
-		if (IsBridgeTile(tile) && GetTunnelBridgeTransportType(tile) == TransportType::Road) {
-			const TileIndex other = GetOtherBridgeEnd(tile);
+		/* Across a road bridge or through a tunnel to its other end. */
+		if (IsTileType(tile, TileType::TunnelBridge) && GetTunnelBridgeTransportType(tile) == TransportType::Road) {
+			const TileIndex other = GetOtherTunnelBridgeEnd(tile);
 			if (!seen.contains(other)) { seen.insert(other); queue.push(other); }
 		}
 		for (TileIndex next : Neighbours(tile)) {

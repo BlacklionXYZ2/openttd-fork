@@ -265,6 +265,16 @@ DayZeroMonopolies =
     flying = re.findall(r"FL check company=\d+ vehicle=\d+ type=air connected=true served=true .*engine=464C0101:air:64 ", drone_run)
     require(len(flying) >= 4, "the drones did not serve their drone ports")
 
+    # Hyperloop arrives in 2035 on its own track type; National Rail adopts it five years later.
+    tubes, tube_save = run("hyperloop-world", year=2041, grfs=[fl_grf], commands="future_logistics_tech validate\n")
+    require("FL tech validate problems=0" in tubes, "the Future Logistics NewGRF has declaration problems in 2041")
+    tube = re.search(r"FL rail company=1 kind=town cargo=\w+ track=HYPL vehicle=(\d+) .*locomotive=464C0101:rail:120 wagon=464C0101:rail:12[12]", tubes)
+    require(tube and re.search(r"FL service company=1 recipe=hyperloop/rail_line/\w+ fallback=false result=success", tubes),
+            "National Rail did not build a hyperloop line")
+    tube_run, _ = run("hyperloop-service", load=tube_save, service=True, grfs=[fl_grf])
+    require(re.search(rf"FL check company=1 vehicle={tube.group(1)} type=rail connected=true served=true ", tube_run),
+            "the hyperloop pod did not serve its stations")
+
     # A NewGRF that adds a tech family, a rival, a cargo meaning, a rule for a built-in rival, and mistakes.
     grf_text, _ = run("newgrf-tech-tree", limit=5, grfs=[ROOT / "tests/future_logistics/grf/fl_test.grf"],
                       commands="future_logistics_tech recipes\nfuture_logistics_tech validate\nfuture_logistics_tech list\n"
@@ -346,7 +356,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones from the Future Logistics NewGRF adopted for mail; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones and hyperloop from the Future Logistics NewGRF adopted by the rivals; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

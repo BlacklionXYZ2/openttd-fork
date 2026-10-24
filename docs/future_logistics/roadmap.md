@@ -271,8 +271,10 @@ The Future Logistics NewGRF lives in `mods/newgrf/future_logistics/` (see its RE
 (helicopter type, mail and express cargo, 2022) and a drone port (a helistation layout). The
 air planner now also builds airports that only take helicopters, for routes of 12 to 64 tiles,
 and gives them only helicopters. AeroLink and Metro & Regional adopt drones for mail and
-CorporateAI grows their drone routes. The Corporate Infrastructure handoff art is not yet
-converted.
+CorporateAI grows their drone routes. **Hyperloop is in** too, with no code change: a tube
+track type of its own (`HYPL`, 2035), a propulsion pod and passenger and mail capsules;
+National Rail adopts it five years after it arrives. The Corporate Infrastructure handoff art
+is not yet converted.
 
 Details of each tech and industry will be decided when it is developed. With
 the phase 5 format, most of each one is NewGRF content plus declarations; code
@@ -282,7 +284,7 @@ is only needed where a new mechanic or market is.
 |---|---|---|---|
 | Parcels | TBD | Parcel cargo, sorting hub, delivery van, `fl_cargo` meaning | None expected (road and rail freight recipes) |
 | Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | **Done** (placeholders): helicopter-only airports added to the air planner |
-| Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | None expected (rail line mechanic) |
+| Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | **Done** (placeholders): no code needed |
 | Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | None expected; a launch sequence would need a new mechanic |
 | Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | Depends on what carries their cargo |
 

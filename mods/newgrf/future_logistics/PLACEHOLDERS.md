@@ -19,3 +19,13 @@ record the decision here.
 | Drones family | minimum market tier | town | Villages get no drone ports |
 | Drones family | markets | mail | Freight by drone not enabled |
 | Metro & Regional | drone adoption delay | 1 year | AeroLink's is 2 years, from its built-in rule |
+| Hyperloop track (`HYPL`) | introduction date | 1 Jan 2035 | From the roadmap |
+| Hyperloop track | speed limit / build cost / maintenance | 900 km/h / 2000 / 600 | A 113-tile line cost about 2.5 million in 2041 |
+| Hyperloop track | graphics | plain rail | Tube art does not exist yet |
+| Hyperloop Propulsion Pod | speed / power / weight | 700 km/h / 12000 kW / 40 t | Earned 1.5 million in its first three months: far too much |
+| Hyperloop Propulsion Pod | cost factor / running cost factor | 200 / 150 | |
+| Hyperloop capsules | capacity | 60 passengers / 50 mail | |
+| Hyperloop vehicles | graphics | base-game maglev Lev4 and maglev carriages | |
+| Hyperloop family | minimum market tier | city | |
+| National Rail | hyperloop adoption delay | 5 years | Its built-in rule for any new rail family |
+

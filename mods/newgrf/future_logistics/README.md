@@ -11,9 +11,13 @@ so day-zero rivals and CorporateAI find and adopt it with no code naming it.
 | Drones (`fl_family/drone`) | Tech family, airport pair mechanic, mail market, town tier and up | Working |
 | Cargo Drone (`fl_id/cargo_drone`) | Helicopter-type aircraft for mail and express cargo, from 2022 | Working; placeholder graphics (base-game Tricario helicopter) |
 | Drone Port (`fl_id/drone_port`) | Airport for drones, from 2022 | Working; helistation layout and graphics, three pads |
+| Hyperloop (`fl_family/hyperloop`) | Tech family on its own track type, rail line mechanic, passengers and mail, city tier and up | Working |
+| Hyperloop Tube (`HYPL`, `fl_id/hyperloop_track`) | Track type, from 2035, no level crossings, compatible with nothing else | Working; plain rail graphics |
+| Propulsion Pod, Passenger and Mail Capsules | The pod pulls capsules, as a locomotive pulls wagons | Working; base-game maglev graphics |
 
 AeroLink adopts drones two years after they arrive (its rule for any new air family);
 Metro & Regional adopts them for mail after one year (a rule in this NewGRF).
+National Rail adopts hyperloop five years after it arrives (its rule for any new rail family).
 
 All numbers are placeholders until the balance pass; see [`PLACEHOLDERS.md`](PLACEHOLDERS.md).
 The art from the Corporate Infrastructure handoff (drone port, cargo drone, distribution centre,

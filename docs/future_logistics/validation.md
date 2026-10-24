@@ -105,7 +105,9 @@ Branch `feature/future-logistics-grf`, 24 October 2026, Linux.
 | NewGRF build | `future_logistics.grf` builds with NML 0.9.0; `validate` reports no problems |
 | Controlled world, 2026, with the NewGRF | AeroLink and Metro & Regional both built drone mail routes on day zero (two drones each) between drone ports; the base-game helistation stays available as its own airport |
 | Same world, four simulated months | Every drone reached both drone ports and carried full loads of mail; CorporateAI added drones where mail waited (four → nine). Profit is about break-even at the placeholder values |
-| Integration suite | **31 scenarios passed**, including two new drone scenarios |
+| Controlled world, 2041, with the NewGRF | National Rail built a 113-tile hyperloop mail line on day zero (propulsion pod and five mail capsules on `HYPL` track); no city pair was found for a passenger line on the small map |
+| Same world, three simulated months | The pod reached both stations with full loads and earned 1.5 million, the most of any of National Rail's trains: the placeholder values are far too generous |
+| Integration suite | **33 scenarios passed**, including two drone and two hyperloop scenarios |
 
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged

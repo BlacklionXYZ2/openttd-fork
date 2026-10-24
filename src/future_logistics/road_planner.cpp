@@ -195,10 +195,11 @@ bool CanStep(TileIndex before, bool off_bridge, TileIndex from, TileIndex to, Ro
  * @param starts Candidate stops at the origin.
  * @param ends Candidate stops at the destination.
  * @param rt Road type of the route's vehicles.
- * @param bridges Whether the corridor may use bridges.
+ * @param bridges Whether the corridor may use bridges and tunnels.
+ * @param[out] spannable If given, set when the search passed somewhere a bridge or tunnel could have gone.
  * @return Proposed route, with an invalid depot if no suitable corridor exists.
  */
-static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends, RoadType rt, bool bridges)
+static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends, RoadType rt, bool bridges, bool *spannable = nullptr)
 {
 	std::set<TileIndex> stops(starts.begin(), starts.end());
 	stops.insert(ends.begin(), ends.end());
@@ -243,10 +244,11 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 		const TileIndex before = previous.at(tile);
 		const bool off_bridge = middles.contains(before);
 		/* Having climbed onto a slope, the road may instead go through the hill in a tunnel. */
-		if (bridges && !off_bridge && before != INVALID_TILE && !stops.contains(tile)) {
+		if ((bridges || spannable != nullptr) && !off_bridge && before != INVALID_TILE && !stops.contains(tile)) {
 			const DiagDirection dir = RouteDirection(before, tile);
 			const BridgeSpan tunnel = FindTunnel(tile, dir);
-			bool clear = tunnel.land != INVALID_TILE && !previous.contains(tunnel.land) && !stops.contains(tunnel.land);
+			if (!bridges && tunnel.land != INVALID_TILE) *spannable = true;
+			bool clear = bridges && tunnel.land != INVALID_TILE && !previous.contains(tunnel.land) && !stops.contains(tunnel.land);
 			for (uint k = 1; k <= tunnel.length && clear; k++) clear = !previous.contains(Step(tile, dir, k));
 			if (clear) {
 				TileIndex last = tile;
@@ -271,8 +273,13 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
 			}
 			/* A bridge over water, a railway, a road or a dip, entered straight from flat open land and landing on it. */
 			const DiagDirection dir = RouteDirection(tile, next);
-			if (!bridges || off_bridge || before == INVALID_TILE || RouteDirection(before, tile) != dir || stops.contains(tile)) continue;
+			if (off_bridge || before == INVALID_TILE || RouteDirection(before, tile) != dir || stops.contains(tile)) continue;
+			if (!bridges && spannable == nullptr) continue;
 			const BridgeSpan bridge = FindBridge(tile, dir);
+			if (!bridges) {
+				if (bridge.land != INVALID_TILE) *spannable = true;
+				continue;
+			}
 			if (bridge.land == INVALID_TILE || previous.contains(bridge.land) || stops.contains(bridge.land)) continue;
 			bool clear = true;
 			for (uint k = 1; k <= bridge.length; k++) clear &= !previous.contains(Step(tile, dir, k));
@@ -300,8 +307,10 @@ static Route SearchRoute(const std::vector<TileIndex> &starts, const std::vector
  */
 Route FindRoute(const std::vector<TileIndex> &starts, const std::vector<TileIndex> &ends, RoadType rt)
 {
-	Route route = SearchRoute(starts, ends, rt, false);
-	return route.depot != INVALID_TILE ? route : SearchRoute(starts, ends, rt, true);
+	/* Searching again only helps if the first search passed somewhere a bridge or tunnel could have gone. */
+	bool spannable = false;
+	Route route = SearchRoute(starts, ends, rt, false, &spannable);
+	return route.depot != INVALID_TILE || !spannable ? route : SearchRoute(starts, ends, rt, true);
 }
 
 /**

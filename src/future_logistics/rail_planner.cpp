@@ -198,9 +198,20 @@ struct RailPath {
  * @param a Origin terminus.
  * @param b Destination terminus.
  * @param crossings Whether the line may cross roads with level crossings; it may always bridge them.
+ * @param[out] crossable If given, set when the search met a road it could have crossed with a level crossing.
  * @return The line, or an empty one if none was found.
  */
-static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossings)
+size_t g_dbg_calls = 0, g_dbg_fail = 0, g_dbg_states = 0, g_dbg_full = 0;
+static RailPath SearchRailPath2(const Terminus &a, const Terminus &b, bool crossings, bool *crossable, size_t &states);
+static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossings, bool *crossable = nullptr)
+{
+	size_t states = 0;
+	auto r = SearchRailPath2(a, b, crossings, crossable, states);
+	g_dbg_calls++; g_dbg_states += states; if (r.empty()) g_dbg_fail++; if (states >= MAX_RAIL_STATES - 8) g_dbg_full++;
+	if (g_dbg_calls % 50 == 0) Debug(Facility::Misc, Severity::Error, "FLDBG rail searches={} failed={} full={} states={}", g_dbg_calls, g_dbg_fail, g_dbg_full, g_dbg_states);
+	return r;
+}
+static RailPath SearchRailPath2(const Terminus &a, const Terminus &b, bool crossings, bool *crossable, size_t &states_out)
 {
 	std::set<TileIndex> blocked;
 	for (const Terminus *t : {&a, &b}) {
@@ -215,6 +226,7 @@ static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossi
 
 	const RailNode start{a.Exit(), a.exit, 0};
 	std::map<uint64_t, RailNode> previous;
+	struct Guard { std::map<uint64_t, RailNode> &p; size_t &o; ~Guard() { o = p.size(); } } guard{previous, states_out};
 	std::set<uint64_t> middles; ///< Positions under a bridge or over a tunnel.
 	std::set<uint64_t> tunnel_middles; ///< Positions over a tunnel.
 	previous.emplace(start.Key(), RailNode{INVALID_TILE, a.exit, 0});
@@ -294,7 +306,13 @@ static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossi
 					}
 				}
 			}
-			if (!OpenGround(next) && !(crossings && CrossableRoad(next, heading))) continue;
+			if (!OpenGround(next)) {
+				if (!CrossableRoad(next, heading)) continue;
+				if (!crossings) {
+					if (crossable != nullptr) *crossable = true;
+					continue;
+				}
+			}
 			/* The ground must meet at the shared side; this also keeps the line straight along a slope. */
 			const auto leaving = SideHeight(node.tile, heading);
 			if (!leaving.has_value() || leaving != SideHeight(next, ReverseDiagDir(heading))) continue;
@@ -316,8 +334,10 @@ static RailPath SearchRailPath(const Terminus &a, const Terminus &b, bool crossi
  */
 RailPath FindRailPath(const Terminus &a, const Terminus &b, RailType railtype)
 {
-	auto path = SearchRailPath(a, b, false);
-	if (path.empty() && !RailNoLevelCrossings(railtype)) path = SearchRailPath(a, b, true);
+	/* Searching again only helps if the first search met a road it could have crossed. */
+	bool crossable = false;
+	auto path = SearchRailPath(a, b, false, &crossable);
+	if (path.empty() && crossable && !RailNoLevelCrossings(railtype)) path = SearchRailPath(a, b, true);
 	return path;
 }
 

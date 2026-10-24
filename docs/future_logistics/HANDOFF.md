@@ -11,6 +11,28 @@ stands, and what comes next. The detail lives in the pages it links to.
 | [`tech_format.md`](tech_format.md) | The `fl_` badge format NewGRFs use to add tech, industries and rivals |
 | [`compatibility.md`](compatibility.md) | How third-party NewGRFs and the NewGRF specification fit |
 | [`validation.md`](validation.md) | Recorded test results for every phase |
+| [`mods/newgrf/future_logistics/`](../../mods/newgrf/future_logistics/README.md) | The Future Logistics NewGRF, its placeholder values and the handoff art |
+
+## Latest work (night of 23–24 October 2026)
+
+Branch `feature/future-logistics-grf`, on top of `feature/rivals-keep-up` (#3).
+Not pushed yet.
+
+- The Future Logistics NewGRF exists, with drones (2022), hyperloop (2035),
+  rockets and spaceports (2050) and a data centre industry. Values and
+  graphics are placeholders (`PLACEHOLDERS.md`); the handoff art is stored but
+  not converted.
+- In a game started in 2021, the rivals adopted drones on their own in
+  2024–25 through CorporateAI: the whole loop from new tech to rival adoption
+  works.
+- Road routes use existing town roads and drive-through stops on them;
+  railways cross town roads with level crossings; rail and road orders are
+  non-stop.
+- The established-rivals settings are in the settings window (Computer
+  players → Established rivals).
+- Waiting on decisions: what data centres receive (maps rarely start with
+  banks), the cargo hub and parcels, and the data centre bonus (see the
+  handoff's open decisions).
 
 ## What the project is
 

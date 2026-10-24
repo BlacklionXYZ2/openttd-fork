@@ -179,22 +179,28 @@ static bool CrossableRoad(TileIndex tile, DiagDirection heading)
 }
 
 /**
- * Find a single-track line between two termini over flat land at one height, crossing town roads
- * at right angles where it has to. Consecutive tiles never turn the same way, so the line has no
- * 90 degree bends, and it runs straight over a level crossing.
+ * Find a single-track line between two termini, crossing town roads at right angles where it has to.
+ * The line climbs and descends over tiles inclined along it, and curves only on flat tiles.
+ * Consecutive tiles never turn the same way, so the line has no 90 degree bends, and it runs
+ * straight over a level crossing.
  * @param a Origin terminus.
  * @param b Destination terminus.
+ * @param railtype Track to build; no level crossings on track types that forbid them.
  * @return Tiles from a's exit to b's exit, or empty if no line was found.
  */
-std::vector<TileIndex> FindRailPath(const Terminus &a, const Terminus &b)
+std::vector<TileIndex> FindRailPath(const Terminus &a, const Terminus &b, RailType railtype)
 {
+	const bool crossings = !RailNoLevelCrossings(railtype);
 	std::set<TileIndex> blocked;
 	for (const Terminus *t : {&a, &b}) {
 		auto tiles = t->Footprint();
 		blocked.insert(tiles.begin(), tiles.end() - 1);
 	}
-	const int z = GetTileZ(a.front);
-	if (GetTileZ(b.front) != z || blocked.contains(a.Exit()) || blocked.contains(b.Exit())) return {};
+	if (blocked.contains(a.Exit()) || blocked.contains(b.Exit())) return {};
+	/* The line must meet each platform end at the platform's height. */
+	for (const Terminus *t : {&a, &b}) {
+		if (!IsValidTile(t->Exit()) || SideHeight(t->Exit(), ReverseDiagDir(t->exit)) != GetTileZ(t->front)) return {};
+	}
 
 	const RailNode start{a.Exit(), a.exit, 0};
 	std::map<uint64_t, RailNode> previous;
@@ -210,19 +216,24 @@ std::vector<TileIndex> FindRailPath(const Terminus &a, const Terminus &b)
 				std::vector<TileIndex> path;
 				for (RailNode n = node; n.tile != INVALID_TILE; n = previous.at(n.Key())) path.push_back(n.tile);
 				std::ranges::reverse(path);
-				if (path.size() >= 6 && path.size() <= 160) return path;
+				/* Positions include the heading, so a line can loop back over itself; keep looking for one that does not. */
+				const std::set<TileIndex> distinct(path.begin(), path.end());
+				if (path.size() >= 6 && path.size() <= 160 && distinct.size() == path.size()) return path;
 			}
 			continue;
 		}
-		/* Track over a level crossing must be straight. */
-		const bool on_crossing = IsNormalRoadTile(node.tile);
+		/* Track over a level crossing or a slope must be straight. */
+		const bool straight_only = IsNormalRoadTile(node.tile) || !IsTileFlat(node.tile);
 		for (DiagDirection heading : DIRECTIONS) {
 			const uint8_t turn = TurnBetween(node.heading, heading);
 			if (turn == 2 || (turn != 0 && turn == node.turn)) continue;
-			if (on_crossing && turn != 0) continue;
+			if (straight_only && turn != 0) continue;
 			const TileIndex next = Step(node.tile, heading);
-			if (next == INVALID_TILE || blocked.contains(next) || GetTileZ(next) != z) continue;
-			if (!Buildable(next) && !CrossableRoad(next, heading)) continue;
+			if (next == INVALID_TILE || blocked.contains(next)) continue;
+			if (!OpenGround(next) && !(crossings && CrossableRoad(next, heading))) continue;
+			/* The ground must meet at the shared side; this also keeps the line straight along a slope. */
+			const auto leaving = SideHeight(node.tile, heading);
+			if (!leaving.has_value() || leaving != SideHeight(next, ReverseDiagDir(heading))) continue;
 			const RailNode child{next, heading, turn};
 			if (previous.size() >= MAX_RAIL_STATES || !previous.emplace(child.Key(), node).second) continue;
 			queue.push(child);
@@ -348,7 +359,10 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 		return ConstructionResult::Failed;
 	};
 	for (size_t i = 0; i < path.size(); i++) {
-		if (ExecFailed(Command<Commands::BuildRail>::Do(EXEC | CONSTRUCT, path[i], consist.railtype, tracks[i], false))) return fail("rail");
+		if (auto result = Command<Commands::BuildRail>::Do(EXEC | CONSTRUCT, path[i], consist.railtype, tracks[i], false); ExecFailed(result)) {
+			Debug(Facility::Misc, Severity::Warning, "FL rail failed tile={} slope={} error={}", path[i], GetTileSlope(path[i]), result.GetErrorMessage());
+			return fail("rail");
+		}
 		if (IsLevelCrossingTile(path[i])) crossings.emplace(path[i], tracks[i]);
 		built.push_back(path[i]);
 	}
@@ -393,9 +407,10 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={} crossings={}",
+	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={} crossings={} slopes={}",
 		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
-		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon), crossings.size());
+		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon), crossings.size(),
+		std::ranges::count_if(path, [](TileIndex t) { return !IsTileFlat(t); }));
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(a.front);
 		result_built->to = GetStationIndex(b.front);
@@ -420,7 +435,7 @@ ConstructionResult TrySites(const std::vector<Terminus> &from, const std::vector
 {
 	for (const Terminus &a : from) {
 		for (const Terminus &b : to) {
-			const auto path = FindRailPath(a, b);
+			const auto path = FindRailPath(a, b, consist.railtype);
 			if (path.empty()) continue;
 			const auto result = BuildRailway(a, b, path, consist);
 			if (result != ConstructionResult::Rejected) return result;
@@ -599,7 +614,7 @@ ConstructionResult RailLeg(const TechLibrary &library, const ServiceSpec &spec, 
 	built.sited = true;
 	for (const Terminus &a : origins) {
 		for (const Terminus &b : destinations) {
-			const auto path = FindRailPath(a, b);
+			const auto path = FindRailPath(a, b, consist.railtype);
 			if (path.empty()) continue;
 			const auto result = BuildRailway(a, b, path, consist, execute, job.transfer, &built);
 			if (result != ConstructionResult::Rejected) return result;

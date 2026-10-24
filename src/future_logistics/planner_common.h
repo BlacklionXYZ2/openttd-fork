@@ -6,10 +6,13 @@
 #ifndef FUTURE_LOGISTICS_PLANNER_COMMON_H
 #define FUTURE_LOGISTICS_PLANNER_COMMON_H
 
+#include <optional>
+
 #include "../cargo_type.h"
 #include "../command_type.h"
 #include "../direction_type.h"
 #include "../map_func.h"
+#include "../slope_func.h"
 #include "../industry_type.h"
 #include "../station_type.h"
 #include "../tile_map.h"
@@ -156,6 +159,36 @@ void Undo(const BuiltLeg &built);
 inline bool Buildable(TileIndex tile)
 {
 	return IsValidTile(tile) && (IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees)) && IsTileFlat(tile);
+}
+
+/**
+ * Get the height of the ground at one side of a tile, where track along the side's axis would meet it.
+ * Track and road go on flat tiles, and straight up or down a tile inclined along their direction, with no foundation.
+ * @param tile Tile to look at.
+ * @param side Side of the tile.
+ * @return Height at that side, or nothing if nothing can reach that side without a foundation.
+ */
+inline std::optional<int> SideHeight(TileIndex tile, DiagDirection side)
+{
+	const auto [slope, z] = GetTileSlopeZ(tile);
+	if (slope == SLOPE_FLAT) return z;
+	if (!IsInclinedSlope(slope)) return std::nullopt;
+	const DiagDirection up = GetInclinedSlopeDirection(slope);
+	if (side == up) return z + 1;
+	if (side == ReverseDiagDir(up)) return z;
+	return std::nullopt;
+}
+
+/**
+ * Check whether open ground can take track or road without a foundation: clear land or trees, flat or inclined.
+ * @param tile Tile to check.
+ * @return Whether track or road may go there.
+ */
+inline bool OpenGround(TileIndex tile)
+{
+	if (!IsValidTile(tile) || !(IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees))) return false;
+	const Slope slope = GetTileSlope(tile);
+	return slope == SLOPE_FLAT || IsInclinedSlope(slope);
 }
 
 /**

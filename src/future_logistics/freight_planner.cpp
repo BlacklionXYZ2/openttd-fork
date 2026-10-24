@@ -26,6 +26,7 @@
 #include "../signal_func.h"
 #include "../station_func.h"
 #include "../town.h"
+#include "../vehicle_base.h"
 #include "../vehicle_cmd.h"
 
 #include "../safeguards.h"
@@ -51,6 +52,8 @@ TileIndex Place::Centre() const
 void Undo(const BuiltLeg &built)
 {
 	for (VehicleID vehicle : built.vehicles) {
+		/* The leg's vehicles were started in the depot; only a stopped vehicle can be sold. */
+		if (!Vehicle::Get(vehicle)->vehstatus.Test(VehState::Stopped)) Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true);
 		const auto result = Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid);
 		UpdateSignalsInBuffer();
 		if (result.Failed()) {

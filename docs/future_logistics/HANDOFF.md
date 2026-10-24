@@ -32,6 +32,10 @@ Not pushed yet.
   players → Established rivals).
 - A ten-year regression run with all of the above passed once rivals' vehicles
   left in depots after renewal were sold (`validation.md`).
+- Railways and road routes now climb over slopes, and road routes bridge
+  railways in their way (a short bridge rather than a level crossing, which
+  fast trains turned out to hit buses on). On mountainous worlds rivals build
+  about twice as many railways as before.
 - Waiting on decisions: what data centres receive (maps rarely start with
   banks), the cargo hub and parcels, and the data centre bonus (see the
   handoff's open decisions).
@@ -101,7 +105,7 @@ affects much of the rest.
 | NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop, rockets | `feature/future-logistics-grf` |
 | 8: quality and release | not started | |
 
-Tests on Linux: the C++ unit tests (2307 assertions) and 36 full-game
+Tests on Linux: the C++ unit tests (2307 assertions) and 37 full-game
 integration scenarios pass; ten-year runs with growing rivals are recorded in
 `validation.md`. Nothing has yet been built or played on the target Mac.
 
@@ -167,14 +171,18 @@ In rough order:
    - Rivals only build after day zero in single-player. Multiplayer needs the
      planners' commands wrapped in one network command, which means
      accumulating their costs (nested commands do not charge money).
-   - The rail planner only builds on flat land at one height, with no bridges,
-     tunnels or slopes, so rail growth can stall on hilly maps; it does cross
-     town roads with level crossings.
+   - Railways and new road climb and descend straight over tiles inclined along
+     them, and curve only on flat tiles. Road routes bridge a railway in their
+     way; otherwise there are no bridges, tunnels or foundations, so rivers,
+     deep valleys and steep or uneven ground stop a line. Railways cross town
+     roads with level crossings, where a fast train can hit a road vehicle that
+     is already on the crossing (an OpenTTD rule: the crossing only closes when
+     the train is one tile away); bridging those roads would be safer.
    - Freight routes have at most two legs.
    - Vehicles whose capacity comes from a NewGRF callback (Iron Horse wagons)
      show a placeholder capacity in the Tech Library.
-   - Road routes now use existing town and unowned roads, with drive-through
-     stops on them; railways, airports and docks still need clear, flat land.
+   - Road routes use existing town and unowned roads, with drive-through
+     stops on them. Stations, depots, airports and docks still need clear, flat land.
    - Temperate maps rarely start with banks, so data centres usually have
      nothing to receive: the data centre's cargo needs a decision.
 6. **Parked:** Gareth reported that GUI icons looked very small in a recent Mac

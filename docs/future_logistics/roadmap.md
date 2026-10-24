@@ -245,7 +245,9 @@ Goal: after day zero, rivals renew and grow modestly, and adopt new tech.
   more than two loads wait at its loading station, up to 3, 5 or 8 vehicles
   (routes are told apart by cargo and stations, since day-zero vehicles do not
   share orders); sells a vehicle that lost money two years running on a route
-  that has others;
+  that has others, and any of its vehicles left stopped in a depot (renewal
+  gives a vehicle a new ID there); logs crashed vehicles, whose routes refill
+  as cargo waits;
   opens a new route every 24, 12 or 6 months, choosing the recipe it has built
   least, so newly adopted families come first; borrows to build and repays
   what is not needed.
@@ -259,8 +261,9 @@ Limits:
   as the day-zero bootstrap does, and nested commands do not charge money, so
   they cannot yet be wrapped in one network command. In multiplayer the AI only
   looks after its fleet.
-- New routes depend on what the planners can build: railways need flat land at
-  one height and no bridges, so on a small, built-up map rail growth can stop.
+- New routes depend on what the planners can build: railways climb straight
+  over slopes but have no bridges or tunnels, so on a small, built-up map rail
+  growth can stop.
 
 ## Phase 7: future tech arrives (started)
 

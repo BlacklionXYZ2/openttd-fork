@@ -28,12 +28,23 @@ class CorporateAI extends AIController {
         AICompany.SetAutoRenewStatus(true);
         local month = AIDate.GetMonth(AIDate.GetCurrentDate());
         while (true) {
+            this.HandleEvents();
             local now = AIDate.GetMonth(AIDate.GetCurrentDate());
             if (now != month) {
                 month = now;
                 this.Monthly();
             }
             this.Sleep(74);
+        }
+    }
+
+    /** Report crashes; AddVehicles refills a route that lost a vehicle once cargo waits again. */
+    function HandleEvents() {
+        while (AIEventController.IsEventWaiting()) {
+            local event = AIEventController.GetNextEvent();
+            if (event.GetEventType() != AIEvent.ET_VEHICLE_CRASHED) continue;
+            local crash = AIEventVehicleCrashed.Convert(event);
+            AILog.Warning("Vehicle " + crash.GetVehicleID() + " crashed at tile " + crash.GetCrashSite() + " (reason " + crash.GetCrashReason() + ")");
         }
     }
 

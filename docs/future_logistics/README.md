@@ -101,8 +101,9 @@ The planner considers the first 128 towns, up to 128 nearest town pairs (distanc
 Candidate stops must both accept and produce passengers and belong to the selected
 town's area. Each completed network reserves its two towns during bootstrap so
 initial rivals do not starve one another of passengers at overlapping stops. The bus planner
-uses the best available standard-road passenger bus and flat clear/tree tiles at one
-height. It builds an owned route, two distinct drive-through stops, an attached
+uses the best available standard-road passenger bus and clear/tree tiles, climbing
+straight over tiles inclined along the road and bridging any railway in its way (only
+if there is no route without one); stops and depots go on flat land. It builds an owned route, two distinct drive-through stops, an attached
 depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
 railways reserve their two industries. Lines may cross straight town roads at

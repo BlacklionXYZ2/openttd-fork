@@ -127,6 +127,30 @@ the ones it sent to be sold. It now sells any of its vehicles stopped in a depot
 stops one for another reason. Continuing the year-ten save for three months with the new
 CorporateAI, no vehicle was left parked and the check passed (63 vehicles).
 
+Railways and roads over hills (same night, later):
+
+| Check | Result |
+| --- | --- |
+| Four mountainous 256×256 worlds (terrain "mountainous", no sea), 1950 | Before: 10 railways and 27 services in all, and one world with a single railway. After: 22 railways and 42 services; all but four railways climb over 2 to 17 sloped tiles; every company operational and every check passed |
+| Two of those worlds, four simulated months | Every train reached and served both stations |
+| Controlled world | Metro & Regional's railway now encloses its station, so its feeder buses reach it over a one-tile road bridge across the line |
+| Integration suite | **37 scenarios passed**, including a new mountainous world; unit tests passed |
+
+Found and fixed during the runs:
+
+- The rail search could return a line that ran over the same tile twice (its positions
+  include the direction), which preflight passed and building then failed on.
+- The rail search allowed level crossings on track that forbids them (hyperloop), so preflight
+  rejected the line; it now knows the track type, and National Rail builds a hyperloop
+  passenger line in the 2041 world.
+- A first version let road routes cross the company's railways with level crossings. Within
+  three months a train destroyed a feeder bus in two worlds: a crossing closes only when a
+  train is one tile away, too late for a slow bus already on it to clear a fast train. Road
+  routes now use a short bridge instead, and only when there is no route without one.
+- Undoing the first leg of a two-leg freight route failed to sell its train, which had already
+  been started; it is now stopped first.
+- CorporateAI now logs crashed vehicles.
+
 Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
 so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
 helistation copy first, and the Tech Library and `fl_id` index read each airport type without

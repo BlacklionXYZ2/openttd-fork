@@ -144,7 +144,8 @@ In rough order:
      planners' commands wrapped in one network command, which means
      accumulating their costs (nested commands do not charge money).
    - The rail planner only builds on flat land at one height, with no bridges,
-     tunnels or slopes, so rail growth can stall on built-up or hilly maps.
+     tunnels or slopes, so rail growth can stall on hilly maps; it does cross
+     town roads with level crossings.
    - Freight routes have at most two legs.
    - Vehicles whose capacity comes from a NewGRF callback (Iron Horse wagons)
      show a placeholder capacity in the Tech Library.

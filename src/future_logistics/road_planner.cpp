@@ -366,6 +366,8 @@ ConstructionResult Build(const Route &route, const RoadJob &job, bool execute = 
 		for (VehicleOrderID i = 0; i < 2; i++) {
 			Order order;
 			order.MakeGoToStation(GetStationIndex(i == 0 ? route.path.front() : route.path.back()));
+			/* Non-stop: routes share town streets, where other drive-through stops would otherwise stop the vehicle. */
+			order.SetNonStopType(OrderNonStopFlag::NonStop);
 			/* Non-train orders must use the far end; the default near end is rejected. */
 			order.SetStopLocation(OrderStopLocation::FarEnd);
 			if (job.full_load) order.SetLoadType(i == 0 ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);

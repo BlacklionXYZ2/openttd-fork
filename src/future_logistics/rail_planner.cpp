@@ -162,8 +162,26 @@ struct RailNode {
 };
 
 /**
- * Find a single-track line between two termini over flat land at one height.
- * Consecutive tiles never turn the same way, so the line has no 90 degree bends.
+ * Check whether a line heading one way may cross a tile's road with a level crossing: a straight,
+ * flat piece of town or unowned road, without tram track, at right angles to the line.
+ * @param tile Tile to cross.
+ * @param heading Direction the line is going.
+ * @return Whether a level crossing may go there.
+ */
+static bool CrossableRoad(TileIndex tile, DiagDirection heading)
+{
+	if (!IsValidTile(tile) || !IsNormalRoadTile(tile) || !IsTileFlat(tile)) return false;
+	if (!HasTileRoadType(tile, RoadTramType::Road) || HasTileRoadType(tile, RoadTramType::Tram)) return false;
+	const Owner owner = GetRoadOwner(tile, RoadTramType::Road);
+	if (owner != OWNER_TOWN && owner != OWNER_NONE) return false;
+	/* The road runs along one axis; the line must run along the other. */
+	return GetRoadBits(tile, RoadTramType::Road) == (DiagDirToAxis(heading) == Axis::X ? ROAD_Y : ROAD_X);
+}
+
+/**
+ * Find a single-track line between two termini over flat land at one height, crossing town roads
+ * at right angles where it has to. Consecutive tiles never turn the same way, so the line has no
+ * 90 degree bends, and it runs straight over a level crossing.
  * @param a Origin terminus.
  * @param b Destination terminus.
  * @return Tiles from a's exit to b's exit, or empty if no line was found.
@@ -196,11 +214,15 @@ std::vector<TileIndex> FindRailPath(const Terminus &a, const Terminus &b)
 			}
 			continue;
 		}
+		/* Track over a level crossing must be straight. */
+		const bool on_crossing = IsNormalRoadTile(node.tile);
 		for (DiagDirection heading : DIRECTIONS) {
 			const uint8_t turn = TurnBetween(node.heading, heading);
 			if (turn == 2 || (turn != 0 && turn == node.turn)) continue;
+			if (on_crossing && turn != 0) continue;
 			const TileIndex next = Step(node.tile, heading);
-			if (next == INVALID_TILE || blocked.contains(next) || !Buildable(next) || GetTileZ(next) != z) continue;
+			if (next == INVALID_TILE || blocked.contains(next) || GetTileZ(next) != z) continue;
+			if (!Buildable(next) && !CrossableRoad(next, heading)) continue;
 			const RailNode child{next, heading, turn};
 			if (previous.size() >= MAX_RAIL_STATES || !previous.emplace(child.Key(), node).second) continue;
 			queue.push(child);
@@ -301,6 +323,7 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	if (!execute) return ConstructionResult::Success;
 
 	std::vector<TileIndex> built;
+	std::map<TileIndex, Track> crossings; ///< Level crossings over town roads: only the rail is removed.
 	std::vector<VehicleID> vehicles;
 	auto rollback = [&]() {
 		for (VehicleID vehicle : vehicles) {
@@ -310,6 +333,11 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 			}
 		}
 		for (auto it = built.rbegin(); it != built.rend(); ++it) {
+			if (auto crossing = crossings.find(*it); crossing != crossings.end()) {
+				auto result = Command<Commands::RemoveRail>::Do(EXEC, *it, crossing->second);
+				if (ExecFailed(result)) Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={} error={}", *it, result.GetErrorMessage());
+				continue;
+			}
 			auto result = Command<Commands::LandscapeClear>::Do(EXEC, *it);
 			if (ExecFailed(result)) Debug(Facility::Misc, Severity::Error, "FL rollback failed tile={} error={}", *it, result.GetErrorMessage());
 		}
@@ -321,6 +349,7 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	};
 	for (size_t i = 0; i < path.size(); i++) {
 		if (ExecFailed(Command<Commands::BuildRail>::Do(EXEC | CONSTRUCT, path[i], consist.railtype, tracks[i], false))) return fail("rail");
+		if (IsLevelCrossingTile(path[i])) crossings.emplace(path[i], tracks[i]);
 		built.push_back(path[i]);
 	}
 	for (const Terminus *site : {&a, &b}) {
@@ -353,6 +382,8 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 	for (VehicleOrderID i = 0; i < 2; i++) {
 		Order order;
 		order.MakeGoToStation(GetStationIndex(i == 0 ? a.front : b.front));
+		/* Non-stop, as a player would: lines can share track and cross other lines, and stopping at those stations adds implicit orders. */
+		order.SetNonStopType(OrderNonStopFlag::NonStop);
 		if (consist.freight) order.SetLoadType(i == 0 ? OrderLoadType::FullLoadAny : OrderLoadType::NoLoad);
 		/* Transfer and leave empty: the cargo waits at the station for the next leg's vehicles. */
 		if (transfer && i == 1) order.SetUnloadType(OrderUnloadType::Transfer);
@@ -362,14 +393,16 @@ ConstructionResult BuildRailway(const Terminus &a, const Terminus &b, const std:
 
 	uint64_t signature = 14695981039346656037ULL;
 	for (TileIndex tile : path) signature = (signature ^ tile.base()) * 1099511628211ULL;
-	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={}",
+	Debug(Facility::Misc, Severity::Notice, "FL rail company={} kind={} cargo={} track={} vehicle={} wagons={} from={} to={} depot={} tiles={} balance={} signature={} locomotive={} wagon={} crossings={}",
 		_current_company, consist.freight ? "freight" : "town", CargoSpec::Get(consist.cargo)->label.AsString(), GetRailTypeInfo(consist.railtype)->label.AsString(), head, wagons,
-		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon));
+		a.front, b.front, a.Depot(), path.size(), Company::Get(_current_company)->money, signature, TechId(consist.locomotive), TechId(consist.wagon), crossings.size());
 	if (result_built != nullptr) {
 		result_built->from = GetStationIndex(a.front);
 		result_built->to = GetStationIndex(b.front);
 		result_built->from_tile = a.front;
 		result_built->to_tile = b.front;
+		/* Undo clears whole tiles, which would take a town's road with a level crossing; leave those. */
+		std::erase_if(built, [&](TileIndex tile) { return crossings.contains(tile); });
 		result_built->tiles = std::move(built);
 		result_built->vehicles = {head};
 	}

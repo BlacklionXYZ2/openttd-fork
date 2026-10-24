@@ -105,7 +105,10 @@ uses the best available standard-road passenger bus and flat clear/tree tiles at
 height. It builds an owned route, two distinct drive-through stops, an attached
 depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
-railways reserve their two industries. All engine command executions in the rail
+railways reserve their two industries. Lines may cross straight town roads at
+right angles with level crossings (not on track types that forbid them). Rail and
+road orders are non-stop, so vehicles do not stop at other stations their route
+passes. All engine command executions in the rail
 planner flush the track signal update buffer, as the normal command loop does.
 The air planner builds two airports of the type the market tier allows and a
 small fleet chosen by the Tech Library, for passengers, mail or freight. The

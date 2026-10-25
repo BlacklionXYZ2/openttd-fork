@@ -1,0 +1,6 @@
+##grflangid 0x01
+STR_GRF_NAME            :Future Logistics: Starship
+STR_GRF_DESC            :A fully reusable passenger and cargo rocket and its launch site, for the Future Logistics rocket age. Works on its own or with the Future Logistics NewGRF. Placeholder values; see the package README.
+STR_FAMILY_ROCKET       :Rockets
+STR_STARSHIP            :Starship
+STR_STARSHIP_LAUNCH_SITE:Starship Launch Site

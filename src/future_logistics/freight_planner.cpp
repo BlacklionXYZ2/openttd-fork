@@ -22,10 +22,14 @@
 #include "../debug.h"
 #include "../industry.h"
 #include "../landscape_cmd.h"
+#include "../rail_map.h"
+#include "../road_map.h"
 #include "../settings_type.h"
 #include "../signal_func.h"
 #include "../station_func.h"
 #include "../town.h"
+#include "../bridge.h"
+#include "../vehicle_base.h"
 #include "../vehicle_cmd.h"
 
 #include "../safeguards.h"
@@ -48,9 +52,58 @@ TileIndex Place::Centre() const
  * Remove a leg: sell its vehicles, then clear what it built in reverse order.
  * @param built What was built.
  */
+BridgeSpan FindBridge(TileIndex head, DiagDirection dir)
+{
+	if (!Buildable(head)) return {};
+	const int z = GetTileZ(head);
+	TileIndex tile = Step(head, dir);
+	for (uint length = 1; length <= MAX_BRIDGE_SPAN; length++) {
+		if (tile == INVALID_TILE || GetTileMaxZ(tile) > z) return {};
+		const bool spannable = IsTileType(tile, TileType::Water) || IsNormalRoadTile(tile) || IsPlainRailTile(tile)
+			|| ((IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees)) && GetTileMaxZ(tile) < z);
+		if (!spannable) return {};
+		const TileIndex land = Step(tile, dir);
+		if (land != INVALID_TILE && Buildable(land) && GetTileZ(land) == z) return {land, length};
+		tile = land;
+	}
+	return {};
+}
+
+BridgeSpan FindTunnel(TileIndex portal, DiagDirection dir)
+{
+	if (!IsTileType(portal, TileType::Clear) && !IsTileType(portal, TileType::Trees)) return {};
+	const auto [slope, z] = GetTileSlopeZ(portal);
+	if (!IsInclinedSlope(slope) || GetInclinedSlopeDirection(slope) != dir) return {};
+	TileIndex tile = Step(portal, dir);
+	for (uint length = 0; length <= MAX_TUNNEL_SPAN && tile != INVALID_TILE; length++) {
+		const auto [end_slope, end_z] = GetTileSlopeZ(tile);
+		if (end_z == z) {
+			/* An exit that needs no terraforming, through at least one tile of hill. */
+			if (length == 0 || end_slope != ComplementSlope(slope)) return {};
+			if (!IsTileType(tile, TileType::Clear) && !IsTileType(tile, TileType::Trees)) return {};
+			return {tile, length};
+		}
+		if (end_z < z) return {};
+		tile = Step(tile, dir);
+	}
+	return {};
+}
+
+BridgeType CheapestBridge(uint length)
+{
+	BridgeType best = MAX_BRIDGES;
+	for (BridgeType type = 0; type < MAX_BRIDGES; type++) {
+		if (CheckBridgeAvailability(type, length).Failed()) continue;
+		if (best == MAX_BRIDGES || GetBridgeSpec(type)->price < GetBridgeSpec(best)->price) best = type;
+	}
+	return best;
+}
+
 void Undo(const BuiltLeg &built)
 {
 	for (VehicleID vehicle : built.vehicles) {
+		/* The leg's vehicles were started in the depot; only a stopped vehicle can be sold. */
+		if (!Vehicle::Get(vehicle)->vehstatus.Test(VehState::Stopped)) Command<Commands::StartStopVehicle>::Do(EXEC, vehicle, true);
 		const auto result = Command<Commands::SellVehicle>::Do(EXEC, vehicle, true, false, ClientID::Invalid);
 		UpdateSignalsInBuffer();
 		if (result.Failed()) {
@@ -148,10 +201,11 @@ void Reserve(const FreightPair &pair, std::string_view legs, StationID hub, Rese
 		reserved.industries.insert(pair.destination->index);
 		reserved.supplied.insert(pair.destination->index);
 	}
-	Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} chain={} destination={}{} cargo={} tier={} legs={} hub={}", _current_company,
+	Debug(Facility::Misc, Severity::Notice, "FL industries company={} source={} chain={} destination={}{} cargo={} tier={} legs={} hub={} destination_type={}", _current_company,
 		pair.source->index, pair.chain, pair.destination != nullptr ? "industry:" : "town:",
 		pair.destination != nullptr ? pair.destination->index.base() : pair.town->index.base(),
-		CargoSpec::Get(pair.cargo)->label.AsString(), TierName(pair.tier), legs, hub == StationID::Invalid() ? std::string{"-"} : fmt::format("{}", hub));
+		CargoSpec::Get(pair.cargo)->label.AsString(), TierName(pair.tier), legs, hub == StationID::Invalid() ? std::string{"-"} : fmt::format("{}", hub),
+		pair.destination != nullptr ? fmt::format("{}", pair.destination->type) : std::string{"town"});
 }
 
 /**
@@ -230,6 +284,15 @@ ConstructionResult BuildFreight(const TechLibrary &library, const ServiceSpec &s
 	if (main == nullptr || main->leg == nullptr) return ConstructionResult::Rejected;
 	const std::vector<FreightPair> pairs = FreightPairs(spec, reserved);
 	Debug(Facility::Misc, Severity::Notice, "FL freight company={} lead={} candidates={}", _current_company, main->name, pairs.size());
+	size_t preferred = 0;
+	for (size_t i = 0; i < pairs.size(); i++) {
+		/* The first few, and the first few in the rival's preferred markets. */
+		if (i >= 5 && (pairs[i].preference != 0 || preferred++ >= 3)) continue;
+		Debug(Facility::Misc, Severity::Debug1, "FL freight candidate company={} rank={} source={} destination={}{} cargo={} distance={} chain={} preference={}", _current_company, i,
+			pairs[i].source->index, pairs[i].destination != nullptr ? "industry:" : "town:",
+			pairs[i].destination != nullptr ? pairs[i].destination->index.base() : pairs[i].town->index.base(),
+			CargoSpec::Get(pairs[i].cargo)->label.AsString(), pairs[i].distance, pairs[i].chain, pairs[i].preference);
+	}
 
 	size_t tried = 0;
 	for (const FreightPair &pair : pairs) {

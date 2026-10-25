@@ -56,7 +56,7 @@ content" below).
 |---|---|---|
 | `rail_line` | two terminus stations, a single line, a depot, one train | rail |
 | `road_route` | two drive-through stops, an owned road, a depot, a small fleet | road |
-| `airport_pair` | two airports and a small fleet | air |
+| `airport_pair` | two airports and a small fleet; airports that only take helicopters (heliports, drone ports) get helicopters only and serve routes of 12 to 64 tiles, other airports 48 to 256 | air |
 | `dock_pair` | two docks on the same water, a ship depot and a small fleet; an industry with its own dock, such as an oil rig, is used as it is | water |
 
 ### Freight routes and transfers
@@ -432,6 +432,11 @@ item(FEAT_AIRPORTS, launchpad) {
 Badge labels used in properties must be listed in the `badgetable`. Check
 the exact syntax against the installed NML version (tested with NML 0.9.0).
 
+A complete, working package in this format is
+[`mods/newgrf/starship/`](../../mods/newgrf/starship/README.md): a rocket and its
+launch site that join the `rocket` family, declare it for when they are loaded on
+their own, and are adopted by AeroLink with no code change.
+
 ## Checking a NewGRF
 
 Load it in a new game, open the console and use:
@@ -443,6 +448,7 @@ Load it in a new game, open the console and use:
 | `future_logistics_tech recipes` | Every recipe, and each rival's adoption plan for today's date |
 | `future_logistics_tech validate` | Problems: unknown names and mechanics, bad numbers, needs nobody provides, families with no vehicles, duplicate `fl_id`s, tags without `fl_format`, formatted vehicles without a `role/` badge |
 | `future_logistics_tech find <id>` | Every item with that `fl_id` |
+| `future_logistics_tech view <id> [moving\|parked\|launching]` | Centres the main view on a vehicle with that `fl_id`, for checking its graphics or taking a screenshot |
 | `future_logistics_tech best <mode> <role> [<cargo label>]` | The vehicle a company would pick for a job |
 
 ## What the game's code guarantees

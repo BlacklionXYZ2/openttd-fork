@@ -2225,6 +2225,14 @@ STR_CONFIG_SETTING_ENVIRONMENT_CARGODIST                        :Cargo distribut
 STR_CONFIG_SETTING_ENVIRONMENT_TREES                            :Trees
 STR_CONFIG_SETTING_AI                                           :Competitors
 STR_CONFIG_SETTING_AI_NPC                                       :Computer players
+STR_CONFIG_SETTING_BOOTSTRAP                                    :Established rivals
+STR_CONFIG_SETTING_BOOTSTRAP_ENABLED                            :Start new games against established rivals: {STRING2}
+STR_CONFIG_SETTING_BOOTSTRAP_ENABLED_HELPTEXT                   :In a new single-player game, create up to the competitor limit of rival companies and give each a working transport network, sized to the world, before you start. The rivals then keep growing and adopt new technology as it arrives
+STR_CONFIG_SETTING_BOOTSTRAP_CAPITAL_PER_HEAD                   :Rivals' head start per inhabitant: {STRING2}
+STR_CONFIG_SETTING_BOOTSTRAP_CAPITAL_PER_HEAD_HELPTEXT          :The rivals share a grant of this much for every person living in the world's towns, so small worlds give small head starts
+STR_CONFIG_SETTING_BOOTSTRAP_CAPITAL                            :Largest head start per rival: {STRING2}
+STR_CONFIG_SETTING_BOOTSTRAP_CAPITAL_HELPTEXT                   :No rival receives more than this grant, however large the world
+STR_CONFIG_SETTING_BOOTSTRAP_CAPITAL_VALUE                      :{CURRENCY_LONG}
 STR_CONFIG_SETTING_NETWORK                                      :Network
 
 STR_CONFIG_SETTING_REVERSE_AT_SIGNALS                           :Automatic reversing at signals: {STRING2}

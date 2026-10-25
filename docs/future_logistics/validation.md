@@ -96,6 +96,117 @@ Found and fixed during the runs:
 - With breakdowns off vehicles never visit depots, so autorenew and autoreplace
   never ran; the AI now sends vehicles that are due.
 
+## Phase 7 start: drones (Future Logistics NewGRF)
+
+Branch `feature/future-logistics-grf`, 24 October 2026, Linux.
+
+| Check | Result |
+| --- | --- |
+| NewGRF build | `future_logistics.grf` builds with NML 0.9.0; `validate` reports no problems |
+| Controlled world, 2026, with the NewGRF | AeroLink and Metro & Regional both built drone mail routes on day zero (two drones each) between drone ports; the base-game helistation stays available as its own airport |
+| Same world, four simulated months | Every drone reached both drone ports and carried full loads of mail; CorporateAI added drones where mail waited (four → nine). Profit is about break-even at the placeholder values |
+| Controlled world, 2041, with the NewGRF | National Rail built a 113-tile hyperloop mail line on day zero (propulsion pod and five mail capsules on `HYPL` track); no city pair was found for a passenger line on the small map |
+| Same world, three simulated months | The pod reached both stations with full loads and earned 1.5 million, the most of any of National Rail's trains: the placeholder values are far too generous |
+| 512×512 world, 2056, with the NewGRF | AeroLink opened rocket passenger and mail routes between two cities via spaceports on day zero. Rocket freight waits for goods or valuables to carry: rockets are limited to express and armoured cargo, after a first version carried wood |
+| Integration suite | **35 scenarios passed**, including two scenarios each for drones, hyperloop and rockets |
+
+Later the same night:
+
+| Check | Result |
+| --- | --- |
+| 512×512 world, 2056 | Rockets: see above |
+| Data centres, 512×512 temperate worlds, four seeds | 4 to 9 data centres generated, one per town; `validate` clean. No world had a bank, so there was nothing to deliver to them: the data centre's cargo needs a decision |
+| Road routes over town roads | Across the integration worlds most mail and truck routes now use a few tiles of existing street (up to 6), mostly stops on town roads; the controlled, 2026 and coastal worlds build the same number of services as before |
+| Integration suite | **36 scenarios passed**, unit tests passed |
+| Tech arriving mid-game: controlled world from 2021, four simulated years, with the NewGRF | No drones exist at the start. In 2024 AeroLink adopted drones through CorporateAI and opened a drone mail route; in 2025 AeroLink and Metro & Regional opened more. Every yearly check passed; fleet 28 → 38 → 42 → 57 vehicles |
+| Ten-year regression, controlled world from 1955, with all of the night's changes | 22 new routes, three of them railways with level crossings over town roads. Checks at years 2, 4, 6 and 8 passed (26, 49, 61, 60 vehicles); rivals ended with 5.1 to 6.0 million and no loan. At year ten three loss-making trains sat stopped in depots waiting to be sold and the check failed them; it now reports such vehicles as parked, and passes (60 vehicles) |
+
+The year-ten trains waited because autorenew or autoreplace had renewed them in the depot
+(they were zero days old) under new vehicle IDs, so CorporateAI no longer recognised them as
+the ones it sent to be sold. It now sells any of its vehicles stopped in a depot, since it never
+stops one for another reason. Continuing the year-ten save for three months with the new
+CorporateAI, no vehicle was left parked and the check passed (63 vehicles).
+
+Railways and roads over hills (same night, later):
+
+| Check | Result |
+| --- | --- |
+| Four mountainous 256×256 worlds (terrain "mountainous", no sea), 1950 | Before: 10 railways and 27 services in all, and one world with a single railway. After: 22 railways and 42 services; all but four railways climb over 2 to 17 sloped tiles; every company operational and every check passed |
+| Two of those worlds, four simulated months | Every train reached and served both stations |
+| Controlled world | Metro & Regional's railway now encloses its station, so its feeder buses reach it over a one-tile road bridge across the line |
+| Integration suite | **37 scenarios passed**, including a new mountainous world; unit tests passed |
+
+Found and fixed during the runs:
+
+- The rail search could return a line that ran over the same tile twice (its positions
+  include the direction), which preflight passed and building then failed on.
+- The rail search allowed level crossings on track that forbids them (hyperloop), so preflight
+  rejected the line; it now knows the track type, and National Rail builds a hyperloop
+  passenger line in the 2041 world.
+- A first version let road routes cross the company's railways with level crossings. Within
+  three months a train destroyed a feeder bus in two worlds: a crossing closes only when a
+  train is one tile away, too late for a slow bus already on it to clear a fast train. Road
+  routes now use a short bridge instead, and only when there is no route without one.
+- Undoing the first leg of a two-leg freight route failed to sell its train, which had already
+  been started; it is now stopped first.
+- CorporateAI now logs crashed vehicles.
+- Railways now bridge roads too, and use a level crossing only where no bridged line exists.
+  Across the integration suite 11 railways bridge a road and 7 still cross one; in the 2041
+  world an electric line bridged a road and its train served both stations. All 37 scenarios
+  and the unit tests pass.
+
+Bridges over rivers (same night, later):
+
+| Check | Result |
+| --- | --- |
+| Four hilly 256×256 worlds with many rivers, 1950 | With one-tile bridges: 33 services, three construction failures, one company not operational. With bridges up to six tiles over water, roads, railways and dips: 40 services, no failures, all companies operational; 13 lines use bridges |
+| Two of those worlds, four simulated months | Every vehicle served its stations; no crashes |
+| Integration suite | **38 scenarios passed**, including a new world with rivers; unit tests passed |
+
+Found and fixed: building a railway's track before its stations could clear enough trees to
+lose the town's permission for the station ("local authority refuses"), after preflight had
+passed. Stations are now built first.
+
+Railway tunnels (same night, later): on the four mountainous worlds, four railways now go
+through a hill in a tunnel (up to 16 tiles) instead of over it; no construction failed and every
+check passed. In four simulated months both trains using tunnels served their stations. The
+integration suite (38 scenarios, the mountain scenario now requiring a tunnel) and the unit
+tests pass.
+
+Road tunnels: road routes use tunnels (and bridges) only when there is no other route, which
+none of the test worlds needed. To exercise them, the mountainous worlds were rerun with
+tunnels allowed from the start: three road routes tunnelled, one with three tunnels. This
+showed that a depot could be joined to a tile above a tunnel, where no road is built; the
+depot junction now avoids tunnels as well as bridges. Afterwards every check passed, and in four
+simulated months the vehicle on the three-tunnel route served its stations.
+
+Found and fixed: the first NewGRF airport based on a built-in airport replaces it in OpenTTD,
+so the drone port at first replaced the helistation; the NewGRF now defines an unchanged
+helistation copy first, and the Tech Library and `fl_id` index read each airport type without
+following the replacement redirect, so no airport is listed twice.
+
+## NewGRF packages (24 October 2026)
+
+| Check | Result |
+| --- | --- |
+| Corporate Infrastructure 0.1 (Gareth's package) | Compiles with NML 0.9.0 without warnings, reproducibly. With the Future Logistics NewGRF, a test Game Script built all six objects |
+| Starship package, build | Compiles with NML 0.9.0 without warnings, reproducibly; 36 sprites made from the handoff art by `tools/make_sprites.py` |
+| Starship on its own, 512×512 world, 2050 | `validate` reports no problems; `find` finds both `fl_id`s. AeroLink adopted the rocket family by its rule for any new air family and opened a Starship passenger route and a mail route between launch sites on day zero |
+| Same world, three simulated months | All six Starships served both of their launch sites (profits far too high at the placeholder values). The NewGRF profiler shows both the idle and the powered sprite sets in use |
+| Starship with the Future Logistics NewGRF, 2056 | `validate` reports no problems; AeroLink chose Starship over the Reusable Rocket. Exactly one city airport in either load order (the package leaves out its own copy when the Future Logistics NewGRF is active) |
+
+Starship balance and shipping (same day, later):
+
+| Check | Result |
+| --- | --- |
+| Rankings, 2056, both NewGRFs (135 vehicles) | Starship has the highest purchase cost (522,949; next the Reusable Rocket, 512,695), running cost (7,171 a year; next the Darwin 300, 7,115) and capacity (500 passengers; next the Dinger 200, 400). The integration suite now checks all three |
+| Profit, same world, one simulated year | The two highest-earning vehicles were Starships (25.1 and 17.1 million); the best other vehicle, a Dinger 200, earned 14.3 million. Starships sharing a route earn less, since the first takes most of the waiting passengers. The Starship service scenario now checks that its top earner is a Starship |
+| Shipped with the game | The NewGRFs are copied to the build's `newgrf` folder and installed with the game's data. With a configuration that has no NewGRF list (a first run), a new 2050 game loaded Future Logistics and Starship by itself and AeroLink built Starship routes |
+
+Found and fixed: with both NewGRFs loaded, each added an unchanged copy of the city airport,
+so players would have seen two. The flame sprite's speed threshold was first given in the wrong
+units (for aircraft, `current_speed` is in units of about 12.8 km/h), so it would never have shown.
+
 ## Reproduction and evidence
 
 Local build (dependencies were extracted into `work/deps/usr` because this

@@ -1,0 +1,269 @@
+// Corporate Infrastructure 0.1 - graphical proof of concept.
+// 32bpp RGBA sprites, with a 2x in-zoom alternative.
+// This implements PLACEABLE OBJECTS ONLY. It does not provide working industries,
+// airports, aircraft, rail or cargo transfer. Large art is anchored on the
+// north-most tile of each 4x4 object; in-game depth sorting must be tested.
+grf {
+    grfid: "CI\01\01";
+    name: string(STR_GRF_NAME);
+    desc: string(STR_GRF_DESCRIPTION);
+    version: 1;
+    min_compatible_version: 1;
+}
+// Data Centre — 4x4 decorative object
+spriteset(sprite_data_centre, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/data_centre_1x.png") {
+    [0, 0, 240, 186, -120, -58]
+}
+alternative_sprites(sprite_data_centre, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/data_centre_2x.png") {
+    [0, 0, 480, 372, -240, -117]
+}
+spritelayout layout_data_centre {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+    building {
+        sprite: sprite_data_centre(0);
+        xextent: 64;
+        yextent: 64;
+        zextent: 90;
+    }
+}
+// The remaining 15 tiles draw only ground, so the image is not repeated.
+spritelayout layout_data_centre_ground {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+}
+switch (FEAT_OBJECTS, SELF, select_data_centre, relative_pos) {
+    0: layout_data_centre;
+    layout_data_centre_ground;
+}
+item (FEAT_OBJECTS, object_data_centre, 0) {
+    property {
+        class: "CI01";
+        classname: string(STR_CLASS);
+        name: string(STR_DATA_CENTRE);
+        climates_available: ALL_CLIMATES;
+        size: [4, 4];
+        build_cost_multiplier: 4;
+        remove_cost_multiplier: 3;
+        introduction_date: date(1900, 1, 1);
+        end_of_life_date: 0xFFFFFFFF;
+        object_flags: bitmask(OBJ_FLAG_NO_FOUNDATIONS);
+        height: 22;
+        num_views: 1;
+    }
+    graphics {
+        default: select_data_centre;
+        purchase: layout_data_centre;
+        tile_check: ((extra_callback_info1 & bitmask(0,1,2,3,4)) == 0) ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}
+// Distribution Centre — 4x4 decorative object
+spriteset(sprite_distribution_centre, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/distribution_centre_1x.png") {
+    [0, 0, 240, 175, -120, -47]
+}
+alternative_sprites(sprite_distribution_centre, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/distribution_centre_2x.png") {
+    [0, 0, 480, 350, -240, -95]
+}
+spritelayout layout_distribution_centre {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+    building {
+        sprite: sprite_distribution_centre(0);
+        xextent: 64;
+        yextent: 64;
+        zextent: 35;
+    }
+}
+// The remaining 15 tiles draw only ground, so the image is not repeated.
+spritelayout layout_distribution_centre_ground {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+}
+switch (FEAT_OBJECTS, SELF, select_distribution_centre, relative_pos) {
+    0: layout_distribution_centre;
+    layout_distribution_centre_ground;
+}
+item (FEAT_OBJECTS, object_distribution_centre, 1) {
+    property {
+        class: "CI01";
+        name: string(STR_DISTRIBUTION_CENTRE);
+        climates_available: ALL_CLIMATES;
+        size: [4, 4];
+        build_cost_multiplier: 4;
+        remove_cost_multiplier: 3;
+        introduction_date: date(1900, 1, 1);
+        end_of_life_date: 0xFFFFFFFF;
+        object_flags: bitmask(OBJ_FLAG_NO_FOUNDATIONS);
+        height: 22;
+        num_views: 1;
+    }
+    graphics {
+        default: select_distribution_centre;
+        purchase: layout_distribution_centre;
+        tile_check: ((extra_callback_info1 & bitmask(0,1,2,3,4)) == 0) ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}
+// Four-Pad Drone Port — 4x4 decorative object
+spriteset(sprite_drone_port, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/drone_port_1x.png") {
+    [0, 0, 240, 206, -120, -78]
+}
+alternative_sprites(sprite_drone_port, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/drone_port_2x.png") {
+    [0, 0, 480, 412, -240, -157]
+}
+spritelayout layout_drone_port {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+    building {
+        sprite: sprite_drone_port(0);
+        xextent: 64;
+        yextent: 64;
+        zextent: 35;
+    }
+}
+// The remaining 15 tiles draw only ground, so the image is not repeated.
+spritelayout layout_drone_port_ground {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+}
+switch (FEAT_OBJECTS, SELF, select_drone_port, relative_pos) {
+    0: layout_drone_port;
+    layout_drone_port_ground;
+}
+item (FEAT_OBJECTS, object_drone_port, 2) {
+    property {
+        class: "CI01";
+        name: string(STR_DRONE_PORT);
+        climates_available: ALL_CLIMATES;
+        size: [4, 4];
+        build_cost_multiplier: 4;
+        remove_cost_multiplier: 3;
+        introduction_date: date(1900, 1, 1);
+        end_of_life_date: 0xFFFFFFFF;
+        object_flags: bitmask(OBJ_FLAG_NO_FOUNDATIONS);
+        height: 22;
+        num_views: 1;
+    }
+    graphics {
+        default: select_drone_port;
+        purchase: layout_drone_port;
+        tile_check: ((extra_callback_info1 & bitmask(0,1,2,3,4)) == 0) ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}
+// Spaceport - Empty Pad — 4x4 decorative object
+spriteset(sprite_spaceport_empty, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/spaceport_empty_1x.png") {
+    [0, 0, 240, 225, -120, -97]
+}
+alternative_sprites(sprite_spaceport_empty, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/spaceport_empty_2x.png") {
+    [0, 0, 480, 450, -240, -195]
+}
+spritelayout layout_spaceport_empty {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+    building {
+        sprite: sprite_spaceport_empty(0);
+        xextent: 64;
+        yextent: 64;
+        zextent: 50;
+    }
+}
+// The remaining 15 tiles draw only ground, so the image is not repeated.
+spritelayout layout_spaceport_empty_ground {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+}
+switch (FEAT_OBJECTS, SELF, select_spaceport_empty, relative_pos) {
+    0: layout_spaceport_empty;
+    layout_spaceport_empty_ground;
+}
+item (FEAT_OBJECTS, object_spaceport_empty, 3) {
+    property {
+        class: "CI01";
+        name: string(STR_SPACEPORT_EMPTY);
+        climates_available: ALL_CLIMATES;
+        size: [4, 4];
+        build_cost_multiplier: 4;
+        remove_cost_multiplier: 3;
+        introduction_date: date(1900, 1, 1);
+        end_of_life_date: 0xFFFFFFFF;
+        object_flags: bitmask(OBJ_FLAG_NO_FOUNDATIONS);
+        height: 22;
+        num_views: 1;
+    }
+    graphics {
+        default: select_spaceport_empty;
+        purchase: layout_spaceport_empty;
+        tile_check: ((extra_callback_info1 & bitmask(0,1,2,3,4)) == 0) ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}
+// Spaceport - Starship on Pad — 4x4 decorative object
+spriteset(sprite_spaceport_starship, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/spaceport_starship_1x.png") {
+    [0, 0, 240, 224, -120, -96]
+}
+alternative_sprites(sprite_spaceport_starship, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/spaceport_starship_2x.png") {
+    [0, 0, 480, 448, -240, -193]
+}
+spritelayout layout_spaceport_starship {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+    building {
+        sprite: sprite_spaceport_starship(0);
+        xextent: 64;
+        yextent: 64;
+        zextent: 70;
+    }
+}
+// The remaining 15 tiles draw only ground, so the image is not repeated.
+spritelayout layout_spaceport_starship_ground {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+}
+switch (FEAT_OBJECTS, SELF, select_spaceport_starship, relative_pos) {
+    0: layout_spaceport_starship;
+    layout_spaceport_starship_ground;
+}
+item (FEAT_OBJECTS, object_spaceport_starship, 4) {
+    property {
+        class: "CI01";
+        name: string(STR_SPACEPORT_STARSHIP);
+        climates_available: ALL_CLIMATES;
+        size: [4, 4];
+        build_cost_multiplier: 4;
+        remove_cost_multiplier: 3;
+        introduction_date: date(1900, 1, 1);
+        end_of_life_date: 0xFFFFFFFF;
+        object_flags: bitmask(OBJ_FLAG_NO_FOUNDATIONS);
+        height: 22;
+        num_views: 1;
+    }
+    graphics {
+        default: select_spaceport_starship;
+        purchase: layout_spaceport_starship;
+        tile_check: ((extra_callback_info1 & bitmask(0,1,2,3,4)) == 0) ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}
+// Parked Cargo Drone — 1x1 decorative object
+spriteset(sprite_cargo_drone_game_scale, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/cargo_drone_game_scale_1x.png") {
+    [0, 0, 54, 33, -27, -13]
+}
+alternative_sprites(sprite_cargo_drone_game_scale, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/cargo_drone_game_scale_2x.png") {
+    [0, 0, 108, 66, -54, -27]
+}
+spritelayout layout_cargo_drone_game_scale {
+    ground { sprite: GROUNDSPRITE_CONCRETE; }
+    building {
+        sprite: sprite_cargo_drone_game_scale(0);
+        xextent: 16;
+        yextent: 16;
+        zextent: 8;
+    }
+}
+item (FEAT_OBJECTS, object_cargo_drone_game_scale, 5) {
+    property {
+        class: "CI01";
+        name: string(STR_CARGO_DRONE_GAME_SCALE);
+        climates_available: ALL_CLIMATES;
+        size: [1, 1];
+        build_cost_multiplier: 4;
+        remove_cost_multiplier: 3;
+        introduction_date: date(1900, 1, 1);
+        end_of_life_date: 0xFFFFFFFF;
+        object_flags: bitmask(OBJ_FLAG_NO_FOUNDATIONS);
+        height: 4;
+        num_views: 1;
+    }
+    graphics {
+        default: layout_cargo_drone_game_scale;
+        purchase: layout_cargo_drone_game_scale;
+        tile_check: ((extra_callback_info1 & bitmask(0,1,2,3,4)) == 0) ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}

@@ -1,0 +1,297 @@
+/*
+ * Future Logistics NewGRF. GPL-2.0-only.
+ *
+ * New technology that arrives over the decades, described with the shared tech format
+ * (docs/future_logistics/tech_format.md) so rival companies find and adopt it. Every number
+ * here is a placeholder until the balance pass; see PLACEHOLDERS.md. Graphics are placeholders
+ * too: base-game sprites stand in until the art is converted.
+ *
+ * Build with NML 0.9.0: ./build.sh
+ */
+grf {
+    grfid: "FL\01\01";
+    name: string(STR_GRF_NAME);
+    desc: string(STR_GRF_DESC);
+    version: 1;
+    min_compatible_version: 1;
+}
+
+cargotable {
+    PASS, MAIL, VALU, GOLD, DIAM
+}
+
+railtypetable {
+    HYPL
+}
+
+badgetable {
+    "fl_format/2",
+    /* Drones: a tech family built with the airport pair mechanic, for mail between towns. */
+    "fl_family/drone",
+    "fl_family/drone/mechanic/airport_pair",
+    "fl_family/drone/market/mail",
+    "fl_family/drone/min_tier/town",
+    "fl_tech/drone",
+    "fl_needs/drone_pad",
+    "fl_provides/drone_pad",
+    "fl_role/express",
+    "fl_role/parcel",
+    "fl_id/cargo_drone",
+    "fl_id/drone_port",
+    /* Metro & Regional already runs mail by road; it takes up drones a year after they arrive.
+     * AeroLink adopts every new air family two years after it arrives by its own rule. */
+    "fl_profile/metro_regional/adopt/drone/airport_pair/mail/1",
+    /* Hyperloop: a tech family on its own track type, built with the rail line mechanic. National Rail
+     * adopts it five years after it arrives by its rule for any new rail family. */
+    "fl_family/hyperloop",
+    "fl_family/hyperloop/mechanic/rail_line",
+    "fl_family/hyperloop/market/town_pair",
+    "fl_family/hyperloop/market/mail",
+    "fl_family/hyperloop/min_tier/city",
+    "fl_tech/hyperloop",
+    "fl_id/hyperloop_track",
+    "fl_id/hyperloop_pod",
+    "fl_id/hyperloop_passenger_capsule",
+    "fl_id/hyperloop_mail_capsule",
+    /* Rockets: a tech family built with the airport pair mechanic between spaceports. AeroLink adopts it two
+     * years after it arrives by its rule for any new air family; Integrated Logistics uses it for freight. */
+    "fl_family/rocket",
+    "fl_family/rocket/mechanic/airport_pair",
+    "fl_family/rocket/market/town_pair",
+    "fl_family/rocket/market/mail",
+    "fl_family/rocket/market/industry",
+    "fl_family/rocket/min_tier/city",
+    "fl_tech/rocket",
+    "fl_needs/launchpad",
+    "fl_provides/launchpad",
+    "fl_role/passenger_intercity",
+    "fl_role/freight_general",
+    "fl_id/rocket",
+    "fl_id/spaceport",
+    "fl_profile/integrated_logistics/adopt/rocket/airport_pair/industry/3",
+    "role/freight",
+    "power/rocket",
+    /* Data centres: an industry in the "tech" market that receives what banks hold. */
+    "fl_industry/data_centre",
+    "fl_market/tech",
+    "fl_id/data_centre",
+    "fl_profile/integrated_logistics/industries/tech",
+    /* Shared badge classes from the NewGRF specification, for other NewGRFs, AIs and the purchase list. */
+    "role/mail",
+    "role/express",
+    "role/passenger",
+    "power/electric",
+}
+
+/* Only the family has a display name; the fl_ classes stay unnamed so players never see them. */
+item(FEAT_BADGES, family_drone, 0) { property { label: "fl_family/drone"; name: string(STR_FAMILY_DRONE); } }
+item(FEAT_BADGES, family_hyperloop, 1) { property { label: "fl_family/hyperloop"; name: string(STR_FAMILY_HYPERLOOP); } }
+item(FEAT_BADGES, family_rocket, 2) { property { label: "fl_family/rocket"; name: string(STR_FAMILY_ROCKET); } }
+
+/* Cargo drone. Placeholder graphics: the base-game Tricario helicopter sprite. */
+item(FEAT_AIRCRAFT, cargo_drone, 64) {
+    property {
+        name:                         string(STR_CARGO_DRONE);
+        climates_available:           ALL_CLIMATES;
+        introduction_date:            date(2022, 1, 1);
+        model_life:                   40;
+        vehicle_life:                 12;
+        reliability_decay:            20;
+        loading_speed:                10;
+        sprite_id:                    9;
+        aircraft_type:                AIRCRAFT_TYPE_HELICOPTER;
+        cost_factor:                  20;
+        running_cost_factor:          12;
+        speed:                        120 km/h;
+        acceleration:                 20;
+        passenger_capacity:           8;
+        mail_capacity:                0;
+        /* Passengers are excluded, so the game makes mail, the first refittable cargo, the default. */
+        refittable_cargo_classes:     bitmask(CC_MAIL, CC_EXPRESS);
+        non_refittable_cargo_classes: bitmask(CC_PASSENGERS);
+        range:                        80;
+        sound_effect:                 SOUND_TAKEOFF_HELICOPTER;
+        badges: ["fl_format/2", "fl_id/cargo_drone", "fl_tech/drone", "fl_needs/drone_pad",
+                 "fl_role/express", "fl_role/parcel", "role/mail", "power/electric"];
+    }
+}
+
+/* The first NewGRF airport based on a built-in airport replaces it. This unchanged copy of the
+ * helistation (type 8) takes that place, so the drone port below is added rather than taking the
+ * helistation away from players. */
+item(FEAT_AIRPORTS, helistation_unchanged, 0) {
+    property {
+        override: 8;
+    }
+}
+
+/* Drone port. A helistation layout until the four-pad art is converted; OpenTTD airports have at
+ * most three helipads. */
+item(FEAT_AIRPORTS, drone_port, 1) {
+    property {
+        override:         8;
+        name:             string(STR_DRONE_PORT);
+        years_available:  [2022, 65535];
+        catchment_area:   4;
+        noise_level:      1;
+        maintenance_cost: 10;
+        badges: ["fl_format/2", "fl_id/drone_port", "fl_tech/drone", "fl_provides/drone_pad"];
+    }
+}
+
+/* Hyperloop track. A track type of its own, with no fallback: nothing else runs in the tube.
+ * Placeholder graphics: plain rail, until the tube art exists. */
+item(FEAT_RAILTYPES, hyperloop_track) {
+    property {
+        label:                    "HYPL";
+        name:                     string(STR_HYPERLOOP_TRACK);
+        toolbar_caption:          string(STR_HYPERLOOP_TOOLBAR);
+        menu_text:                string(STR_HYPERLOOP_MENU);
+        build_window_caption:     string(STR_HYPERLOOP_BUILD);
+        autoreplace_text:         string(STR_HYPERLOOP_REPLACE);
+        new_engine_text:          string(STR_HYPERLOOP_NEW_ENGINE);
+        introduction_date:        date(2035, 1, 1);
+        compatible_railtype_list: ["HYPL"];
+        powered_railtype_list:    ["HYPL"];
+        railtype_flags:           bitmask(RAILTYPE_FLAG_NO_LEVEL_CROSSING);
+        acceleration_model:       2;
+        speed_limit:              900 km/h;
+        construction_cost:        2000;
+        maintenance_cost:         600;
+        sort_order:               0x50;
+        badges: ["fl_format/2", "fl_id/hyperloop_track", "fl_tech/hyperloop"];
+    }
+}
+
+/* Propulsion pod: pulls the capsules. Placeholder graphics: the base-game Lev4 'Chimaera' maglev. */
+item(FEAT_TRAINS, hyperloop_pod, 120) {
+    property {
+        name:                string(STR_HYPERLOOP_POD);
+        climates_available:  ALL_CLIMATES;
+        introduction_date:   date(2035, 1, 1);
+        model_life:          40;
+        vehicle_life:        30;
+        reliability_decay:   10;
+        track_type:          HYPL;
+        sprite_id:           31;
+        engine_class:        ENGINE_CLASS_MAGLEV;
+        speed:               700 km/h;
+        power:               12000 kW;
+        weight:              40 ton;
+        tractive_effort_coefficient: 0.3;
+        cost_factor:         200;
+        running_cost_factor: 150;
+        running_cost_base:   RUNNING_COST_ELECTRIC;
+        cargo_capacity:      0;
+        badges: ["fl_format/2", "fl_id/hyperloop_pod", "fl_tech/hyperloop", "role/express", "power/electric"];
+    }
+}
+
+/* Passenger capsule. Placeholder graphics: the base-game maglev passenger carriage. */
+item(FEAT_TRAINS, hyperloop_passenger_capsule, 121) {
+    property {
+        name:                string(STR_HYPERLOOP_PASSENGER_CAPSULE);
+        climates_available:  ALL_CLIMATES;
+        introduction_date:   date(2035, 1, 1);
+        model_life:          40;
+        vehicle_life:        30;
+        track_type:          HYPL;
+        sprite_id:           60;
+        power:               0;
+        weight:              12 ton;
+        cost_factor:         60;
+        cargo_capacity:      60;
+        default_cargo_type:  PASS;
+        refittable_cargo_classes: bitmask(CC_PASSENGERS);
+        badges: ["fl_format/2", "fl_id/hyperloop_passenger_capsule", "fl_tech/hyperloop", "role/passenger"];
+    }
+}
+
+/* Mail capsule. Placeholder graphics: the base-game maglev mail van. */
+item(FEAT_TRAINS, hyperloop_mail_capsule, 122) {
+    property {
+        name:                string(STR_HYPERLOOP_MAIL_CAPSULE);
+        climates_available:  ALL_CLIMATES;
+        introduction_date:   date(2035, 1, 1);
+        model_life:          40;
+        vehicle_life:        30;
+        track_type:          HYPL;
+        sprite_id:           62;
+        power:               0;
+        weight:              10 ton;
+        cost_factor:         50;
+        cargo_capacity:      50;
+        default_cargo_type:  MAIL;
+        refittable_cargo_classes: bitmask(CC_MAIL, CC_EXPRESS);
+        badges: ["fl_format/2", "fl_id/hyperloop_mail_capsule", "fl_tech/hyperloop", "role/mail"];
+    }
+}
+
+/* Rocket. Flies between spaceports like an aircraft; vertical launch and landing need engine work.
+ * Placeholder graphics: the base-game Yate Haugan supersonic airliner. */
+item(FEAT_AIRCRAFT, rocket, 65) {
+    property {
+        name:                         string(STR_ROCKET);
+        climates_available:           ALL_CLIMATES;
+        introduction_date:            date(2050, 1, 1);
+        model_life:                   40;
+        vehicle_life:                 25;
+        reliability_decay:            20;
+        loading_speed:                40;
+        sprite_id:                    8;
+        aircraft_type:                AIRCRAFT_TYPE_LARGE;
+        cost_factor:                  250;
+        running_cost_factor:          200;
+        speed:                        1800 km/h;
+        acceleration:                 40;
+        passenger_capacity:           200;
+        mail_capacity:                40;
+        refittable_cargo_classes:     bitmask(CC_PASSENGERS, CC_MAIL, CC_EXPRESS, CC_ARMOURED);
+        range:                        0;
+        sound_effect:                 SOUND_TAKEOFF_JET_FAST;
+        badges: ["fl_format/2", "fl_id/rocket", "fl_tech/rocket", "fl_needs/launchpad",
+                 "fl_role/passenger_intercity", "fl_role/express", "fl_role/freight_general",
+                 "role/passenger", "role/mail", "role/freight", "power/rocket"];
+    }
+}
+
+/* As with the helistation, the first airport based on the city airport (type 1) replaces it, so an
+ * unchanged copy comes first and the spaceport is added after it. */
+item(FEAT_AIRPORTS, city_airport_unchanged, 2) {
+    property {
+        override: 1;
+    }
+}
+
+/* Spaceport. A city airport layout until the launch pad art is converted. */
+item(FEAT_AIRPORTS, spaceport, 3) {
+    property {
+        override:         1;
+        name:             string(STR_SPACEPORT);
+        years_available:  [2050, 65535];
+        catchment_area:   6;
+        noise_level:      20;
+        maintenance_cost: 60;
+        badges: ["fl_format/2", "fl_id/spaceport", "fl_tech/rocket", "fl_provides/launchpad"];
+    }
+}
+
+/* Data centre. Receives valuables, gold or diamonds (whichever the climate's banks hold) and produces
+ * nothing. One per town, and the most expensive industry to fund. The company revenue bonus from the
+ * handoff is not implemented: it needs game code and an agreed formula.
+ * Placeholder graphics and layout: the temperate bank, copied (not replaced) with "substitute". */
+item(FEAT_INDUSTRIES, data_centre, 0) {
+    property {
+        substitute:           INDUSTRYTYPE_TEMPERATE_BANK;
+        name:                 string(STR_DATA_CENTRE);
+        cargo_types:          [accept_cargo("VALU"), accept_cargo("GOLD"), accept_cargo("DIAM")];
+        fund_cost_multiplier: 255;
+        prob_map_gen:         3;
+        prob_in_game:         0;
+        badges: ["fl_format/2", "fl_id/data_centre", "fl_industry/data_centre", "fl_market/tech"];
+    }
+    graphics {
+        /* One data centre per town. */
+        location_check: industry_town_count(data_centre) == 0 ? CB_RESULT_LOCATION_ALLOW : CB_RESULT_LOCATION_DISALLOW;
+    }
+}

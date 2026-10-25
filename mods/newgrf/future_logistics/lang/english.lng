@@ -1,0 +1,20 @@
+##grflangid 0x01
+STR_GRF_NAME      :Future Logistics
+STR_GRF_DESC      :New technology for the Future Logistics game: drones first; hyperloop, rockets, data centres and more to follow. Values and graphics are placeholders.
+STR_FAMILY_DRONE  :Drones
+STR_CARGO_DRONE   :Cargo Drone
+STR_DRONE_PORT    :Drone Port
+STR_FAMILY_HYPERLOOP            :Hyperloop
+STR_HYPERLOOP_TRACK             :Hyperloop Tube
+STR_HYPERLOOP_TOOLBAR           :Hyperloop Construction
+STR_HYPERLOOP_MENU              :Hyperloop Construction
+STR_HYPERLOOP_BUILD             :{WHITE}Hyperloop Construction
+STR_HYPERLOOP_REPLACE           :Hyperloop Vehicles
+STR_HYPERLOOP_NEW_ENGINE        :New Hyperloop Vehicles
+STR_HYPERLOOP_POD               :Hyperloop Propulsion Pod
+STR_HYPERLOOP_PASSENGER_CAPSULE :Hyperloop Passenger Capsule
+STR_HYPERLOOP_MAIL_CAPSULE      :Hyperloop Mail Capsule
+STR_FAMILY_ROCKET               :Rockets
+STR_ROCKET                      :Reusable Rocket
+STR_SPACEPORT                   :Spaceport
+STR_DATA_CENTRE                 :Data Centre

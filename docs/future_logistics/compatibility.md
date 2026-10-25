@@ -77,9 +77,17 @@ ships had made a profit.
 
 ## Still to note
 
-- Iron Horse's wagons report a capacity of 2 in the Tech Library, because the
-  real capacity comes from a callback. Choice is unaffected (the wagon is chosen
-  by cargo and role), but capacity-based scoring would be wrong for such sets.
+- The Tech Library now counts every articulated part of a train or road vehicle,
+  as the purchase list does: Iron Horse's wagons went from 2 to 7–11. Capacities
+  that a set sets per cargo through callbacks may still read low.
+- Iron Horse's wagons carry no `role/` badges, so a wagon whose default cargo is
+  passengers but which is really a vehicle transporter can be picked for
+  passenger trains. Rechecked on 24 October: in 1950 the Tech Library reads
+  Iron Horse's Passenger Coaches as carrying 6 to 14 passengers, about the same
+  as its Vehicle Transporter (7) and Motorail Vans (12), so the cheaper
+  transporter wins on score. Whether those coach capacities are right (Iron
+  Horse sets them through callbacks) needs checking against the purchase list
+  in a game with graphics. Reading more of a set's own badges would help.
 
 ## For the Future Logistics NewGRF
 

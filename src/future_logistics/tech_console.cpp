@@ -14,8 +14,16 @@
 #include "../engine_func.h"
 #include "../newgrf_badge.h"
 #include "../strings_func.h"
+#include "../tile_map.h"
+#include "../aircraft.h"
+#include "../vehicle_base.h"
+#include "../viewport_func.h"
+#include "../window_func.h"
+#include "../window_gui.h"
 
 #include "table/strings.h"
+
+#include "../industry.h"
 
 #include "../safeguards.h"
 
@@ -41,10 +49,11 @@ std::string FormatVehicle(const TechRecord &record)
 	const bool buildable = IsEngineBuildable(record.engine, Engine::Get(record.engine)->type, _local_company);
 	std::string power;
 	for (const std::string &source : record.power) power += (power.empty() ? "" : ",") + source;
-	return fmt::format("id={} mode={} track={} cargo={} capacity={} speed={} roles={}{} power={} tech={} tier={} wagon={} buildable={} name={}",
+	const Engine *engine = Engine::Get(record.engine);
+	return fmt::format("id={} mode={} track={} cargo={} capacity={} speed={} roles={}{} power={} tech={} tier={} wagon={} buildable={} cost={} running_cost={} name={}",
 		record.id, TechModeName(record.mode), record.track.empty() ? "-" : record.track, cargo, record.capacity, record.speed,
 		FormatTechRoles(record.roles), record.declared_roles ? "(declared)" : "", power.empty() ? "-" : power, record.tech, record.tier, record.wagon, buildable,
-		GetString(STR_ENGINE_NAME, record.engine));
+		static_cast<int64_t>(engine->GetCost()), static_cast<int64_t>(engine->GetRunningCost()), GetString(STR_ENGINE_NAME, record.engine));
 }
 
 /**
@@ -142,8 +151,44 @@ bool FutureLogisticsTechCommand(std::span<std::string_view> argv)
 	if (argv.size() == 2 && argv[0] == "find") {
 		using namespace FutureLogistics;
 		const auto items = FindTagged(argv[1]);
-		for (const TaggedItem &item : items) Report(fmt::format("FL tech found id={} kind={} index={}", item.id, TaggedKindName(item.kind), item.index));
+		for (const TaggedItem &item : items) {
+			/* For an industry type, also say how many are on the map. */
+			const std::string built = item.kind == TaggedKind::Industry ? fmt::format(" built={}", Industry::GetIndustryTypeCount(static_cast<IndustryType>(item.index))) : "";
+			Report(fmt::format("FL tech found id={} kind={} index={}{}", item.id, TaggedKindName(item.kind), item.index, built));
+		}
 		Report(fmt::format("FL tech find id={} matches={}", argv[1], items.size()));
+		return true;
+	}
+	if ((argv.size() == 2 || argv.size() == 3) && argv[0] == "view") {
+		/* Centre the main view on a vehicle with this fl_id, for screenshots: one in flight or moving
+		 * between stations ("moving"), one standing at a station ("parked"), or an aircraft taking off or
+		 * landing ("launching"); any if not given. */
+		using namespace FutureLogistics;
+		const auto engine = FindEngineById(argv[1]);
+		if (!engine.has_value() || (argv.size() == 3 && argv[2] != "moving" && argv[2] != "parked" && argv[2] != "launching")) return false;
+		const bool want_moving = argv.size() == 3 && argv[2] == "moving";
+		const bool want_parked = argv.size() == 3 && argv[2] == "parked";
+		const bool want_launching = argv.size() == 3 && argv[2] == "launching";
+		for (const Vehicle *v : Vehicle::Iterate()) {
+			if (!v->IsPrimaryVehicle() || v->engine_type != *engine || v->vehstatus.Test(VehState::Hidden)) continue;
+			if (want_launching) {
+				if (v->type != VehicleType::Aircraft) continue;
+				const uint8_t state = Aircraft::From(v)->state;
+				if (state != TAKEOFF && state != STARTTAKEOFF && state != ENDTAKEOFF && state != HELITAKEOFF
+						&& state != LANDING && state != ENDLANDING && state != HELILANDING && state != HELIENDLANDING) continue;
+			}
+			const bool at_station = IsTileType(v->tile, TileType::Station);
+			if ((want_moving && (at_station || v->cur_speed == 0)) || (want_parked && (!at_station || v->cur_speed != 0))) continue;
+			ScrollMainWindowTo(v->x_pos, v->y_pos, v->z_pos, true);
+			/* Move the drawn view's position now rather than on the next frame, so a screenshot straight after
+			 * shows it; the next frame redraws the screen as usual. */
+			ViewportData &vp = *GetMainWindow()->viewport;
+			vp.virtual_left = vp.scrollpos_x;
+			vp.virtual_top = vp.scrollpos_y;
+			Report(fmt::format("FL tech view id={} vehicle={} tile={} speed={} at_station={}", argv[1], v->index, v->tile, v->cur_speed, at_station));
+			return true;
+		}
+		Report(fmt::format("FL tech view id={} none", argv[1]));
 		return true;
 	}
 	if ((argv.size() == 3 || argv.size() == 4) && argv[0] == "best") {

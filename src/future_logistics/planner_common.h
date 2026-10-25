@@ -6,10 +6,14 @@
 #ifndef FUTURE_LOGISTICS_PLANNER_COMMON_H
 #define FUTURE_LOGISTICS_PLANNER_COMMON_H
 
+#include <optional>
+
+#include "../bridge_type.h"
 #include "../cargo_type.h"
 #include "../command_type.h"
 #include "../direction_type.h"
 #include "../map_func.h"
+#include "../slope_func.h"
 #include "../industry_type.h"
 #include "../station_type.h"
 #include "../tile_map.h"
@@ -27,6 +31,7 @@ constexpr DoCommandFlags EXEC{DoCommandFlag::Execute}; ///< Execute after comman
 constexpr DoCommandFlags CONSTRUCT{DoCommandFlag::Auto, DoCommandFlag::NoWater}; ///< Normal construction trait flags.
 constexpr size_t MAX_SEARCH = 8192; ///< Maximum visited tiles per town pair.
 constexpr size_t MAX_PAIRS = 128; ///< Maximum town pairs considered per company.
+constexpr uint32_t MIN_ROLLBACK_CLEARANCE = 16; ///< Fewest tiles of clearing any service needs in reserve to be removed again (a dock pair).
 
 /** Markets already taken by earlier rivals, so they do not compete for the same customers. */
 struct Reservations {
@@ -124,6 +129,65 @@ using LegBuild = ConstructionResult (*)(const TechLibrary &library, const Servic
 
 constexpr size_t MAX_HUB_CHECKS = 6; ///< Transfer station sites checked with Place::usable per leg.
 
+constexpr uint MAX_BRIDGE_SPAN = 6; ///< Most tiles a planned bridge spans between its heads.
+
+/** A bridge or tunnel a route may take, from the tile it starts on to the tile it ends on. */
+struct BridgeSpan {
+	TileIndex land = INVALID_TILE; ///< Far end, or INVALID_TILE if there is none.
+	uint length = 0; ///< Tiles between the ends.
+};
+
+/**
+ * Find the shortest bridge from a head on flat open land, straight ahead over water, roads,
+ * railways or lower ground, to flat open land at the same height.
+ * @param head Near bridge head.
+ * @param dir Direction of the bridge.
+ * @return The bridge, or one with an invalid landing.
+ */
+BridgeSpan FindBridge(TileIndex head, DiagDirection dir);
+
+constexpr uint MAX_TUNNEL_SPAN = 16; ///< Most tiles a planned tunnel runs under between its portals.
+
+/**
+ * Find a tunnel from a portal on open land inclined up the way the route is going, through the hill
+ * to the first tile at the portal's height, which must slope the opposite way.
+ * @param portal Near portal, where the route has climbed onto the slope.
+ * @param dir Direction of the tunnel.
+ * @return The tunnel's far portal and length, or one with an invalid landing.
+ */
+BridgeSpan FindTunnel(TileIndex portal, DiagDirection dir);
+
+/** Where a bridge or tunnel sits on a planned route: the indices of its two ends. */
+struct RouteBridge {
+	size_t head; ///< Index of the near head.
+	size_t tail; ///< Index of the far head.
+};
+
+/**
+ * List the bridges on a planned route.
+ * @param path Route tiles.
+ * @param bridged Tiles under a bridge.
+ * @return Each run of bridged tiles with the heads either side of it.
+ */
+inline std::vector<RouteBridge> RouteBridges(const std::vector<TileIndex> &path, const std::set<TileIndex> &bridged)
+{
+	std::vector<RouteBridge> result;
+	for (size_t i = 1; i + 1 < path.size(); i++) {
+		if (!bridged.contains(path[i]) || bridged.contains(path[i - 1])) continue;
+		size_t j = i;
+		while (j < path.size() && bridged.contains(path[j])) j++;
+		if (j < path.size()) result.push_back({i - 1, j});
+	}
+	return result;
+}
+
+/**
+ * Find the cheapest bridge type available for a span.
+ * @param length Tiles between the bridge heads.
+ * @return Bridge type, or MAX_BRIDGES if none is available yet.
+ */
+BridgeType CheapestBridge(uint length);
+
 /**
  * Narrow a list of candidate sites, nearest first, to those a place's extra check allows.
  * @param sites Candidates, nearest first; narrowed in place.
@@ -156,6 +220,36 @@ void Undo(const BuiltLeg &built);
 inline bool Buildable(TileIndex tile)
 {
 	return IsValidTile(tile) && (IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees)) && IsTileFlat(tile);
+}
+
+/**
+ * Get the height of the ground at one side of a tile, where track along the side's axis would meet it.
+ * Track and road go on flat tiles, and straight up or down a tile inclined along their direction, with no foundation.
+ * @param tile Tile to look at.
+ * @param side Side of the tile.
+ * @return Height at that side, or nothing if nothing can reach that side without a foundation.
+ */
+inline std::optional<int> SideHeight(TileIndex tile, DiagDirection side)
+{
+	const auto [slope, z] = GetTileSlopeZ(tile);
+	if (slope == SLOPE_FLAT) return z;
+	if (!IsInclinedSlope(slope)) return std::nullopt;
+	const DiagDirection up = GetInclinedSlopeDirection(slope);
+	if (side == up) return z + 1;
+	if (side == ReverseDiagDir(up)) return z;
+	return std::nullopt;
+}
+
+/**
+ * Check whether open ground can take track or road without a foundation: clear land or trees, flat or inclined.
+ * @param tile Tile to check.
+ * @return Whether track or road may go there.
+ */
+inline bool OpenGround(TileIndex tile)
+{
+	if (!IsValidTile(tile) || !(IsTileType(tile, TileType::Clear) || IsTileType(tile, TileType::Trees))) return false;
+	const Slope slope = GetTileSlope(tile);
+	return slope == SLOPE_FLAT || IsInclinedSlope(slope);
 }
 
 /**

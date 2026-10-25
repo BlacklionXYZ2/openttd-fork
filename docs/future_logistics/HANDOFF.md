@@ -9,8 +9,51 @@ stands, and what comes next. The detail lives in the pages it links to.
 | [`README.md`](README.md) | Building, configuration, how day zero runs, diagnostics |
 | [`roadmap.md`](roadmap.md) | Every phase, what each delivered, and its limits |
 | [`tech_format.md`](tech_format.md) | The `fl_` badge format NewGRFs use to add tech, industries and rivals |
+| [`grf_authoring_guide.md`](grf_authoring_guide.md) | How to write a NewGRF package in the format: layout, build, traps, tests, a brief for another model |
 | [`compatibility.md`](compatibility.md) | How third-party NewGRFs and the NewGRF specification fit |
 | [`validation.md`](validation.md) | Recorded test results for every phase |
+| [`mods/newgrf/future_logistics/`](../../mods/newgrf/future_logistics/README.md) | The Future Logistics NewGRF, its placeholder values and the handoff art |
+| [`mods/newgrf/corporate_infrastructure/`](../../mods/newgrf/corporate_infrastructure/README.md) | Gareth's Corporate Infrastructure package: six decorative objects from the concept art |
+| [`mods/newgrf/starship/`](../../mods/newgrf/starship/README.md) | Starship: a reusable rocket and launch site, a complete package in the tech format |
+
+## Latest work (night of 23–24 October 2026)
+
+Branch `feature/future-logistics-grf`, on top of `feature/rivals-keep-up` (#3).
+Not pushed yet.
+
+- The Future Logistics NewGRF exists, with drones (2022), hyperloop (2035),
+  rockets and spaceports (2050) and a data centre industry. Values and
+  graphics are placeholders (`PLACEHOLDERS.md`). Gareth's Corporate
+  Infrastructure package (six decorative objects from the concept art) is in
+  `mods/newgrf/corporate_infrastructure/`, compiled and placing in game; its
+  art is not yet used for the working vehicles and buildings.
+- Starship is a complete NewGRF package of its own (`mods/newgrf/starship/`):
+  a reusable rocket (2045) and a launch site in the shared rocket family,
+  with sprites converted from the handoff art. On its own, AeroLink opened
+  Starship routes on day zero and every Starship served its launch sites;
+  with the Future Logistics NewGRF too, both work and players see one city
+  airport. It is balanced as the top vehicle: the most expensive to buy and
+  run, the largest capacity and the most profit.
+- The game now ships with its NewGRFs (`mods/newgrf/CMakeLists.txt`), and new
+  games use Future Logistics and Starship by default when the configuration
+  has no NewGRF list yet (`src/settings.cpp`).
+- In a game started in 2021, the rivals adopted drones on their own in
+  2024–25 through CorporateAI: the whole loop from new tech to rival adoption
+  works.
+- Road routes use existing town roads and drive-through stops on them;
+  railways cross town roads with level crossings; rail and road orders are
+  non-stop.
+- The established-rivals settings are in the settings window (Computer
+  players → Established rivals).
+- A ten-year regression run with all of the above passed once rivals' vehicles
+  left in depots after renewal were sold (`validation.md`).
+- Railways and road routes now climb over slopes and bridge rivers, roads
+  and railways up to six tiles across; road routes bridge railways in their way (a short bridge rather than a level crossing, which
+  fast trains turned out to hit buses on). On mountainous worlds rivals build
+  about twice as many railways as before.
+- Waiting on decisions: what data centres receive (maps rarely start with
+  banks), the cargo hub and parcels, and the data centre bonus (see the
+  handoff's open decisions).
 
 ## What the project is
 
@@ -21,7 +64,7 @@ Future Logistics is a fork of OpenTTD (upstream OpenTTD, not JGR) with two parts
    network before the player arrives: railways, airlines, bus and truck routes,
    ferries and freight chains, sized to the world. Afterwards the rivals keep
    running and growing their companies through the CorporateAI script.
-2. **The Future Logistics NewGRF** (not started). New technology that arrives
+2. **The Future Logistics NewGRF** (started, in `mods/newgrf/future_logistics/`). New technology that arrives
    over the decades: parcels, drones, hyperloop, rockets in the style of
    SpaceX's Falcon 9, Falcon Heavy and Starship, data centres and other new
    industries. It is ordinary NewGRF content plus `fl_` badges, so the rivals
@@ -73,12 +116,12 @@ affects much of the rest.
 | 4: trucks, feeders, fleets | done | merged in #1 |
 | 5: modular tech trees, mail, ships, freight transfers, third-party compatibility, community spec | done | [#2](https://github.com/BlacklionXYZ2/openttd-fork/pull/2) (`feature/modular-tech`), open |
 | 6: rivals that keep up (script API, CorporateAI 4) | done, single-player | `feature/rivals-keep-up`, built on top of #2 |
-| 7: future tech arrives | not started; needs the NewGRF | |
-| NewGRF (workstream B) | not started; the format is ready | |
+| 7: future tech arrives | drones, hyperloop and rockets work with placeholders; the data centre industry exists; parcels and the cargo hub wait on decisions | `feature/future-logistics-grf` |
+| NewGRF (workstream B) | started in `mods/newgrf/future_logistics/`: drones, hyperloop, rockets | `feature/future-logistics-grf` |
 | 8: quality and release | not started | |
 
-Tests on Linux: the C++ unit tests (2307 assertions) and 29 full-game
-integration scenarios pass; a ten-year run with growing rivals is recorded in
+Tests on Linux: the C++ unit tests (2307 assertions) and 38 full-game
+integration scenarios pass; ten-year runs with growing rivals are recorded in
 `validation.md`. Nothing has yet been built or played on the target Mac.
 
 ## Map of the code
@@ -120,7 +163,12 @@ integration scenarios pass; a ten-year run with growing rivals is recorded in
 In rough order:
 
 1. **Review and merge #2**, then open the pull request for phase 6.
-2. **Start the NewGRF and phase 7 together.** Each technology needs its
+2. **Continue the NewGRF and phase 7.** Drones, hyperloop and rockets are in (placeholder values in
+   `mods/newgrf/future_logistics/PLACEHOLDERS.md`, base-game graphics). The
+   Corporate Infrastructure handoff from Gareth (concept art and requirements)
+   is reviewed in the NewGRF README, and his v0.1 object package builds and
+   places in game (`mods/newgrf/corporate_infrastructure/`); the art still needs
+   converting before the working vehicles and buildings can use it. Each technology needs its
    graphics, vehicles and infrastructure, tagged per `tech_format.md`. Points
    already decided:
    - Vehicles carry the shared `role/` and `power/` badges as well as `fl_` ones.
@@ -140,11 +188,23 @@ In rough order:
    - Rivals only build after day zero in single-player. Multiplayer needs the
      planners' commands wrapped in one network command, which means
      accumulating their costs (nested commands do not charge money).
-   - The rail planner only builds on flat land at one height, with no bridges,
-     tunnels or slopes, so rail growth can stall on built-up or hilly maps.
+   - Railways and new road climb and descend straight over tiles inclined along
+     them, and curve only on flat tiles. Both bridge water, roads, railways and
+     dips up to six tiles across, from flat open land to flat open land at the
+     same height, and both tunnel up to 16 tiles through hills (road routes
+     only when there is no route without bridges or tunnels). There are no
+     longer bridges or foundations, so wide rivers, deep valleys and steep or
+     uneven ground can still stop a line. Where a railway cannot
+     bridge a town road it uses a level crossing, where a fast train can hit a
+     road vehicle already on it (an OpenTTD rule: the crossing only closes when
+     the train is one tile away).
    - Freight routes have at most two legs.
    - Vehicles whose capacity comes from a NewGRF callback (Iron Horse wagons)
      show a placeholder capacity in the Tech Library.
+   - Road routes use existing town and unowned roads, with drive-through
+     stops on them. Stations, depots, airports and docks still need clear, flat land.
+   - Temperate maps rarely start with banks, so data centres usually have
+     nothing to receive: the data centre's cargo needs a decision.
 6. **Parked:** Gareth reported that GUI icons looked very small in a recent Mac
    build. It has not been reproduced; it is to be looked at later.
 7. **Environment note:** the cloud sessions used for development could not

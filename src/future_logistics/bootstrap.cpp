@@ -159,9 +159,16 @@ bool InspectFutureLogistics()
 	}
 	for (const Vehicle *vehicle : Vehicle::Iterate()) {
 		if (vehicle->type == VehicleType::Effect || vehicle->type == VehicleType::Disaster || !vehicle->IsPrimaryVehicle() || vehicle->owner == CompanyID{0}) continue;
-		bool connected = Company::IsValidAiID(vehicle->owner) && vehicle->GetNumOrders() == 2 && !vehicle->vehstatus.Test(VehState::Stopped);
+		/* A rival's vehicle stopped in a depot is waiting to be sold, not a broken route. */
+		if (Company::IsValidAiID(vehicle->owner) && vehicle->IsStoppedInDepot()) {
+			Debug(Facility::Misc, Severity::Notice, "FL check parked vehicle={} company={}", vehicle->index, vehicle->owner);
+			continue;
+		}
+		/* Implicit orders record stations a vehicle stopped at on the way; only the vehicle's own orders count. */
+		bool connected = Company::IsValidAiID(vehicle->owner) && vehicle->GetNumManualOrders() == 2 && !vehicle->vehstatus.Test(VehState::Stopped);
 		std::set<StationID> destinations;
 		for (const Order &order : vehicle->Orders()) {
+			if (order.IsType(OT_IMPLICIT)) continue;
 			if (!order.IsType(OT_GOTO_STATION)) { connected = false; continue; }
 			destinations.insert(order.GetDestination().ToStationID());
 		}

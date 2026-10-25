@@ -1,0 +1,390 @@
+{
+ "flame_strip_1x": [
+  [
+   0,
+   0,
+   1,
+   1,
+   0,
+   0
+  ],
+  [
+   2,
+   0,
+   33,
+   160,
+   14,
+   -130
+  ],
+  [
+   36,
+   0,
+   33,
+   169,
+   14,
+   -130
+  ],
+  [
+   70,
+   0,
+   33,
+   180,
+   14,
+   -130
+  ]
+ ],
+ "flame_strip_2x": [
+  [
+   0,
+   0,
+   1,
+   1,
+   0,
+   0
+  ],
+  [
+   2,
+   0,
+   66,
+   320,
+   27,
+   -260
+  ],
+  [
+   69,
+   0,
+   66,
+   338,
+   27,
+   -260
+  ],
+  [
+   136,
+   0,
+   66,
+   360,
+   27,
+   -260
+  ]
+ ],
+ "pad_0_0_1x": {
+  "height": 129,
+  "width": 91,
+  "xrel": -60,
+  "yrel": -97
+ },
+ "pad_0_0_2x": {
+  "height": 259,
+  "width": 184,
+  "xrel": -121,
+  "yrel": -195
+ },
+ "pad_0_1_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_0_1_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_0_2_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_0_2_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_0_3_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_0_3_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_1_0_1x": {
+  "height": 45,
+  "width": 82,
+  "xrel": -51,
+  "yrel": -13
+ },
+ "pad_1_0_2x": {
+  "height": 91,
+  "width": 166,
+  "xrel": -103,
+  "yrel": -27
+ },
+ "pad_1_1_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_1_1_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_1_2_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_1_2_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_1_3_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_1_3_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_2_0_1x": {
+  "height": 45,
+  "width": 96,
+  "xrel": -65,
+  "yrel": -13
+ },
+ "pad_2_0_2x": {
+  "height": 90,
+  "width": 194,
+  "xrel": -131,
+  "yrel": -26
+ },
+ "pad_2_1_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_2_1_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_2_2_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_2_2_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_2_3_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_2_3_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_3_0_1x": {
+  "height": 48,
+  "width": 85,
+  "xrel": -54,
+  "yrel": -16
+ },
+ "pad_3_0_2x": {
+  "height": 98,
+  "width": 172,
+  "xrel": -109,
+  "yrel": -34
+ },
+ "pad_3_1_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_3_1_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_3_2_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_3_2_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_3_3_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_3_3_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_4_0_1x": {
+  "height": 43,
+  "width": 61,
+  "xrel": -30,
+  "yrel": -11
+ },
+ "pad_4_0_2x": {
+  "height": 86,
+  "width": 124,
+  "xrel": -61,
+  "yrel": -22
+ },
+ "pad_4_1_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_4_1_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_4_2_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_4_2_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "pad_4_3_1x": {
+  "height": 32,
+  "width": 62,
+  "xrel": -31,
+  "yrel": 0
+ },
+ "pad_4_3_2x": {
+  "height": 64,
+  "width": 126,
+  "xrel": -63,
+  "yrel": 0
+ },
+ "plume_strip_1x": [
+  [
+   0,
+   0,
+   1,
+   1,
+   0,
+   0
+  ],
+  [
+   2,
+   0,
+   74,
+   211,
+   -7,
+   -130
+  ],
+  [
+   77,
+   0,
+   74,
+   220,
+   -7,
+   -130
+  ],
+  [
+   152,
+   0,
+   74,
+   231,
+   -7,
+   -130
+  ]
+ ],
+ "plume_strip_2x": [
+  [
+   0,
+   0,
+   1,
+   1,
+   0,
+   0
+  ],
+  [
+   2,
+   0,
+   148,
+   422,
+   -14,
+   -260
+  ],
+  [
+   151,
+   0,
+   148,
+   440,
+   -14,
+   -260
+  ],
+  [
+   300,
+   0,
+   148,
+   462,
+   -14,
+   -260
+  ]
+ ],
+ "rocket_idle_1x": {
+  "height": 125,
+  "width": 19,
+  "xrel": -9,
+  "yrel": -123
+ },
+ "rocket_idle_2x": {
+  "height": 250,
+  "width": 38,
+  "xrel": -19,
+  "yrel": -246
+ }
+}

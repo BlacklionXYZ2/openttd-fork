@@ -1,0 +1,437 @@
+/*
+ * Future Logistics: Starship. GPL-2.0-only.
+ *
+ * A fully reusable rocket and its launch site, described with the Future Logistics tech format
+ * (docs/future_logistics/tech_format.md). It joins the shared "rocket" family, so it works on its own and
+ * alongside the Future Logistics NewGRF, whose rocket and spaceport belong to the same family. Rival
+ * companies adopt it through their rules for new air families (AeroLink's any/airport_pair/any/2).
+ *
+ * Every number is a placeholder until the balance pass; see PLACEHOLDERS.md. The graphics come from the
+ * Corporate Infrastructure handoff art, converted by tools/make_sprites.py.
+ *
+ * Build with NML 0.9.0: ./build.sh
+ */
+grf {
+    grfid: "FL\01\02";
+    name: string(STR_GRF_NAME);
+    desc: string(STR_GRF_DESC);
+    version: 1;
+    min_compatible_version: 1;
+}
+
+cargotable {
+    PASS, MAIL
+}
+
+badgetable {
+    "fl_format/2",
+    /* The rocket family, declared here too so the package works without the Future Logistics NewGRF. */
+    "fl_family/rocket",
+    "fl_family/rocket/mechanic/airport_pair",
+    "fl_family/rocket/market/town_pair",
+    "fl_family/rocket/market/mail",
+    "fl_family/rocket/market/industry",
+    "fl_family/rocket/min_tier/city",
+    "fl_tech/rocket",
+    "fl_tier/4",
+    "fl_needs/launchpad",
+    "fl_provides/launchpad",
+    "fl_role/passenger_intercity",
+    "fl_role/express",
+    "fl_role/freight_general",
+    "fl_id/starship",
+    "fl_id/starship_launch_site",
+    /* Shared badge classes from the NewGRF specification, for other NewGRFs, AIs and the purchase list. */
+    "role/passenger",
+    "role/mail",
+    "role/freight",
+    "power/rocket",
+}
+
+/* Only the family has a display name; the fl_ classes stay unnamed so players never see them. */
+item(FEAT_BADGES, family_rocket, 0) { property { label: "fl_family/rocket"; name: string(STR_FAMILY_ROCKET); } }
+
+/* Starship. A helicopter-type aircraft, so it launches straight up from the pad and lands straight down onto it,
+ * as a reusable rocket does. The rocket is the same upright sprite in every direction, tall enough to reach the
+ * launch tower's upper clamp. */
+spriteset(starship_body, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/rocket_idle_1x.png") {
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+    [0, 0, 19, 125, -9, -123]
+}
+alternative_sprites(starship_body, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/rocket_idle_2x.png") {
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+    [0, 0, 38, 250, -19, -246]
+}
+
+/* On the map the body is never drawn: the whole rocket is drawn as the rotor (below), which the game redraws every
+ * tick while the engine runs, whereas the body is only redrawn when it moves. So Starship is seen while its engines
+ * run on the launch mount, in the air and landing: it appears on the mount for take-off and is gone once it has
+ * landed, rather than drifting between the mount, stands and hangar. The depot, vehicle windows and purchase list
+ * (the low byte of extra_callback_info1 is not 0) show the rocket. */
+spriteset(starship_hidden, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/flame_strip_1x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+}
+switch (FEAT_AIRCRAFT, SELF, starship_graphics, extra_callback_info1 & 0xFF) {
+    0: starship_hidden;
+    starship_body;
+}
+
+/* Launch and landing: the rocket over its flame and an exhaust plume. */
+spriteset(starship_plume, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/plume_strip_1x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [2, 0, 74, 211, -7, -130]
+    [77, 0, 74, 220, -7, -130]
+    [152, 0, 74, 231, -7, -130]
+}
+alternative_sprites(starship_plume, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/plume_strip_2x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [2, 0, 148, 422, -14, -260]
+    [151, 0, 148, 440, -14, -260]
+    [300, 0, 148, 462, -14, -260]
+}
+
+/* Flight: the rocket over its flame. */
+spriteset(starship_flame, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/flame_strip_1x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [2, 0, 33, 160, 14, -130]
+    [36, 0, 33, 169, 14, -130]
+    [70, 0, 33, 180, 14, -130]
+}
+alternative_sprites(starship_flame, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/flame_strip_2x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [2, 0, 66, 320, 27, -260]
+    [69, 0, 66, 338, 27, -260]
+    [136, 0, 66, 360, 27, -260]
+}
+
+/* On the ground: nothing. */
+spriteset(starship_no_flame, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/flame_strip_1x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+}
+alternative_sprites(starship_no_flame, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/flame_strip_2x.png") {
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+    [0, 0, 1, 1, 0, 0]
+}
+
+/* The rotor by flight phase (var 0xE2, the TTDPatch movement states the game reports): launching (23 at an airport,
+ * 26 at a heliport) and landing (25, 28) show the rocket with flame and plume, landing being the launch in reverse;
+ * climbing and flying (15 to 21) show it with its flame; anything else, on the ground, shows nothing. Each set is
+ * blank for a stopped rotor, then three frames that cycle. */
+switch (FEAT_AIRCRAFT, SELF, starship_rotor, flight_state) {
+    23: starship_plume;
+    25: starship_plume;
+    26: starship_plume;
+    28: starship_plume;
+    15..21: starship_flame;
+    starship_no_flame;
+}
+
+item(FEAT_AIRCRAFT, starship, 64) {
+    property {
+        name:                         string(STR_STARSHIP);
+        climates_available:           ALL_CLIMATES;
+        introduction_date:            date(2045, 1, 1);
+        model_life:                   50;
+        vehicle_life:                 30;
+        reliability_decay:            15;
+        loading_speed:                80;
+        sprite_id:                    SPRITE_ID_NEW_AIRCRAFT;
+        aircraft_type:                AIRCRAFT_TYPE_HELICOPTER;
+        /* Balanced as the top of the transport world: the most expensive vehicle to buy and to run (both
+         * factors at their maximum), the largest capacity, and the most profit. See PLACEHOLDERS.md. */
+        cost_factor:                  255;
+        running_cost_factor:          255;
+        speed:                        2000 km/h;
+        acceleration:                 50;
+        passenger_capacity:           500;
+        mail_capacity:                120;
+        refittable_cargo_classes:     bitmask(CC_PASSENGERS, CC_MAIL, CC_EXPRESS, CC_ARMOURED);
+        range:                        0;
+        sound_effect:                 SOUND_TAKEOFF_JET_FAST;
+        badges: ["fl_format/2", "fl_id/starship", "fl_tech/rocket", "fl_tier/4", "fl_needs/launchpad",
+                 "fl_role/passenger_intercity", "fl_role/express", "fl_role/freight_general",
+                 "role/passenger", "role/mail", "role/freight", "power/rocket"];
+    }
+    graphics {
+        default:  starship_graphics;
+    }
+    /* The rotor is drawn through the helicopter's override of itself. */
+    livery_override(starship) {
+        starship_rotor;
+    }
+}
+
+/* Launch site. Movement comes from the country airport (type 0), whose helicopters take off at (44, 37) and land
+ * at (44, 40), in sixteenths of a tile, almost the same spot. The launch pad art is placed so its launch mount is
+ * there (measured in game), and fills a 5x4 layout; Starship rises from the mount and comes back down onto it. Each tile's
+ * ground is its piece of the art, with concrete where the art does not reach, so no tile draws over another
+ * (tools/make_sprites.py). The hangar is at tile (3, 0), next to the art's hangar
+ * building; the runway the country airport's planes would use is covered by the art, as only Starships use it. */
+spriteset(pad_sprite_0_0, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_0_0_1x.png") { [0, 0, 91, 129, -60, -97] }
+alternative_sprites(pad_sprite_0_0, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_0_0_2x.png") { [0, 0, 184, 259, -121, -195] }
+spritelayout pad_layout_0_0 {
+    ground { sprite: pad_sprite_0_0(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_0_0, 0) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_0_0; }
+}
+
+spriteset(pad_sprite_1_0, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_1_0_1x.png") { [0, 0, 82, 45, -51, -13] }
+alternative_sprites(pad_sprite_1_0, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_1_0_2x.png") { [0, 0, 166, 91, -103, -27] }
+spritelayout pad_layout_1_0 {
+    ground { sprite: pad_sprite_1_0(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_1_0, 1) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_1_0; }
+}
+
+spriteset(pad_sprite_2_0, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_2_0_1x.png") { [0, 0, 96, 45, -65, -13] }
+alternative_sprites(pad_sprite_2_0, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_2_0_2x.png") { [0, 0, 194, 90, -131, -26] }
+spritelayout pad_layout_2_0 {
+    ground { sprite: pad_sprite_2_0(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_2_0, 2) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_2_0; }
+}
+
+spriteset(pad_sprite_3_0, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_3_0_1x.png") { [0, 0, 85, 48, -54, -16] }
+alternative_sprites(pad_sprite_3_0, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_3_0_2x.png") { [0, 0, 172, 98, -109, -34] }
+spritelayout pad_layout_3_0 {
+    ground { sprite: pad_sprite_3_0(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_3_0, 3) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_3_0; }
+}
+
+spriteset(pad_sprite_4_0, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_4_0_1x.png") { [0, 0, 61, 43, -30, -11] }
+alternative_sprites(pad_sprite_4_0, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_4_0_2x.png") { [0, 0, 124, 86, -61, -22] }
+spritelayout pad_layout_4_0 {
+    ground { sprite: pad_sprite_4_0(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_4_0, 4) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_4_0; }
+}
+
+spriteset(pad_sprite_0_1, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_0_1_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_0_1, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_0_1_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_0_1 {
+    ground { sprite: pad_sprite_0_1(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_0_1, 5) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_0_1; }
+}
+
+spriteset(pad_sprite_1_1, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_1_1_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_1_1, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_1_1_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_1_1 {
+    ground { sprite: pad_sprite_1_1(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_1_1, 6) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_1_1; }
+}
+
+spriteset(pad_sprite_2_1, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_2_1_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_2_1, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_2_1_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_2_1 {
+    ground { sprite: pad_sprite_2_1(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_2_1, 7) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_2_1; }
+}
+
+spriteset(pad_sprite_3_1, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_3_1_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_3_1, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_3_1_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_3_1 {
+    ground { sprite: pad_sprite_3_1(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_3_1, 8) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_3_1; }
+}
+
+spriteset(pad_sprite_4_1, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_4_1_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_4_1, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_4_1_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_4_1 {
+    ground { sprite: pad_sprite_4_1(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_4_1, 9) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_4_1; }
+}
+
+spriteset(pad_sprite_0_2, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_0_2_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_0_2, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_0_2_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_0_2 {
+    ground { sprite: pad_sprite_0_2(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_0_2, 10) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_0_2; }
+}
+
+spriteset(pad_sprite_1_2, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_1_2_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_1_2, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_1_2_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_1_2 {
+    ground { sprite: pad_sprite_1_2(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_1_2, 11) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_1_2; }
+}
+
+spriteset(pad_sprite_2_2, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_2_2_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_2_2, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_2_2_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_2_2 {
+    ground { sprite: pad_sprite_2_2(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_2_2, 12) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_2_2; }
+}
+
+spriteset(pad_sprite_3_2, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_3_2_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_3_2, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_3_2_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_3_2 {
+    ground { sprite: pad_sprite_3_2(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_3_2, 13) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_3_2; }
+}
+
+spriteset(pad_sprite_4_2, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_4_2_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_4_2, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_4_2_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_4_2 {
+    ground { sprite: pad_sprite_4_2(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_4_2, 14) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_4_2; }
+}
+
+spriteset(pad_sprite_0_3, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_0_3_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_0_3, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_0_3_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_0_3 {
+    ground { sprite: pad_sprite_0_3(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_0_3, 15) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_0_3; }
+}
+
+spriteset(pad_sprite_1_3, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_1_3_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_1_3, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_1_3_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_1_3 {
+    ground { sprite: pad_sprite_1_3(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_1_3, 16) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_1_3; }
+}
+
+spriteset(pad_sprite_2_3, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_2_3_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_2_3, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_2_3_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_2_3 {
+    ground { sprite: pad_sprite_2_3(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_2_3, 17) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_2_3; }
+}
+
+spriteset(pad_sprite_3_3, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_3_3_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_3_3, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_3_3_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_3_3 {
+    ground { sprite: pad_sprite_3_3(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_3_3, 18) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_3_3; }
+}
+
+spriteset(pad_sprite_4_3, ZOOM_LEVEL_NORMAL, BIT_DEPTH_32BPP, "gfx/pad_4_3_1x.png") { [0, 0, 62, 32, -31, 0] }
+alternative_sprites(pad_sprite_4_3, ZOOM_LEVEL_IN_2X, BIT_DEPTH_32BPP, "gfx/pad_4_3_2x.png") { [0, 0, 126, 64, -63, 0] }
+spritelayout pad_layout_4_3 {
+    ground { sprite: pad_sprite_4_3(0); }
+}
+item(FEAT_AIRPORTTILES, pad_tile_4_3, 19) {
+    property { substitute: 0; }
+    graphics { default: pad_layout_4_3; }
+}
+
+tilelayout starship_pad_layout {
+    rotation: DIRECTION_NORTH;
+    0, 0: pad_tile_0_0;
+    1, 0: pad_tile_1_0;
+    2, 0: pad_tile_2_0;
+    3, 0: pad_tile_3_0;
+    4, 0: pad_tile_4_0;
+    0, 1: pad_tile_0_1;
+    1, 1: pad_tile_1_1;
+    2, 1: pad_tile_2_1;
+    3, 1: pad_tile_3_1;
+    4, 1: pad_tile_4_1;
+    0, 2: pad_tile_0_2;
+    1, 2: pad_tile_1_2;
+    2, 2: pad_tile_2_2;
+    3, 2: pad_tile_3_2;
+    4, 2: pad_tile_4_2;
+    0, 3: pad_tile_0_3;
+    1, 3: pad_tile_1_3;
+    2, 3: pad_tile_2_3;
+    3, 3: pad_tile_3_3;
+    4, 3: pad_tile_4_3;
+}
+
+/* The first NewGRF airport based on a built-in airport replaces it. This unchanged copy of the country airport
+ * takes that place, so the launch site is added rather than taking the country airport away from players. */
+item(FEAT_AIRPORTS, country_airport_unchanged, 0) {
+    property {
+        override: 0;
+    }
+}
+
+item(FEAT_AIRPORTS, starship_launch_site, 1) {
+    property {
+        override:         0;
+        name:             string(STR_STARSHIP_LAUNCH_SITE);
+        layouts:          [starship_pad_layout];
+        years_available:  [2045, 65535];
+        catchment_area:   6;
+        noise_level:      25;
+        maintenance_cost: 80;
+        badges: ["fl_format/2", "fl_id/starship_launch_site", "fl_tech/rocket", "fl_provides/launchpad"];
+    }
+}

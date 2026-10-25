@@ -40,7 +40,8 @@ Actions availability and billing are controlled by the repository owner.
 
 ## Configuration and scripts
 
-This experimental fork enables bootstrap by default. Set these in openttd.cfg:
+This experimental fork enables bootstrap by default. The three bootstrap settings are also in
+the game's settings window under Computer players → Established rivals. In openttd.cfg:
 
 ```ini
 [game_creation]
@@ -100,16 +101,28 @@ The planner considers the first 128 towns, up to 128 nearest town pairs (distanc
 Candidate stops must both accept and produce passengers and belong to the selected
 town's area. Each completed network reserves its two towns during bootstrap so
 initial rivals do not starve one another of passengers at overlapping stops. The bus planner
-uses the best available standard-road passenger bus and flat clear/tree tiles at one
-height. It builds an owned route, two distinct drive-through stops, an attached
+uses the best available standard-road passenger bus and clear/tree tiles, climbing
+straight over tiles inclined along the road and bridging any railway in its way (only
+if there is no route without one); stops and depots go on flat land. It builds an owned route, two distinct drive-through stops, an attached
 depot and one started bus with two station orders. The rail planner works the
 same way for two terminus stations, a single line, a depot and one train; freight
-railways reserve their two industries. All engine command executions in the rail
+railways reserve their two industries. Railways and roads bridge water, roads,
+railways and dips up to six tiles across, between flat open tiles at the same height;
+road routes use bridges only when there is no route without one. A railway or road
+that has climbed onto a slope may instead tunnel through the hill, up to 16 tiles, to
+a slope at the same height on the far side. A railway crosses a
+straight town road at right angles with a level crossing only where no line bridging
+it exists (and never on track types that forbid level crossings). Stations are built
+before the line, since clearing trees for it can cost the town's permission. Rail and
+road orders are non-stop, so vehicles do not stop at other stations their route
+passes. All engine command executions in the rail
 planner flush the track signal update buffer, as the normal command loop does.
 The air planner builds two airports of the type the market tier allows and a
 small fleet chosen by the Tech Library, for passengers, mail or freight. The
 water planner builds two docks on the same water, a ship depot and a fleet, and
-uses an oil rig's own dock where there is one. The freight planner picks a
+uses an oil rig's own dock where there is one. Road routes run over new road on clear land and
+over existing town and unowned roads, with drive-through stops on straight town streets; they
+only add missing road pieces to town roads and never remove them. The freight planner picks a
 cargo, source and destination and builds the route with one of these, or with
 two that meet at a joined station where the first leg's vehicles transfer and
 leave empty. The road planner builds buses, feeder
@@ -152,7 +165,8 @@ NewGRFs can add tech families, rivals and cargo meanings with `fl_` badges; see
 ones, so raise `max_no_competitors` to include them. The test NewGRF in
 `tests/future_logistics/grf/` is rebuilt with `nmlc -o fl_test.grf fl_test.nml`
 (NML 0.9.0). The format is described in
-[`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
+[`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md). To write a new NewGRF package in the format, follow
+[`grf_authoring_guide.md`](grf_authoring_guide.md).
 
 See [`compatibility.md`](compatibility.md) for how third-party NewGRFs (FIRS,
 Iron Horse, Unsinkable Sam) and the NewGRF specification fit with this format.

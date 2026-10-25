@@ -245,7 +245,9 @@ Goal: after day zero, rivals renew and grow modestly, and adopt new tech.
   more than two loads wait at its loading station, up to 3, 5 or 8 vehicles
   (routes are told apart by cargo and stations, since day-zero vehicles do not
   share orders); sells a vehicle that lost money two years running on a route
-  that has others;
+  that has others, and any of its vehicles left stopped in a depot (renewal
+  gives a vehicle a new ID there); logs crashed vehicles, whose routes refill
+  as cargo waits;
   opens a new route every 24, 12 or 6 months, choosing the recipe it has built
   least, so newly adopted families come first; borrows to build and repays
   what is not needed.
@@ -259,12 +261,27 @@ Limits:
   as the day-zero bootstrap does, and nested commands do not charge money, so
   they cannot yet be wrapped in one network command. In multiplayer the AI only
   looks after its fleet.
-- New routes depend on what the planners can build: railways need flat land at
-  one height and no bridges, so on a small, built-up map rail growth can stop.
+- New routes depend on what the planners can build: railways climb, bridge
+  and tunnel, but need flat open land for stations, so on a small, built-up map
+  rail growth can stop.
 
-## Phase 7: future tech arrives
+## Phase 7: future tech arrives (started)
 
 Each step needs the matching graphics milestone first.
+
+The Future Logistics NewGRF lives in `mods/newgrf/future_logistics/` (see its README and
+`PLACEHOLDERS.md`). **Drones are in** with placeholder values and graphics: a cargo drone
+(helicopter type, mail and express cargo, 2022) and a drone port (a helistation layout). The
+air planner now also builds airports that only take helicopters, for routes of 12 to 64 tiles,
+and gives them only helicopters. AeroLink and Metro & Regional adopt drones for mail and
+CorporateAI grows their drone routes. **Hyperloop is in** too, with no code change: a tube
+track type of its own (`HYPL`, 2035), a propulsion pod and passenger and mail capsules;
+National Rail adopts it five years after it arrives. **Rockets are in** as fast aircraft
+between spaceports (2050) for passengers, mail and high-value freight; AeroLink adopts them.
+**Starship is a package of its own** (`mods/newgrf/starship/`, 2045): a reusable rocket and a
+launch site in the same `rocket` family, with graphics converted from the handoff art. It works
+alone or with the Future Logistics NewGRF, and AeroLink adopts it with no code change. The rest
+of the Corporate Infrastructure handoff art is not yet converted.
 
 Details of each tech and industry will be decided when it is developed. With
 the phase 5 format, most of each one is NewGRF content plus declarations; code
@@ -273,10 +290,11 @@ is only needed where a new mechanic or market is.
 | Tech | Year | GRF provides | Code needed |
 |---|---|---|---|
 | Parcels | TBD | Parcel cargo, sorting hub, delivery van, `fl_cargo` meaning | None expected (road and rail freight recipes) |
-| Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | None expected (airport pair mechanic, mail or industry market) |
-| Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | None expected (rail line mechanic) |
-| Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | None expected; a launch sequence would need a new mechanic |
-| Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | Depends on what carries their cargo |
+| Drones | 2022 | Drone aircraft (`fl_needs/drone_pad`), drone pad airport | **Done** (placeholders): helicopter-only airports added to the air planner |
+| Hyperloop | 2035 | Hyperloop rail type and pods, tagged as a family | **Done** (placeholders): no code needed |
+| Rockets | 2050 | Rocket aircraft (`fl_needs/launchpad`), launchpad airport | **Done** (placeholders, flying like aircraft); a launch sequence would need engine work |
+| Starship | 2045 | Separate NewGRF: Starship aircraft and launch site, in the rocket family, with converted art | **Done** (placeholders); no code needed |
+| Data centres | TBD | Industry, cargo types, `fl_industry` and `fl_market` tags | **Started**: the industry exists (receives bank cargo, one per town); rivals cannot reach town-centre sites yet, and the revenue bonus needs code and a decision |
 
 Underground hyperloop and true rocket flight behaviour need engine changes and
 are tracked separately; the first versions use rail-type and aircraft mechanics.
@@ -284,7 +302,10 @@ are tracked separately; the first versions use rail-type and aircraft mechanics.
 ## Phase 8: quality and release
 
 - Settings for density, start year, rival count and aggression in the game's
-  settings window.
+  settings window. **Started**: the head start settings (on/off, capital per
+  inhabitant, largest grant) are in Settings → Computer players → Established
+  rivals; rival count is the usual competitor limit, and aggression is in
+  CorporateAI's own settings.
 - Balance passes: the player must be able to catch up.
 - Intel x86_64 macOS 12 build (`mac-artifact-x86_64.yml`) run and play-tested on
   the target MacBook, plus Apple Silicon and Linux CI.

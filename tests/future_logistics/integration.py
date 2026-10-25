@@ -36,7 +36,7 @@ def main():
 
     def run(name, *, seed=12345, load=None, enabled=True, limit=4, capital=25000000,
             towns=48, year=1950, service=False, dedicated=False, vehicle_limit=500, clear_limit=4096, default_world=False,
-            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False, months=3):
+            climate="temperate", commands="", industries=4, map_bits=8, grfs=(), coastal=False, months=3, mountains=False, rivers=False, game_script=None):
         folder = output / name
         folder.mkdir(exist_ok=True)
         if grfs:
@@ -91,8 +91,11 @@ CorporateAI =
 [game_scripts]
 DayZeroMonopolies =
 """)
-        if grfs:
-            cfg.write_text(cfg.read_text() + "[newgrf]\n" + "".join(f"{grf.name} = \n" for grf in grfs))
+        # Always a NewGRF list, even an empty one: without it, new games use the shipped Future Logistics NewGRFs.
+        cfg.write_text(cfg.read_text() + "[newgrf]\n" + "".join(f"{grf.name} = \n" for grf in grfs))
+        if game_script:
+            shutil.copytree(game_script, folder / "game" / game_script.name, dirs_exist_ok=True)
+            cfg.write_text(cfg.read_text().replace("DayZeroMonopolies =", f"{game_script.name} ="))
         if coastal:
             text = cfg.read_text().replace("land_generator = 0", "land_generator = 1").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 3")
             cfg.write_text(text.replace("terrain_type = 0", "terrain_type = 1").replace("tree_placer = 0", "tree_placer = 2"))
@@ -101,6 +104,13 @@ DayZeroMonopolies =
             text = text.replace("tree_placer = 0", "tree_placer = 2").replace("number_towns = 4", "number_towns = 2")
             text = text.replace("terrain_type = 0", "terrain_type = 1").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 0")
             cfg.write_text(text)
+        if mountains:
+            text = cfg.read_text().replace("land_generator = 0", "land_generator = 1").replace("tree_placer = 0", "tree_placer = 2")
+            cfg.write_text(text.replace("terrain_type = 0", "terrain_type = 3").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 0"))
+        if rivers:
+            text = cfg.read_text().replace("land_generator = 0", "land_generator = 1").replace("tree_placer = 0", "tree_placer = 2")
+            text = text.replace("terrain_type = 0", "terrain_type = 2").replace("quantity_sea_lakes = 4", "quantity_sea_lakes = 0")
+            cfg.write_text(text.replace("[game_creation]\n", "[game_creation]\namount_of_rivers = 3\n"))
         scripts = folder / "scripts"
         scripts.mkdir(exist_ok=True)
         startup = commands + "future_logistics_check\n"
@@ -137,6 +147,8 @@ DayZeroMonopolies =
     # Rivals grow after day zero, so later checks need the day-zero vehicles to keep working and the fleet not to shrink.
     vehicle_ids = lambda text: set(re.findall(r"FL check company=\d+ vehicle=(\d+) ", text))
     served_ids = lambda text: set(re.findall(r"FL check company=\d+ vehicle=(\d+) type=\w+ connected=true served=true", text))
+    # A train destroys a road vehicle caught on a level crossing, as in any game; CorporateAI reports it.
+    crashed_ids = lambda text: set(re.findall(r"Vehicle (\d+) crashed at tile", text))
     profiles = re.findall(r"FL profile company=([1-4]) profile=(\w+)", first)
     require(profiles == [("1", "national_rail"), ("2", "aerolink"), ("3", "metro_regional"), ("4", "integrated_logistics")],
             "each rival should get its own profile, in order")
@@ -185,7 +197,7 @@ DayZeroMonopolies =
     require("Companies visible after startup: 5" in restored, "Game Script did not inspect the initialized companies")
     counts = vehicle_count(restored)
     require(len(counts) == 2 and counts[0] == vehicles and counts[1] >= vehicles, "initial or three-month saved-game connectivity check failed")
-    require(vehicle_ids(first) <= served_ids(restored), "not every day-zero rival vehicle visited an ordered station")
+    require(vehicle_ids(first) - crashed_ids(restored) <= served_ids(restored), "not every day-zero rival vehicle visited an ordered station")
     deliveries = re.findall(r"FL check company=(\d+).*delivered=([1-9]\d*)", restored)
     require(len({company for company, count in deliveries}) == 4, "not every rival delivered cargo")
     funds = lambda text: re.findall(r"FL check funds company=(\d+) balance=(-?\d+) loan=(\d+)", text)[:5]
@@ -202,7 +214,7 @@ DayZeroMonopolies =
     require(re.search(r"Added a vehicle to .* \(\d+ on the route\)", grown), "no rival added a vehicle to a busy route")
     grown_counts = vehicle_count(grown)
     require(len(grown_counts) == 2 and grown_counts[-1] > vehicles, "the rivals' fleets did not grow, or a vehicle failed the check")
-    require(vehicle_ids(first) <= served_ids(grown), "a day-zero vehicle stopped serving its stations as the rivals grew")
+    require(vehicle_ids(first) - crashed_ids(grown) <= served_ids(grown), "a day-zero vehicle stopped serving its stations as the rivals grew")
     largest = max(int(n) for n in re.findall(r"\((\d+) on the route\)", grown))
     require(largest <= 5, "a route grew past the medium aggression limit of five vehicles")
 
@@ -249,6 +261,106 @@ DayZeroMonopolies =
     require(not re.search(r"recipe=\w+/(rail_line|airport_pair)/\w+ fallback=\w+ result=success", tiny),
             "two villages should not get railways or airlines")
 
+    # The Future Logistics NewGRF itself: drones arrive in 2022 and rivals adopt them for mail.
+    fl_grf = ROOT / "mods/newgrf/future_logistics/future_logistics.grf"
+    # The committed .grf must match its source; checked when an NML compiler is available ($NMLC or nmlc).
+    nmlc = os.environ.get("NMLC") or shutil.which("nmlc")
+    if nmlc:
+        rebuilt = output / "future_logistics_rebuilt.grf"
+        subprocess.run([nmlc, "-c", "-o", str(rebuilt), "future_logistics.nml"], cwd=fl_grf.parent, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        require(rebuilt.read_bytes() == fl_grf.read_bytes(), "future_logistics.grf is out of date: run mods/newgrf/future_logistics/build.sh")
+    else:
+        print("nmlc not found; not checking that future_logistics.grf matches its source", flush=True)
+    drones, drone_save = run("drone-world", year=2026, grfs=[fl_grf],
+                             commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
+    require("FL tech validate problems=0" in drones, "the Future Logistics NewGRF has declaration problems")
+    require(re.search(r"FL tech vehicle id=464C0101:air:64 .*roles=parcel,express\(declared\) power=electric tech=drone ", drones),
+            "the cargo drone was not read with its family, roles and power source")
+    require(len(re.findall(r"FL tech infra kind=airport ", drones)) == len(set(re.findall(r"FL tech infra kind=airport id=(\S+)", drones))),
+            "an airport was listed twice")
+    for company in ("2", "3"):
+        require(re.search(rf"FL service company={company} recipe=drone/airport_pair/mail fallback=false result=success", drones),
+                f"company {company} did not adopt drones for mail")
+    drone_run, _ = run("drone-service", load=drone_save, service=True, months=4, grfs=[fl_grf])
+    flying = re.findall(r"FL check company=\d+ vehicle=\d+ type=air connected=true served=true .*engine=464C0101:air:64 ", drone_run)
+    require(len(flying) >= 4, "the drones did not serve their drone ports")
+
+    # Hyperloop arrives in 2035 on its own track type; National Rail adopts it five years later.
+    tubes, tube_save = run("hyperloop-world", year=2041, grfs=[fl_grf], commands="future_logistics_tech validate\n")
+    require("FL tech validate problems=0" in tubes, "the Future Logistics NewGRF has declaration problems in 2041")
+    tube = re.search(r"FL rail company=1 kind=town cargo=\w+ track=HYPL vehicle=(\d+) .*locomotive=464C0101:rail:120 wagon=464C0101:rail:12[12]", tubes)
+    require(tube and re.search(r"FL service company=1 recipe=hyperloop/rail_line/\w+ fallback=false result=success", tubes),
+            "National Rail did not build a hyperloop line")
+    tube_run, _ = run("hyperloop-service", load=tube_save, service=True, grfs=[fl_grf])
+    require(re.search(rf"FL check company=1 vehicle={tube.group(1)} type=rail connected=true served=true ", tube_run),
+            "the hyperloop pod did not serve its stations")
+
+    # Rockets arrive in 2050 and fly between spaceports; AeroLink adopts them two years later.
+    rockets, rocket_save = run("rocket-world", year=2056, map_bits=9, grfs=[fl_grf], commands="future_logistics_tech validate\n")
+    require("FL tech validate problems=0" in rockets, "the Future Logistics NewGRF has declaration problems in 2056")
+    require(re.search(r"FL towns company=2 a=\d+ b=\d+ tier=city population=\d+,\d+ aircraft=464C0101:air:65", rockets)
+            and re.search(r"FL service company=2 recipe=rocket/airport_pair/town_pair fallback=false result=success", rockets),
+            "AeroLink did not open a rocket route between cities")
+    rocket_run, _ = run("rocket-service", load=rocket_save, service=True, map_bits=9, grfs=[fl_grf])
+    require(re.search(r"FL check company=2 vehicle=\d+ type=air connected=true served=true .*engine=464C0101:air:65 ", rocket_run),
+            "the rockets did not serve their spaceports")
+
+    # Starship: a package of its own in the shared rocket family, with a launch site; AeroLink adopts it.
+    ss_grf = ROOT / "mods/newgrf/starship/starship.grf"
+    if nmlc:
+        rebuilt = output / "starship_rebuilt.grf"
+        subprocess.run([nmlc, "-c", "-o", str(rebuilt), "starship.nml"], cwd=ss_grf.parent, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        require(rebuilt.read_bytes() == ss_grf.read_bytes(), "starship.grf is out of date: run mods/newgrf/starship/build.sh")
+    ships, ship_save = run("starship-world", year=2050, map_bits=9, grfs=[ss_grf],
+                           commands="future_logistics_tech validate\nfuture_logistics_tech find starship\nfuture_logistics_tech find starship_launch_site\n")
+    require("FL tech validate problems=0" in ships, "the Starship NewGRF has declaration problems")
+    require(re.search(r"FL tech found id=starship kind=vehicle", ships) and re.search(r"FL tech found id=starship_launch_site kind=airport", ships),
+            "the Starship or its launch site has no fl_id")
+    require(re.search(r"FL towns company=2 a=\d+ b=\d+ tier=city population=\d+,\d+ aircraft=464C0102:air:64", ships)
+            and re.search(r"FL service company=2 recipe=rocket/airport_pair/town_pair fallback=false result=success", ships),
+            "AeroLink did not open a Starship route on its own")
+    ship_run, _ = run("starship-service", load=ship_save, service=True, map_bits=9, grfs=[ss_grf])
+    # Only the last check counts: the first, as the save loads, comes before any flying.
+    final_check = ship_run.split("FL check result")[-2]
+    starships = re.findall(r"FL check company=2 vehicle=\d+ type=air connected=(\w+) served=(\w+) .*engine=464C0102:air:64 ", final_check)
+    require(starships and all(c == "true" and v == "true" for c, v in starships), "not every Starship served its launch sites")
+    # Balance: Starship earns the most of any vehicle.
+    profits = re.findall(r"FL check company=\d+ vehicle=\d+ type=\w+ .*profit=(-?\d+) .*engine=(\S+) ", final_check)
+    require(max(profits, key=lambda p: int(p[0]))[1] == "464C0102:air:64", "a vehicle out-earned every Starship")
+    # With the Future Logistics NewGRF: both declare the rocket family, and each built-in airport is listed once.
+    both, _ = run("starship-with-future-logistics", year=2056, map_bits=9, grfs=[fl_grf, ss_grf],
+                  commands="future_logistics_tech validate\nfuture_logistics_tech list\n")
+    require("FL tech validate problems=0" in both, "Starship and Future Logistics together report declaration problems")
+    # The launch site copies the country airport (4x3); the country airport itself must still be there, once.
+    require(len(re.findall(r"FL tech infra kind=airport id=airport:\d+ speed=0 size=4x3", both)) == 1,
+            "loading Starship replaces or duplicates the country airport")
+    # Balance: Starship is the most expensive vehicle to buy and to run, and carries the most.
+    vehicles = re.findall(r"FL tech vehicle id=(\S+) .*capacity=(\d+) .*cost=(\d+) running_cost=(\d+) name=", both)
+    for column, what in ((2, "purchase cost"), (3, "running cost"), (1, "capacity")):
+        top = max(vehicles, key=lambda v: int(v[column]))
+        require(top[0] == "464C0102:air:64", f"Starship does not have the highest {what}: {top[0]} does")
+
+    # Corporate Infrastructure: Gareth's decorative objects, loaded alongside Future Logistics.
+    ci_grf = ROOT / "mods/newgrf/corporate_infrastructure/CorporateInfrastructure.grf"
+    if nmlc:
+        rebuilt = output / "corporate_infrastructure_rebuilt.grf"
+        subprocess.run([nmlc, "--grf", str(rebuilt), "CorporateInfrastructure.nml"], cwd=ci_grf.parent, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        require(rebuilt.read_bytes() == ci_grf.read_bytes(),
+                "CorporateInfrastructure.grf is out of date: run mods/newgrf/corporate_infrastructure/build.sh")
+    objects, _ = run("corporate-infrastructure", year=2026, enabled=False, service=True, months=1, grfs=[fl_grf, ci_grf],
+                     game_script=ROOT / "tests/future_logistics/gs/CIObjectCheck", commands="future_logistics_tech validate\n")
+    require("CI objects built=6" in objects and "FL tech validate problems=0" in objects,
+            "the Corporate Infrastructure objects could not all be built alongside Future Logistics")
+
+    # Data centres: an industry in the "tech" market, one per town, that receives what banks hold.
+    centres, _ = run("data-centre-world", year=2026, map_bits=9, grfs=[fl_grf],
+                     commands="future_logistics_tech validate\nfuture_logistics_tech find data_centre\n")
+    require("FL tech validate problems=0" in centres, "the data centre declaration has problems")
+    require(re.search(r"FL tech found id=data_centre kind=industry index=\d+ built=[1-9]", centres), "no data centre was generated")
+
     # A NewGRF that adds a tech family, a rival, a cargo meaning, a rule for a built-in rival, and mistakes.
     grf_text, _ = run("newgrf-tech-tree", limit=5, grfs=[ROOT / "tests/future_logistics/grf/fl_test.grf"],
                       commands="future_logistics_tech recipes\nfuture_logistics_tech validate\nfuture_logistics_tech list\n"
@@ -277,6 +389,17 @@ DayZeroMonopolies =
     require("FL check result=true companies=6" in grf_text, "a NewGRF rival's network failed the connectivity check")
 
     default_world, _ = run("default-world", default_world=True)
+    # Railways climb and descend over sloped land rather than needing one flat height.
+    mountain_world, _ = run("mountain-world", mountains=True, seed=1)
+    slopes = [int(n) for n in re.findall(r"FL rail company=\d+ .* slopes=(\d+)", mountain_world)]
+    require(len(slopes) >= 3 and sum(1 for n in slopes if n > 0) >= 2, "railways in a mountainous world should climb over slopes")
+    require(re.search(r"FL rail company=\d+ .* tunnels=[1-9]", mountain_world), "no railway in a mountainous world went through a hill")
+    require("FL check result=true" in mountain_world and "FL construction failed" not in mountain_world, "mountain railways failed to build or connect")
+    # Lines bridge rivers, roads and railways in their way.
+    river_world, _ = run("river-world", rivers=True, seed=1)
+    spans = [int(n) for n in re.findall(r"FL (?:rail|route) company=\d+ .* bridges=(\d+)", river_world)]
+    require(sum(spans) >= 3, "railways and roads in a world with rivers should use bridges")
+    require("FL check result=true" in river_world and "FL construction failed" not in river_world, "bridged lines failed to build or connect")
     require("FL complete companies=5 operational=4" in default_world, "default terrain/tree/town settings failed")
     no_clearance, _ = run("no-cleanup-capacity", clear_limit=0)
     require("FL complete companies=5 operational=0" in no_clearance and "FL construction failed" not in no_clearance,
@@ -330,7 +453,7 @@ DayZeroMonopolies =
                     f"{climate}: Tech Library differs from {snapshot_file.relative_to(ROOT)}; "
                     "rerun with --update-snapshots if the change is intended")
 
-    summary = "PASS: mail trains and trucks; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
+    summary = "PASS: mail trains and trucks; Starship on its own and with Future Logistics; Corporate Infrastructure objects; railways over hills, through them and over rivers; ferries in a coastal world; freight routes in two legs with a transfer (ship then train through a port); NewGRF tech family, rival, cargo meaning and validation; drones, hyperloop and rockets from the Future Logistics NewGRF adopted by the rivals; data centres generated; headstart scaled to world population and town size; rivals that grow after day zero through AIFutureLogistics; four distinct company profiles with an airline, passenger and freight rail, feeder buses into railway stations, trucks continuing rail cargo chains, and tier-sized fleets; Tech Library bus choice, console query and per-climate snapshots; company ownership/count; funding/loan accounting; four connected starter networks with controlled, default-world and 2026 settings; reserved cleanup capacity; fixed-seed reproducibility; station visits after simulation; network save/reload; no bootstrap on ordinary save load; disabled setting; competitor limit/custom capital; one-town/no-bus fallback and construction rollback; late-start milestone catch-up and persistence; dedicated multiplayer exclusion.\n"
     (output / "results.txt").write_text(summary)
     print(summary)
 

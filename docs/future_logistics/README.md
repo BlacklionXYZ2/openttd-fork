@@ -165,7 +165,8 @@ NewGRFs can add tech families, rivals and cargo meanings with `fl_` badges; see
 ones, so raise `max_no_competitors` to include them. The test NewGRF in
 `tests/future_logistics/grf/` is rebuilt with `nmlc -o fl_test.grf fl_test.nml`
 (NML 0.9.0). The format is described in
-[`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md).
+[`tech_format.md`](tech_format.md) and the plan in [`roadmap.md`](roadmap.md). To write a new NewGRF package in the format, follow
+[`grf_authoring_guide.md`](grf_authoring_guide.md).
 
 See [`compatibility.md`](compatibility.md) for how third-party NewGRFs (FIRS,
 Iron Horse, Unsinkable Sam) and the NewGRF specification fit with this format.

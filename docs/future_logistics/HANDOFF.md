@@ -9,6 +9,7 @@ stands, and what comes next. The detail lives in the pages it links to.
 | [`README.md`](README.md) | Building, configuration, how day zero runs, diagnostics |
 | [`roadmap.md`](roadmap.md) | Every phase, what each delivered, and its limits |
 | [`tech_format.md`](tech_format.md) | The `fl_` badge format NewGRFs use to add tech, industries and rivals |
+| [`grf_authoring_guide.md`](grf_authoring_guide.md) | How to write a NewGRF package in the format: layout, build, traps, tests, a brief for another model |
 | [`compatibility.md`](compatibility.md) | How third-party NewGRFs and the NewGRF specification fit |
 | [`validation.md`](validation.md) | Recorded test results for every phase |
 | [`mods/newgrf/future_logistics/`](../../mods/newgrf/future_logistics/README.md) | The Future Logistics NewGRF, its placeholder values and the handoff art |
